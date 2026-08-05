@@ -204,8 +204,11 @@
 
 </div>
 
-<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
-<input type="file" id="videoInput" accept="video/*" capture="environment" style="display:none">
+<!-- TEST: swapped to "user" to check for a known Android Chrome bug where
+     environment/user get mapped backwards on certain versions. If this opens
+     the REAR camera correctly, leave it as "user" — it's intentional, not a typo. -->
+<input type="file" id="photoInput" accept="image/*" capture="user" style="display:none">
+<input type="file" id="videoInput" accept="video/*" capture="user" style="display:none">
 
 <div id="labelOverlay">
   <h2 class="big-title">What's this of?</h2>
