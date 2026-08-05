@@ -207,15 +207,20 @@
    CONFIG — edit before deploying
    ============================================================ */
 const CONFIG = {
-  // The inbox your Power Automate flow watches. The mechanic still has to
-  // pick/type this in their Mail app — browsers can't pre-fill the "To"
-  // field on a shared email, so make sure this address is saved as a
-  // contact on each phone so it autocompletes after a couple of letters.
-  warrantyEmail: "EDIT ME - warranty@yourdealer.com",
+  // Every address the job should go to. The FIRST one must be the inbox your
+  // Power Automate flow watches — that's the one the folder-filing logic
+  // depends on. Any others (e.g. a manager) just get a copy for visibility.
+  // The mechanic still has to enter these in their Mail app — browsers can't
+  // pre-fill the "To"/"Cc" fields on a shared email — so save these as
+  // contacts on each phone so they autocomplete after a couple of letters.
+  warrantyEmails: [
+    "servicelimerick@hinchys.ie",
+    "ekennedy@hinchys.ie"
+  ],
 
   // Replace with your mechanics' names. This is a placeholder list.
   mechanics: [
-    "EDIT ME - Mechanic 1",
+    "Sergiu",
     "EDIT ME - Mechanic 2",
     "EDIT ME - Mechanic 3",
     "EDIT ME - Mechanic 4"
@@ -628,16 +633,18 @@ async function startSubmit(){
     return;
   }
 
+  const recipientsConfigured = CONFIG.warrantyEmails.length && CONFIG.warrantyEmails[0].indexOf("EDIT ME") !== 0;
+  const recipientText = recipientsConfigured ? CONFIG.warrantyEmails.join("; ") : "the warranty addresses";
+
   const subject = "Warranty photos " + state.reg + " " + state.wip;
   const body = "Mechanic: " + state.mechanic + "\nReg: " + state.reg + "\nWIP: " + state.wip +
-    "\n\nSend this to " + (CONFIG.warrantyEmail.indexOf("EDIT ME") === 0 ? "the warranty inbox" : CONFIG.warrantyEmail) + " to file these photos.";
+    "\n\nSend this to " + recipientText + " (add them all to To/Cc) to file these photos.";
 
   try {
     await navigator.share({ files: files, title: subject, text: body });
     document.getElementById("doneTitle").textContent = "Almost done";
     document.getElementById("doneSub").textContent =
-      "Check the message that just opened — make sure it's addressed to " +
-      (CONFIG.warrantyEmail.indexOf("EDIT ME") === 0 ? "the warranty inbox" : CONFIG.warrantyEmail) +
+      "Check the message that just opened — make sure it's addressed to " + recipientText +
       " and tap Send to finish submitting " + state.reg + " / " + state.wip + ".";
     goToStep(6);
   } catch(err){
