@@ -69,6 +69,15 @@
     border:1px solid var(--border);background:var(--surface);color:var(--text);}
   .keypad button:active{background:var(--surface-2);transform:scale(.96);}
 
+  .reg-kb{display:flex;flex-direction:column;gap:10px;}
+  .reg-kb-toprow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .reg-mode-btn,.reg-ctrl-btn{min-height:52px;font-size:15px;font-weight:700;}
+  .reg-kb-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .reg-key{min-height:52px;border-radius:10px;font-size:18px;font-weight:700;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);
+    display:flex;align-items:center;justify-content:center;}
+  .reg-key:active{background:var(--surface-2);transform:scale(.96);}
+
   input[type=text]{width:100%;min-height:var(--tap);font-size:26px;font-weight:700;text-align:center;
     letter-spacing:2px;text-transform:uppercase;background:var(--surface);color:var(--text);
     border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
@@ -148,8 +157,15 @@
     <section class="screen" id="screen-3">
       <div class="step-label">Step 3 of 4</div>
       <h2 class="big-title">Enter the reg</h2>
-      <p class="sub">Spaces and dashes are removed automatically</p>
-      <input type="text" id="regInput" inputmode="text" autocapitalize="characters" maxlength="12" placeholder="e.g. 231D12345">
+      <div class="keypad-display" id="regDisplay"><span class="ph">Tap keys below</span></div>
+      <div class="reg-kb">
+        <div class="reg-kb-toprow">
+          <button class="btn reg-mode-btn" id="regModeBtn" onclick="toggleRegMode()">ABC</button>
+          <button class="btn reg-ctrl-btn" onclick="regBackspace()">&#9003;</button>
+          <button class="btn reg-ctrl-btn" onclick="regClear()">Clear</button>
+        </div>
+        <div class="reg-kb-grid" id="regKbGrid"></div>
+      </div>
       <div class="folder-preview" id="folderPreview"></div>
       <div class="spacer"></div>
       <button class="btn btn-primary" id="regContinueBtn" disabled onclick="continueFromReg()">Continue</button>
@@ -213,7 +229,7 @@ const CONFIG = {
   // The mechanic still has to enter these in their Mail app — browsers can't
   // pre-fill the "To"/"Cc" fields on a shared email — so save these as
   // contacts on each phone so they autocomplete after a couple of letters.
-  warrantyEmails: [
+ warrantyEmails: [
     "servicelimerick@hinchys.ie",
     "ekennedy@hinchys.ie"
   ],
@@ -379,18 +395,62 @@ function updateWipDisplay(){
 /* ============================================================
    STEP 3 — reg
    ============================================================ */
+let regMode = "digits"; // "digits" | "letters"
+
 function initRegInput(){
-  const input = document.getElementById("regInput");
-  input.value = state.reg;
-  input.oninput = () => {
-    const cleaned = input.value.toUpperCase().replace(/[\s-]/g, "");
-    input.value = cleaned;
-    state.reg = cleaned;
-    document.getElementById("folderPreview").innerHTML = cleaned
-      ? "Files will be saved to <code>" + escapeHtml(cleaned) + " / " + escapeHtml(state.wip) + "</code>"
-      : "";
-    document.getElementById("regContinueBtn").disabled = cleaned.length < 3;
-  };
+  renderRegKeyboard();
+  updateRegDisplay();
+}
+
+function renderRegKeyboard(){
+  document.getElementById("regModeBtn").textContent = regMode === "digits" ? "ABC" : "123";
+  const grid = document.getElementById("regKbGrid");
+  grid.innerHTML = "";
+  const keys = regMode === "digits"
+    ? ["1","2","3","4","5","6","7","8","9","0"]
+    : "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    b.className = "reg-key";
+    b.textContent = k;
+    b.onclick = () => regTypeChar(k);
+    grid.appendChild(b);
+  });
+}
+
+function toggleRegMode(){
+  vibrate(15);
+  regMode = regMode === "digits" ? "letters" : "digits";
+  renderRegKeyboard();
+}
+
+function regTypeChar(ch){
+  if (state.reg.length >= 12) return;
+  vibrate(10);
+  state.reg += ch;
+  updateRegDisplay();
+}
+
+function regBackspace(){
+  vibrate(10);
+  state.reg = state.reg.slice(0, -1);
+  updateRegDisplay();
+}
+
+function regClear(){
+  vibrate(15);
+  state.reg = "";
+  updateRegDisplay();
+}
+
+function updateRegDisplay(){
+  const el = document.getElementById("regDisplay");
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
+
+  document.getElementById("folderPreview").innerHTML = state.reg
+    ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
+    : "";
+  document.getElementById("regContinueBtn").disabled = state.reg.length < 3;
 }
 
 function continueFromReg(){
@@ -715,8 +775,9 @@ function resetForNewJob(keepMechanic){
     captures: []
   };
   updateWipDisplay();
-  document.getElementById("regInput").value = "";
-  document.getElementById("folderPreview").textContent = "";
+  regMode = "digits";
+  renderRegKeyboard();
+  updateRegDisplay();
   goToStep(keepMechanic ? 2 : 1);
 }
 
