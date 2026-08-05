@@ -220,10 +220,12 @@ const CONFIG = {
 
   // Replace with your mechanics' names. This is a placeholder list.
   mechanics: [
-    "Sergiu",
-    "EDIT ME - Mechanic 2",
-    "EDIT ME - Mechanic 3",
-    "EDIT ME - Mechanic 4"
+    "Adrian",
+    "Eamonn",
+    "Jack",
+    "Kieran",
+    "Renier",
+    "Sergiu"
   ],
 
   // Quick-pick labels shown after every photo/video capture.
@@ -253,8 +255,6 @@ let state = {
   jobId: null,
   captures: [] // {id, kind, blob, previewUrl, filename, label}
 };
-
-let pendingCapture = null; // {kind, blob, previewUrl} awaiting a label
 
 function vibrate(ms){ if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} } }
 
@@ -421,23 +421,67 @@ async function handleFile(e, kind){
     try { blob = await stampPhoto(file); } catch(err){ console.error("Stamp failed, using original", err); blob = file; }
   }
 
-  openLabelPrompt(kind, blob);
+  try {
+    openLabelPrompt(kind, blob);
+  } catch(err){
+    // Whatever just went wrong, the mechanic still took a real photo/video —
+    // never lose it. Save it under a generic label rather than showing nothing.
+    console.error("Label prompt failed, saving capture without a label", err);
+    addCaptureWithoutPrompt(kind, blob);
+  }
 }
 
-/* ---- label picker (runs after every capture) ---- */
-function openLabelPrompt(kind, blob){
-  pendingCapture = { kind: kind, blob: blob, previewUrl: URL.createObjectURL(blob) };
+function addCaptureWithoutPrompt(kind, blob){
+  const label = sanitizeLabel(kind === "photo" ? "Photo" : "Video");
+  const ext = kind === "photo" ? "jpg" : ((blob.type || "").split("/")[1] || "mp4");
+  const filename = buildFilename(label, ext);
+  const seq = state.captures.length + 1;
+  state.captures.push({
+    id: "c" + Date.now() + "_" + seq,
+    kind: kind,
+    blob: blob,
+    previewUrl: URL.createObjectURL(blob),
+    filename: filename,
+    label: label
+  });
+  renderCaptures();
+}
 
+/* ---- label picker (runs after every capture) ----
+   Captures queue up rather than overwrite one another — if the mechanic
+   fires off a second photo before labeling the first (e.g. tapped twice
+   because the camera app was slow to open), both still get a turn instead
+   of one silently disappearing. */
+let captureQueue = []; // {kind, blob, previewUrl}
+
+function openLabelPrompt(kind, blob){
+  captureQueue.push({ kind: kind, blob: blob, previewUrl: URL.createObjectURL(blob) });
+  if (captureQueue.length === 1){
+    showLabelPromptFor(captureQueue[0]);
+  }
+  // If one is already showing, this one just waits its turn in the queue.
+}
+
+function showLabelPromptFor(item){
   const preview = document.getElementById("labelPreview");
-  preview.innerHTML = kind === "photo"
-    ? '<img src="' + pendingCapture.previewUrl + '">'
-    : '<video src="' + pendingCapture.previewUrl + '" muted playsinline autoplay loop></video>';
+  preview.innerHTML = item.kind === "photo"
+    ? '<img src="' + item.previewUrl + '">'
+    : '<video src="' + item.previewUrl + '" muted playsinline autoplay loop></video>';
 
   document.getElementById("labelOtherBox").style.display = "none";
   document.getElementById("labelOtherInput").value = "";
   renderLabelGrid();
 
   document.getElementById("labelOverlay").classList.add("show");
+}
+
+function advanceQueue(){
+  captureQueue.shift();
+  if (captureQueue.length){
+    showLabelPromptFor(captureQueue[0]);
+  } else {
+    document.getElementById("labelOverlay").classList.remove("show");
+  }
 }
 
 function renderLabelGrid(){
@@ -478,7 +522,8 @@ function confirmOtherLabel(){
 }
 
 function confirmLabel(rawLabel){
-  if (!pendingCapture) return;
+  const current = captureQueue[0];
+  if (!current) return;
 
   let label = sanitizeLabel(rawLabel);
 
@@ -494,28 +539,27 @@ function confirmLabel(rawLabel){
     });
   }
 
-  const ext = pendingCapture.kind === "photo" ? "jpg" : (pendingCapture.blob.type.split("/")[1] || "mp4");
+  const ext = current.kind === "photo" ? "jpg" : ((current.blob.type || "").split("/")[1] || "mp4");
   const filename = buildFilename(label, ext);
   const seq = state.captures.length + 1;
 
   state.captures.push({
     id: "c" + Date.now() + "_" + seq,
-    kind: pendingCapture.kind,
-    blob: pendingCapture.blob,
-    previewUrl: pendingCapture.previewUrl,
+    kind: current.kind,
+    blob: current.blob,
+    previewUrl: current.previewUrl,
     filename: filename,
     label: label
   });
 
-  pendingCapture = null;
-  document.getElementById("labelOverlay").classList.remove("show");
   renderCaptures();
+  advanceQueue();
 }
 
 function discardPending(){
-  if (pendingCapture) URL.revokeObjectURL(pendingCapture.previewUrl);
-  pendingCapture = null;
-  document.getElementById("labelOverlay").classList.remove("show");
+  const current = captureQueue[0];
+  if (current) URL.revokeObjectURL(current.previewUrl);
+  advanceQueue();
 }
 
 function sanitizeLabel(rawLabel){
@@ -659,6 +703,9 @@ async function startSubmit(){
    ============================================================ */
 function resetForNewJob(keepMechanic){
   state.captures.forEach(c => URL.revokeObjectURL(c.previewUrl));
+  captureQueue.forEach(c => URL.revokeObjectURL(c.previewUrl));
+  captureQueue = [];
+  document.getElementById("labelOverlay").classList.remove("show");
   state = {
     step: 1,
     mechanic: keepMechanic ? state.mechanic : null,
