@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Warranty Job Photos</title>
+<style>
+  :root{
+    --bg:#17181A;
+    --surface:#212226;
+    --surface-2:#2B2D31;
+    --border:#3A3C41;
+    --text:#F4F2EC;
+    --text-dim:#A9A69D;
+    --accent:#F5B300;
+    --accent-text:#1A1300;
+    --success:#2FA84F;
+    --success-text:#06210D;
+    --danger:#E5484D;
+    --danger-text:#2B0705;
+    --radius:14px;
+    --tap:76px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;}
+  #app{max-width:720px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;}
+
+  header{padding:16px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg);z-index:10;}
+  header h1{font-size:18px;font-weight:700;margin:0;flex:1;letter-spacing:.2px;}
+  #backBtn{width:52px;height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:22px;display:none;align-items:center;justify-content:center;}
+  #backBtn.show{display:flex;}
+  #breadcrumb{font-size:13px;color:var(--text-dim);padding:0 20px 10px;border-bottom:1px solid var(--border);
+    display:none;gap:14px;}
+  #breadcrumb.show{display:flex;}
+  #breadcrumb b{color:var(--text);}
+
+  main{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;}
+  .screen{display:none;flex-direction:column;gap:14px;flex:1;}
+  .screen.active{display:flex;}
+
+  .step-label{font-size:14px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.6px;}
+  .big-title{font-size:24px;font-weight:700;margin:0 0 4px;}
+  .sub{font-size:15px;color:var(--text-dim);margin:0;}
+
+  button{font-family:inherit;cursor:pointer;}
+
+  .btn{min-height:var(--tap);border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:19px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 18px;
+    transition:transform .06s ease, background .1s ease;}
+  .btn:active{transform:scale(.97);background:var(--surface-2);}
+  .btn-primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-size:21px;}
+  .btn-primary:active{background:#DBA200;}
+  .btn-primary[disabled]{background:var(--surface-2);color:var(--text-dim);border-color:var(--border);opacity:.6;pointer-events:none;}
+  .btn-success{background:var(--success);color:var(--success-text);border-color:var(--success);}
+  .btn-danger{background:var(--surface);color:var(--danger);border-color:var(--danger);}
+  .btn-list{display:flex;flex-direction:column;gap:12px;}
+
+  .keypad-display{font-size:56px;font-weight:700;letter-spacing:8px;text-align:center;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 10px;font-variant-numeric:tabular-nums;min-height:110px;display:flex;align-items:center;justify-content:center;}
+  .keypad-display .ph{color:var(--text-dim);}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .keypad button{min-height:64px;font-size:26px;font-weight:700;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .keypad button:active{background:var(--surface-2);transform:scale(.96);}
+
+  input[type=text]{width:100%;min-height:var(--tap);font-size:26px;font-weight:700;text-align:center;
+    letter-spacing:2px;text-transform:uppercase;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  input[type=text]:focus{outline:2px solid var(--accent);}
+
+  .folder-preview{font-size:14px;color:var(--text-dim);text-align:center;}
+  .folder-preview code{color:var(--accent);font-size:15px;}
+
+  .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
+  .capture-btn .icon{font-size:30px;line-height:1;}
+
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;}
+  .thumb{position:relative;border-radius:10px;overflow:hidden;background:var(--surface);
+    border:1px solid var(--border);aspect-ratio:1/1;}
+  .thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .kind{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;
+    font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700;}
+  .thumb .rm{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:8px;
+    background:rgba(0,0,0,.65);color:#fff;border:none;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .thumb .bar{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.5);}
+  .thumb .bar i{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s;}
+  .thumb .status{position:absolute;bottom:4px;right:4px;width:20px;height:20px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+  .status.ok{background:var(--success);color:var(--success-text);}
+  .status.err{background:var(--danger);color:#fff;}
+
+  .empty-hint{font-size:14px;color:var(--text-dim);text-align:center;padding:14px;border:1px dashed var(--border);border-radius:var(--radius);}
+
+  .banner{border-radius:var(--radius);padding:12px 14px;font-size:14px;display:none;gap:10px;align-items:center;}
+  .banner.show{display:flex;}
+  .banner-warn{background:#3A2E00;color:#F5C542;border:1px solid #5A4700;}
+  .banner-danger{background:#3A0F0F;color:#FF9C9C;border:1px solid #5A1616;}
+
+  .center-msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;}
+  .center-msg .badge{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;}
+  .badge-success{background:var(--success);color:var(--success-text);}
+
+  .progress-total{height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden;}
+  .progress-total i{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s;}
+  .progress-text{font-size:14px;color:var(--text-dim);text-align:center;}
+
+  .spacer{flex:1;}
+  footer.actions{padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
+
+  .thumb.video::after{content:"\25B6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:20px;color:#fff;background:rgba(0,0,0,.5);width:34px;height:34px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;pointer-events:none;}
+
+  #labelOverlay{position:fixed;inset:0;background:rgba(10,10,11,.92);z-index:100;
+    display:none;flex-direction:column;padding:20px;overflow-y:auto;}
+  #labelOverlay.show{display:flex;}
+  .label-preview{width:100%;max-height:220px;border-radius:var(--radius);overflow:hidden;
+    background:var(--surface);border:1px solid var(--border);margin-bottom:16px;flex-shrink:0;}
+  .label-preview img,.label-preview video{width:100%;max-height:220px;object-fit:contain;display:block;}
+  .label-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .label-btn{min-height:var(--tap);font-size:18px;}
+  .label-other-box{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .discard-link{background:none;border:none;color:var(--danger);font-size:15px;font-weight:600;
+    padding:14px;text-align:center;margin-top:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <button id="backBtn" onclick="goBack()">&#8592;</button>
+    <h1 id="headerTitle">Warranty job photos</h1>
+  </header>
+  <div id="breadcrumb"></div>
+
+  <main>
+
+    <!-- STEP 1: mechanic -->
+    <section class="screen" id="screen-1">
+      <div class="step-label">Step 1 of 4</div>
+      <h2 class="big-title">Who's this job for?</h2>
+      <p class="sub">Tap your name to start</p>
+      <div class="btn-list" id="mechanicList"></div>
+    </section>
+
+    <!-- STEP 2: WIP -->
+    <section class="screen" id="screen-2">
+      <div class="step-label">Step 2 of 4</div>
+      <h2 class="big-title">Enter the WIP number</h2>
+      <p class="sub">5 digits</p>
+      <div class="keypad-display" id="wipDisplay"><span class="ph">-----</span></div>
+      <div class="keypad" id="wipKeypad"></div>
+    </section>
+
+    <!-- STEP 3: reg -->
+    <section class="screen" id="screen-3">
+      <div class="step-label">Step 3 of 4</div>
+      <h2 class="big-title">Enter the reg</h2>
+      <p class="sub">Spaces and dashes are removed automatically</p>
+      <input type="text" id="regInput" inputmode="text" autocapitalize="characters" maxlength="12" placeholder="e.g. 231D12345">
+      <div class="folder-preview" id="folderPreview"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="regContinueBtn" disabled onclick="continueFromReg()">Continue</button>
+    </section>
+
+    <!-- STEP 4: capture -->
+    <section class="screen" id="screen-4">
+      <div class="step-label">Step 4 of 4</div>
+      <h2 class="big-title">Add photos &amp; video</h2>
+      <div class="capture-row">
+        <button class="btn capture-btn" onclick="triggerCapture('photo')">
+          <span class="icon">&#128247;</span> Take photo
+        </button>
+        <button class="btn capture-btn" onclick="triggerCapture('video')">
+          <span class="icon">&#127909;</span> Record video
+        </button>
+      </div>
+      <div id="captureEmptyHint" class="empty-hint">No files yet — take at least one photo or video to submit</div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="spacer"></div>
+      <div class="banner banner-warn" id="pendingBanner"></div>
+      <button class="btn btn-primary" id="submitBtn" disabled onclick="startSubmit()">Submit job</button>
+    </section>
+
+    <!-- STEP 5: submitting -->
+    <section class="screen" id="screen-5">
+      <div class="center-msg">
+        <h2 class="big-title">Uploading&hellip;</h2>
+        <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:8px;">
+          <div class="progress-total"><i id="totalProgressBar"></i></div>
+          <div class="progress-text" id="totalProgressText">0 of 0 files</div>
+        </div>
+        <p class="sub">Keep this page open until this finishes</p>
+      </div>
+    </section>
+
+    <!-- STEP 6: done -->
+    <section class="screen" id="screen-6">
+      <div class="center-msg">
+        <div class="badge badge-success">&#10003;</div>
+        <h2 class="big-title" id="doneTitle">Job submitted</h2>
+        <p class="sub" id="doneSub"></p>
+      </div>
+    </section>
+
+    <!-- STEP 7: partial failure -->
+    <section class="screen" id="screen-7">
+      <div class="center-msg">
+        <h2 class="big-title" style="color:var(--danger)">Some files didn't upload</h2>
+        <p class="sub" id="failSub">They've been saved on this device and will retry automatically when you have signal.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="actions" id="footerActions"></footer>
+
+</div>
+
+<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="videoInput" accept="video/*" capture="environment" style="display:none">
+
+<div id="labelOverlay">
+  <h2 class="big-title">What's this of?</h2>
+  <div class="label-preview" id="labelPreview"></div>
+  <div class="label-grid" id="labelGrid"></div>
+  <div class="label-other-box" id="labelOtherBox" style="display:none;">
+    <input type="text" id="labelOtherInput" placeholder="Type what it's of" maxlength="30">
+    <button class="btn btn-primary" onclick="confirmOtherLabel()">Use this name</button>
+  </div>
+  <button class="discard-link" onclick="discardPending()">Discard this photo/video</button>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — edit these two things before deploying
+   ============================================================ */
+const CONFIG = {
+  // Paste the URL from your Power Automate "When an HTTP request is received" trigger here.
+  uploadUrl: "https://defaultbcba1da2ec9e4d9ebf80669745c764.a9.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/31/workflows/6865d0d7500c46f7b20cca43f6a0c4e4/triggers/manual/paths/invoke?api-version=1",
+
+  // Replace with your mechanics' names. This is a placeholder list.
+  mechanics: [
+    "Adrian",
+    "Eamonn",
+    "Jack",
+    "Kieran",
+    "Renier",
+    "Sergui"
+  ],
+
+  // Quick-pick labels shown after every photo/video capture.
+  // Filenames end up as "<WIP> <label>.<ext>" e.g. "12345 VIN.jpg".
+  // limit: 1 means only one of these is kept per job — capturing another
+  //        replaces the previous one. limit: 0 means unlimited.
+  // "Other" always appears last, is unlimited, and lets the mechanic type a custom label.
+  labels: [
+    { name: "VIN", limit: 1 },
+    { name: "Mileage", limit: 1 },
+    { name: "Fault", limit: 0 },
+    { name: "LOT", limit: 0 }
+  ]
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {
+  step: 1,
+  mechanic: null,
+  wip: "",
+  reg: "",
+  jobId: null,
+  captures: [] // {id, kind, blob, previewUrl, filename, label, status, progress}
+};
+
+let pendingCapture = null; // {kind, blob, previewUrl} awaiting a label
+
+function vibrate(ms){ if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} } }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goToStep(n){
+  state.step = n;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + n).classList.add("active");
+
+  const titles = {
+    1: "Warranty job photos", 2: "Enter WIP number", 3: "Enter reg",
+    4: "Add photos & video", 5: "Uploading", 6: "Job submitted", 7: "Upload issue"
+  };
+  document.getElementById("headerTitle").textContent = titles[n] || "Warranty job photos";
+  document.getElementById("backBtn").classList.toggle("show", n >= 2 && n <= 4);
+  renderBreadcrumb();
+  renderFooter();
+}
+
+function goBack(){
+  if (state.step === 2) goToStep(1);
+  else if (state.step === 3) goToStep(2);
+  else if (state.step === 4) goToStep(3);
+}
+
+function renderBreadcrumb(){
+  const el = document.getElementById("breadcrumb");
+  const parts = [];
+  if (state.mechanic) parts.push("<b>" + escapeHtml(state.mechanic) + "</b>");
+  if (state.wip) parts.push("WIP <b>" + escapeHtml(state.wip) + "</b>");
+  if (state.reg) parts.push("Reg <b>" + escapeHtml(state.reg) + "</b>");
+  if (parts.length && state.step >= 2 && state.step <= 5){
+    el.innerHTML = parts.join(" &middot; ");
+    el.classList.add("show");
+  } else {
+    el.classList.remove("show");
+  }
+}
+
+function renderFooter(){
+  const footer = document.getElementById("footerActions");
+  footer.innerHTML = "";
+  if (state.step === 6){
+    const sameBtn = mkBtn("Start next job (same mechanic)", "btn btn-primary", () => resetForNewJob(true));
+    const diffBtn = mkBtn("Different mechanic", "btn", () => resetForNewJob(false));
+    footer.appendChild(sameBtn);
+    footer.appendChild(diffBtn);
+  } else if (state.step === 7){
+    const retryBtn = mkBtn("Retry now", "btn btn-primary", () => flushQueue(true));
+    const okBtn = mkBtn("Start next job", "btn", () => resetForNewJob(true));
+    footer.appendChild(retryBtn);
+    footer.appendChild(okBtn);
+  }
+}
+
+function mkBtn(label, cls, onClick){
+  const b = document.createElement("button");
+  b.className = cls;
+  b.textContent = label;
+  b.onclick = onClick;
+  return b;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============================================================
+   STEP 1 — mechanic
+   ============================================================ */
+function renderMechanics(){
+  const list = document.getElementById("mechanicList");
+  list.innerHTML = "";
+  CONFIG.mechanics.forEach(name => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = name;
+    b.onclick = () => selectMechanic(name);
+    list.appendChild(b);
+  });
+}
+
+function selectMechanic(name){
+  vibrate(30);
+  state.mechanic = name;
+  goToStep(2);
+}
+
+/* ============================================================
+   STEP 2 — WIP keypad
+   ============================================================ */
+function renderWipKeypad(){
+  const pad = document.getElementById("wipKeypad");
+  pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","clear","0","back"];
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    if (k === "clear"){ b.textContent = "Clear"; b.style.fontSize = "16px"; b.onclick = () => { state.wip=""; updateWipDisplay(); }; }
+    else if (k === "back"){ b.innerHTML = "&#9003;"; b.onclick = () => { state.wip = state.wip.slice(0,-1); updateWipDisplay(); }; }
+    else { b.textContent = k; b.onclick = () => wipDigit(k); }
+    pad.appendChild(b);
+  });
+}
+
+function wipDigit(d){
+  if (state.wip.length >= 5) return;
+  vibrate(15);
+  state.wip += d;
+  updateWipDisplay();
+  if (state.wip.length === 5){
+    setTimeout(() => goToStep(3), 180);
+  }
+}
+
+function updateWipDisplay(){
+  const el = document.getElementById("wipDisplay");
+  if (!state.wip){
+    el.innerHTML = '<span class="ph">-----</span>';
+  } else {
+    const padded = state.wip.padEnd(5, "\u00b7");
+    el.textContent = padded;
+  }
+}
+
+/* ============================================================
+   STEP 3 — reg
+   ============================================================ */
+function initRegInput(){
+  const input = document.getElementById("regInput");
+  input.value = state.reg;
+  input.oninput = () => {
+    const cleaned = input.value.toUpperCase().replace(/[\s-]/g, "");
+    input.value = cleaned;
+    state.reg = cleaned;
+    document.getElementById("folderPreview").innerHTML = cleaned
+      ? "Files will be saved to <code>" + escapeHtml(cleaned) + " / " + escapeHtml(state.wip) + "</code>"
+      : "";
+    document.getElementById("regContinueBtn").disabled = cleaned.length < 3;
+  };
+}
+
+function continueFromReg(){
+  if (state.reg.length < 3) return;
+  vibrate(30);
+  goToStep(4);
+  renderCaptures();
+}
+
+/* ============================================================
+   STEP 4 — capture
+   ============================================================ */
+function triggerCapture(kind){
+  vibrate(20);
+  document.getElementById(kind === "photo" ? "photoInput" : "videoInput").click();
+}
+
+document.getElementById("photoInput").addEventListener("change", e => handleFile(e, "photo"));
+document.getElementById("videoInput").addEventListener("change", e => handleFile(e, "video"));
+
+async function handleFile(e, kind){
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file next time
+  if (!file) return;
+
+  let blob = file;
+  if (kind === "photo"){
+    try { blob = await stampPhoto(file); } catch(err){ console.error("Stamp failed, using original", err); blob = file; }
+  }
+
+  openLabelPrompt(kind, blob);
+}
+
+/* ---- label picker (runs after every capture) ---- */
+function openLabelPrompt(kind, blob){
+  pendingCapture = { kind: kind, blob: blob, previewUrl: URL.createObjectURL(blob) };
+
+  const preview = document.getElementById("labelPreview");
+  preview.innerHTML = kind === "photo"
+    ? '<img src="' + pendingCapture.previewUrl + '">'
+    : '<video src="' + pendingCapture.previewUrl + '" muted playsinline autoplay loop></video>';
+
+  document.getElementById("labelOtherBox").style.display = "none";
+  document.getElementById("labelOtherInput").value = "";
+  renderLabelGrid();
+
+  document.getElementById("labelOverlay").classList.add("show");
+}
+
+function renderLabelGrid(){
+  const grid = document.getElementById("labelGrid");
+  grid.innerHTML = "";
+  CONFIG.labels.forEach(labelDef => {
+    const existingCount = countCaptures(labelDef.name);
+    const b = document.createElement("button");
+    b.className = "btn label-btn";
+    b.textContent = (labelDef.limit === 1 && existingCount > 0) ? "Retake " + labelDef.name : labelDef.name;
+    b.onclick = () => chooseLabel(labelDef.name);
+    grid.appendChild(b);
+  });
+  const otherBtn = document.createElement("button");
+  otherBtn.className = "btn label-btn";
+  otherBtn.textContent = "Other";
+  otherBtn.onclick = () => {
+    document.getElementById("labelOtherBox").style.display = "flex";
+    document.getElementById("labelOtherInput").focus();
+  };
+  grid.appendChild(otherBtn);
+}
+
+function countCaptures(label){
+  const key = label.trim().toLowerCase();
+  return state.captures.filter(c => c.label && c.label.toLowerCase() === key).length;
+}
+
+function chooseLabel(label){
+  vibrate(20);
+  confirmLabel(label);
+}
+
+function confirmOtherLabel(){
+  const typed = document.getElementById("labelOtherInput").value.trim();
+  if (!typed) return;
+  confirmLabel(typed);
+}
+
+function confirmLabel(rawLabel){
+  if (!pendingCapture) return;
+
+  let label = sanitizeLabel(rawLabel);
+
+  const labelDef = CONFIG.labels.find(l => l.name.toLowerCase() === label.toLowerCase());
+  if (labelDef && labelDef.limit === 1){
+    // Only one of these allowed — capturing another replaces the existing one.
+    state.captures = state.captures.filter(c => {
+      if (c.label && c.label.toLowerCase() === label.toLowerCase()){
+        URL.revokeObjectURL(c.previewUrl);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  const ext = pendingCapture.kind === "photo" ? "jpg" : (pendingCapture.blob.type.split("/")[1] || "mp4");
+  const filename = buildFilename(label, ext);
+  const seq = state.captures.length + 1;
+
+  state.captures.push({
+    id: "c" + Date.now() + "_" + seq,
+    kind: pendingCapture.kind,
+    blob: pendingCapture.blob,
+    previewUrl: pendingCapture.previewUrl,
+    filename: filename,
+    label: label,
+    status: "pending",
+    progress: 0
+  });
+
+  pendingCapture = null;
+  document.getElementById("labelOverlay").classList.remove("show");
+  renderCaptures();
+}
+
+function discardPending(){
+  if (pendingCapture) URL.revokeObjectURL(pendingCapture.previewUrl);
+  pendingCapture = null;
+  document.getElementById("labelOverlay").classList.remove("show");
+}
+
+function sanitizeLabel(rawLabel){
+  // Strip characters SharePoint doesn't allow in file names.
+  const cleaned = String(rawLabel).trim().replace(/["#%*:<>?\/\\{|}~]/g, "").replace(/\s+/g, " ");
+  return cleaned || "Other";
+}
+
+function buildFilename(label, ext){
+  const existingCount = countCaptures(label);
+  const suffix = existingCount > 0 ? " (" + (existingCount + 1) + ")" : "";
+  return state.wip + " " + label + suffix + "." + ext;
+}
+
+function stampPhoto(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      const barHeight = Math.max(48, Math.round(img.height * 0.045));
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, img.height - barHeight, img.width, barHeight);
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2,"0");
+      const dateStr = pad(now.getDate()) + "/" + pad(now.getMonth()+1) + "/" + now.getFullYear() +
+                      " " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
+      const label = state.reg + "  \u2022  WIP " + state.wip + "  \u2022  " + dateStr;
+
+      const fontSize = Math.max(20, Math.round(barHeight * 0.42));
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, 16, img.height - barHeight / 2, img.width - 32);
+
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.9);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function removeCapture(id){
+  const c = state.captures.find(c => c.id === id);
+  if (c) URL.revokeObjectURL(c.previewUrl);
+  state.captures = state.captures.filter(c => c.id !== id);
+  renderCaptures();
+}
+
+function renderCaptures(){
+  const wrap = document.getElementById("thumbs");
+  wrap.innerHTML = "";
+  document.getElementById("captureEmptyHint").style.display = state.captures.length ? "none" : "block";
+
+  state.captures.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "thumb" + (c.kind === "video" ? " video" : "");
+
+    if (c.kind === "photo"){
+      div.innerHTML = '<img src="' + c.previewUrl + '">';
+    } else {
+      div.innerHTML = '<video src="' + c.previewUrl + '" muted playsinline></video>';
+    }
+
+    const kindTag = document.createElement("div");
+    kindTag.className = "kind";
+    kindTag.textContent = c.label || (c.kind === "photo" ? "PHOTO" : "VIDEO");
+    div.appendChild(kindTag);
+
+    if (state.step === 4){
+      const rm = document.createElement("button");
+      rm.className = "rm";
+      rm.innerHTML = "&times;";
+      rm.onclick = () => removeCapture(c.id);
+      div.appendChild(rm);
+    }
+
+    if (c.status === "uploading" || c.status === "pending" && state.step === 5){
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.innerHTML = '<i style="width:' + (c.progress||0) + '%"></i>';
+      div.appendChild(bar);
+    }
+    if (c.status === "done"){
+      const s = document.createElement("div");
+      s.className = "status ok";
+      s.textContent = "\u2713";
+      div.appendChild(s);
+    }
+    if (c.status === "error"){
+      const s = document.createElement("div");
+      s.className = "status err";
+      s.textContent = "!";
+      div.appendChild(s);
+    }
+
+    wrap.appendChild(div);
+  });
+
+  document.getElementById("submitBtn").disabled = state.captures.length === 0;
+}
+
+/* ============================================================
+   SUBMIT / UPLOAD
+   ============================================================ */
+function newJobId(){
+  return "job_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+}
+
+async function startSubmit(){
+  if (!state.captures.length) return;
+  state.jobId = newJobId();
+  goToStep(5);
+
+  let done = 0;
+  const total = state.captures.length;
+  updateTotalProgress(done, total);
+
+  const failures = [];
+
+  for (const c of state.captures){
+    c.status = "uploading";
+    try {
+      await uploadCapture(c, pct => {
+        c.progress = pct;
+      });
+      c.status = "done";
+    } catch(err){
+      console.error("Upload failed", c.filename, err);
+      c.status = "error";
+      failures.push(c);
+      await queueForRetry(c);
+    }
+    done++;
+    updateTotalProgress(done, total);
+  }
+
+  if (failures.length === 0){
+    document.getElementById("doneTitle").textContent = "Job submitted";
+    document.getElementById("doneSub").textContent =
+      total + (total === 1 ? " file" : " files") + " uploaded for " + state.reg + " / " + state.wip;
+    goToStep(6);
+  } else {
+    document.getElementById("failSub").textContent =
+      failures.length + " of " + total + " file(s) couldn't upload and " +
+      "have been saved on this device. They'll retry automatically once you're back online, " +
+      "or tap retry now.";
+    goToStep(7);
+    tryAutoFlushSoon();
+  }
+}
+
+function updateTotalProgress(done, total){
+  const pct = total ? Math.round((done/total) * 100) : 0;
+  document.getElementById("totalProgressBar").style.width = pct + "%";
+  document.getElementById("totalProgressText").textContent = done + " of " + total + " files";
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function uploadCapture(c, onProgress){
+  return new Promise(async (resolve, reject) => {
+    if (!CONFIG.uploadUrl || CONFIG.uploadUrl.indexOf("PASTE_") === 0){
+      reject(new Error("Upload URL not configured"));
+      return;
+    }
+    let base64;
+    try { base64 = await blobToBase64(c.blob); } catch(err){ reject(err); return; }
+
+    const payload = {
+      jobId: state.jobId,
+      mechanic: state.mechanic,
+      reg: state.reg,
+      wip: state.wip,
+      filename: c.filename,
+      contentType: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4"),
+      kind: c.kind,
+      capturedAt: new Date().toISOString(),
+      base64: base64
+    };
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", CONFIG.uploadUrl, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.upload.onprogress = evt => {
+      if (evt.lengthComputable && onProgress) onProgress(Math.round((evt.loaded/evt.total)*100));
+      renderCaptures();
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300){ if (onProgress) onProgress(100); resolve(); }
+      else reject(new Error("HTTP " + xhr.status));
+    };
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
+/* ============================================================
+   OFFLINE RETRY QUEUE (IndexedDB)
+   ============================================================ */
+const DB_NAME = "warrantyUploadQueue";
+const STORE_NAME = "pending";
+
+function openQueueDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_NAME, { keyPath: "id" });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueForRetry(c){
+  try {
+    const db = await openQueueDb();
+    const base64 = await blobToBase64(c.blob);
+    const record = {
+      id: c.id,
+      jobId: state.jobId,
+      mechanic: state.mechanic,
+      reg: state.reg,
+      wip: state.wip,
+      filename: c.filename,
+      contentType: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4"),
+      kind: c.kind,
+      capturedAt: new Date().toISOString(),
+      base64: base64
+    };
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(record);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch(err){
+    console.error("Could not queue for retry", err);
+  }
+}
+
+async function flushQueue(manual){
+  if (!navigator.onLine) return;
+  if (!CONFIG.uploadUrl || CONFIG.uploadUrl.indexOf("PASTE_") === 0) return;
+  let db;
+  try { db = await openQueueDb(); } catch(err){ return; }
+
+  const records = await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+
+  if (!records.length) return;
+
+  for (const rec of records){
+    try {
+      const xhr = new XMLHttpRequest();
+      await new Promise((resolve, reject) => {
+        xhr.open("POST", CONFIG.uploadUrl, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error("HTTP " + xhr.status));
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.send(JSON.stringify(rec));
+      });
+      const db2 = await openQueueDb();
+      const tx = db2.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(rec.id);
+    } catch(err){
+      // leave it queued, try again later
+    }
+  }
+
+  const remaining = await new Promise((resolve) => {
+    openQueueDb().then(db3 => {
+      const tx = db3.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).count();
+      req.onsuccess = () => resolve(req.result);
+    });
+  });
+
+  if (manual){
+    if (remaining === 0) resetForNewJob(true);
+  }
+}
+
+function tryAutoFlushSoon(){
+  setTimeout(() => flushQueue(false), 4000);
+}
+
+window.addEventListener("online", () => flushQueue(false));
+
+/* ============================================================
+   RESET / NEW JOB
+   ============================================================ */
+function resetForNewJob(keepMechanic){
+  state.captures.forEach(c => URL.revokeObjectURL(c.previewUrl));
+  state = {
+    step: 1,
+    mechanic: keepMechanic ? state.mechanic : null,
+    wip: "",
+    reg: "",
+    jobId: null,
+    captures: []
+  };
+  updateWipDisplay();
+  document.getElementById("regInput").value = "";
+  document.getElementById("folderPreview").textContent = "";
+  goToStep(keepMechanic ? 2 : 1);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  renderMechanics();
+  renderWipKeypad();
+  updateWipDisplay();
+  initRegInput();
+  renderCaptures();
+  goToStep(1);
+  flushQueue(false);
+}
+
+init();
+</script>
+</body>
+</html>
