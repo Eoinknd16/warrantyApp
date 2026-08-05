@@ -453,7 +453,7 @@ function regClear(){
 
 function updateRegDisplay(){
   const el = document.getElementById("regDisplay");
-  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Reg</span>';
 
   document.getElementById("folderPreview").innerHTML = state.reg
     ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
