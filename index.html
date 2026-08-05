@@ -88,6 +88,7 @@
 
   .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
+  #importBtn{min-height:60px;font-size:15px;}
   .capture-btn .icon{font-size:30px;line-height:1;}
 
   .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;}
@@ -157,7 +158,7 @@
     <section class="screen" id="screen-3">
       <div class="step-label">Step 3 of 4</div>
       <h2 class="big-title">Enter the reg</h2>
-      <div class="keypad-display" id="regDisplay"><span class="ph">Reg</span></div>
+      <div class="keypad-display" id="regDisplay"><span class="ph">Tap keys below</span></div>
       <div class="reg-kb">
         <div class="reg-kb-toprow">
           <button class="btn reg-mode-btn" id="regModeBtn" onclick="toggleRegMode()">ABC</button>
@@ -183,6 +184,9 @@
           <span class="icon">&#127909;</span> Record video
         </button>
       </div>
+      <button class="btn" id="importBtn" onclick="triggerGalleryPick()">
+        <span class="icon" style="font-size:20px;">&#128193;</span>&nbsp; Add from photos/files
+      </button>
       <div id="captureEmptyHint" class="empty-hint">No files yet — take at least one photo or video to submit</div>
       <div class="thumbs" id="thumbs"></div>
       <div class="spacer"></div>
@@ -207,8 +211,9 @@
 <!-- TEST: swapped to "user" to check for a known Android Chrome bug where
      environment/user get mapped backwards on certain versions. If this opens
      the REAR camera correctly, leave it as "user" — it's intentional, not a typo. -->
-<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
-<input type="file" id="videoInput" accept="video/*" capture="environment" style="display:none">
+<input type="file" id="photoInput" accept="image/*" capture="user" style="display:none">
+<input type="file" id="videoInput" accept="video/*" capture="user" style="display:none">
+<input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display:none">
 
 <div id="labelOverlay">
   <h2 class="big-title">What's this of?</h2>
@@ -448,7 +453,7 @@ function regClear(){
 
 function updateRegDisplay(){
   const el = document.getElementById("regDisplay");
-  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Reg</span>';
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
 
   document.getElementById("folderPreview").innerHTML = state.reg
     ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
@@ -474,6 +479,31 @@ function triggerCapture(kind){
 document.getElementById("photoInput").addEventListener("change", e => handleFile(e, "photo"));
 document.getElementById("videoInput").addEventListener("change", e => handleFile(e, "video"));
 
+function triggerGalleryPick(){
+  vibrate(20);
+  document.getElementById("galleryInput").click();
+}
+
+document.getElementById("galleryInput").addEventListener("change", handleGalleryFiles);
+
+async function handleGalleryFiles(e){
+  const files = Array.from(e.target.files || []);
+  e.target.value = ""; // allow re-picking the same file(s) again later
+
+  for (const file of files){
+    const kind = file.type.indexOf("video/") === 0 ? "video" : "photo";
+    // Imported files aren't fresh captures — skip the timestamp overlay
+    // (it would be misleading to stamp today's date on an old screenshot)
+    // and go straight to the label picker, one at a time, in order.
+    try {
+      openLabelPrompt(kind, file);
+    } catch(err){
+      console.error("Label prompt failed for an imported file, saving without a label", err);
+      addCaptureWithoutPrompt(kind, file);
+    }
+  }
+}
+
 async function handleFile(e, kind){
   const file = e.target.files[0];
   e.target.value = ""; // allow re-selecting the same file next time
@@ -494,9 +524,16 @@ async function handleFile(e, kind){
   }
 }
 
+function extForBlob(kind, blob){
+  let subtype = ((blob.type || "").split("/")[1] || "").split(";")[0]; // strip codec params
+  if (kind === "photo") return subtype === "jpeg" ? "jpg" : (subtype || "jpg");
+  if (subtype === "quicktime") return "mov";
+  return subtype || "mp4";
+}
+
 function addCaptureWithoutPrompt(kind, blob){
   const label = sanitizeLabel(kind === "photo" ? "Photo" : "Video");
-  const ext = kind === "photo" ? "jpg" : ((blob.type || "").split("/")[1] || "mp4");
+  const ext = extForBlob(kind, blob);
   const filename = buildFilename(label, ext);
   const seq = state.captures.length + 1;
   state.captures.push({
@@ -602,7 +639,7 @@ function confirmLabel(rawLabel){
     });
   }
 
-  const ext = current.kind === "photo" ? "jpg" : ((current.blob.type || "").split("/")[1] || "mp4");
+  const ext = extForBlob(current.kind, current.blob);
   const filename = buildFilename(label, ext);
   const seq = state.captures.length + 1;
 
@@ -632,9 +669,25 @@ function sanitizeLabel(rawLabel){
 }
 
 function buildFilename(label, ext){
-  const existingCount = countCaptures(label);
-  const suffix = existingCount > 0 ? " (" + (existingCount + 1) + ")" : "";
-  return state.reg + "_" + state.wip + " " + label + suffix + "." + ext;
+  const labelDef = CONFIG.labels.find(l => l.name.toLowerCase() === label.toLowerCase());
+
+  if (labelDef && labelDef.limit === 1){
+    // VIN/Mileage-style: exactly one per job. Always the same clean name —
+    // a later capture (even on a different day) is meant to replace
+    // whatever's already saved, not sit alongside it.
+    return state.reg + "_" + state.wip + " " + label + "." + ext;
+  }
+
+  // Fault/LOT/Other-style: unlimited, and mechanics may add more on a
+  // different day for the same WIP. A same-session counter alone isn't
+  // enough to avoid overwriting whatever's already in that SharePoint
+  // folder from a previous visit, so every one gets its own capture
+  // date/time baked into the filename for guaranteed uniqueness.
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const stamp = d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + "-" +
+                pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  return state.reg + "_" + state.wip + " " + label + " " + stamp + "." + ext;
 }
 
 function drawTimestampBar(ctx, width, height){
