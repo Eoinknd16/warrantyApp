@@ -123,25 +123,6 @@
   .label-other-box{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
   .discard-link{background:none;border:none;color:var(--danger);font-size:15px;font-weight:600;
     padding:14px;text-align:center;margin-top:10px;}
-
-  #cameraOverlay{position:fixed;inset:0;background:#000;z-index:110;display:none;flex-direction:column;}
-  #cameraOverlay.show{display:flex;}
-  #cameraPreview{flex:1;width:100%;min-height:0;object-fit:cover;background:#000;}
-  .camera-timer{position:absolute;top:18px;left:50%;transform:translateX(-50%);
-    background:rgba(0,0,0,.6);color:#fff;padding:6px 16px;border-radius:20px;font-size:15px;
-    font-weight:700;font-variant-numeric:tabular-nums;}
-  .camera-controls{position:relative;display:flex;align-items:center;justify-content:center;
-    padding:22px 20px calc(22px + env(safe-area-inset-bottom));background:#000;flex-shrink:0;}
-  .cam-btn{border:none;background:none;color:#fff;display:flex;align-items:center;justify-content:center;
-    padding:0;}
-  .cam-close{position:absolute;left:24px;width:48px;height:48px;font-size:30px;}
-  .cam-flip{position:absolute;right:24px;width:48px;height:48px;font-size:24px;}
-  #cameraShutterBtn{width:76px;height:76px;border-radius:50%;border:5px solid #fff;background:transparent;}
-  #cameraShutterBtn:active{background:rgba(255,255,255,.2);}
-  #cameraShutterBtn.video-mode{border-color:var(--danger);}
-  #cameraShutterBtn.video-mode::after{content:"";display:block;width:26px;height:26px;border-radius:6px;
-    background:var(--danger);margin:auto;}
-  #cameraShutterBtn.video-mode.recording::after{border-radius:4px;width:20px;height:20px;}
 </style>
 </head>
 <body>
@@ -235,17 +216,6 @@
     <button class="btn btn-primary" onclick="confirmOtherLabel()">Use this name</button>
   </div>
   <button class="discard-link" onclick="discardPending()">Discard this photo/video</button>
-</div>
-
-<div id="cameraOverlay">
-  <video id="cameraPreview" autoplay playsinline muted></video>
-  <canvas id="cameraCanvas" style="display:none;"></canvas>
-  <div class="camera-timer" id="cameraTimer" style="display:none;">00:00</div>
-  <div class="camera-controls">
-    <button class="cam-btn cam-close" onclick="closeCameraOverlay()" aria-label="Cancel">&times;</button>
-    <button class="cam-btn" id="cameraShutterBtn" onclick="cameraShutterTap()" aria-label="Capture"></button>
-    <button class="cam-btn cam-flip" onclick="flipCamera()" aria-label="Flip camera">&#128260;</button>
-  </div>
 </div>
 
 <script>
@@ -493,191 +463,13 @@ function continueFromReg(){
 /* ============================================================
    STEP 4 — capture
    ============================================================ */
-/* ============================================================
-   LIVE CAMERA — explicitly requests the rear camera via getUserMedia,
-   which is far more reliable than the capture="environment" hint the
-   native camera app sometimes ignores. Falls back to the old native
-   file-input capture if the browser doesn't support this at all.
-   ============================================================ */
-let cameraStream = null;
-let cameraFacing = "environment";
-let cameraKind = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordTimerInterval = null;
-let recordStartTime = 0;
-let recordingDiscarded = false;
-
-async function triggerCapture(kind){
+function triggerCapture(kind){
   vibrate(20);
-  const opened = await openCameraOverlay(kind);
-  if (!opened){
-    // This browser doesn't support the live camera view (or permission was
-    // denied) — fall back to the device's own camera app, same as before.
-    document.getElementById(kind === "photo" ? "photoInput" : "videoInput").click();
-  }
+  document.getElementById(kind === "photo" ? "photoInput" : "videoInput").click();
 }
 
 document.getElementById("photoInput").addEventListener("change", e => handleFile(e, "photo"));
 document.getElementById("videoInput").addEventListener("change", e => handleFile(e, "video"));
-
-async function openCameraOverlay(kind){
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
-  cameraKind = kind;
-  cameraFacing = "environment";
-  try {
-    await startCameraStream(kind);
-  } catch(err){
-    console.error("Live camera unavailable, falling back to native capture", err);
-    stopCameraStream();
-    return false;
-  }
-
-  const shutterBtn = document.getElementById("cameraShutterBtn");
-  shutterBtn.className = kind === "video" ? "video-mode" : "";
-  document.getElementById("cameraTimer").style.display = "none";
-  document.getElementById("cameraOverlay").classList.add("show");
-  return true;
-}
-
-async function startCameraStream(kind){
-  stopCameraStream();
-  const constraints = {
-    audio: kind === "video",
-    video: { facingMode: { ideal: cameraFacing } }
-  };
-  cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-  document.getElementById("cameraPreview").srcObject = cameraStream;
-}
-
-function stopCameraStream(){
-  if (cameraStream){
-    cameraStream.getTracks().forEach(t => t.stop());
-    cameraStream = null;
-  }
-}
-
-async function flipCamera(){
-  vibrate(15);
-  cameraFacing = cameraFacing === "environment" ? "user" : "environment";
-  try { await startCameraStream(cameraKind); } catch(err){ console.error("Flip camera failed", err); }
-}
-
-function closeCameraOverlay(){
-  if (mediaRecorder && mediaRecorder.state !== "inactive"){
-    recordingDiscarded = true;
-    try { mediaRecorder.stop(); } catch(err){}
-  }
-  stopCameraStream();
-  clearInterval(recordTimerInterval);
-  document.getElementById("cameraTimer").style.display = "none";
-  document.getElementById("cameraOverlay").classList.remove("show");
-}
-
-function cameraShutterTap(){
-  if (cameraKind === "photo"){
-    capturePhotoFromStream();
-  } else {
-    toggleVideoRecording();
-  }
-}
-
-function capturePhotoFromStream(){
-  vibrate(30);
-  const video = document.getElementById("cameraPreview");
-  const canvas = document.getElementById("cameraCanvas");
-  canvas.width = video.videoWidth || 1280;
-  canvas.height = video.videoHeight || 720;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  drawTimestampBar(ctx, canvas.width, canvas.height);
-
-  canvas.toBlob(blob => {
-    stopCameraStream();
-    document.getElementById("cameraOverlay").classList.remove("show");
-    if (!blob){
-      console.error("Photo capture produced no data");
-      return;
-    }
-    try { openLabelPrompt("photo", blob); }
-    catch(err){ console.error(err); addCaptureWithoutPrompt("photo", blob); }
-  }, "image/jpeg", 0.9);
-}
-
-function toggleVideoRecording(){
-  if (!mediaRecorder || mediaRecorder.state === "inactive"){
-    startVideoRecording();
-  } else {
-    stopVideoRecording();
-  }
-}
-
-function startVideoRecording(){
-  recordedChunks = [];
-  recordingDiscarded = false;
-
-  const preferredTypes = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
-  const supported = preferredTypes.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
-
-  try {
-    mediaRecorder = supported ? new MediaRecorder(cameraStream, { mimeType: supported }) : new MediaRecorder(cameraStream);
-  } catch(err){
-    console.error("MediaRecorder unavailable, falling back to native capture", err);
-    stopCameraStream();
-    document.getElementById("cameraOverlay").classList.remove("show");
-    document.getElementById("videoInput").click();
-    return;
-  }
-
-  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recordedChunks.push(e.data); };
-  mediaRecorder.onstop = onVideoRecordingStopped;
-  mediaRecorder.start();
-
-  recordStartTime = Date.now();
-  document.getElementById("cameraTimer").style.display = "block";
-  updateRecordTimer();
-  recordTimerInterval = setInterval(updateRecordTimer, 500);
-  document.getElementById("cameraShutterBtn").classList.add("recording");
-  vibrate(30);
-}
-
-function updateRecordTimer(){
-  const secs = Math.floor((Date.now() - recordStartTime) / 1000);
-  const m = String(Math.floor(secs / 60)).padStart(2, "0");
-  const s = String(secs % 60).padStart(2, "0");
-  document.getElementById("cameraTimer").textContent = m + ":" + s;
-}
-
-function stopVideoRecording(){
-  if (mediaRecorder && mediaRecorder.state !== "inactive"){
-    mediaRecorder.stop();
-  }
-  clearInterval(recordTimerInterval);
-  document.getElementById("cameraShutterBtn").classList.remove("recording");
-  vibrate(30);
-}
-
-function onVideoRecordingStopped(){
-  clearInterval(recordTimerInterval);
-  document.getElementById("cameraTimer").style.display = "none";
-
-  if (recordingDiscarded){
-    recordingDiscarded = false;
-    return;
-  }
-
-  const mimeType = (mediaRecorder && mediaRecorder.mimeType) || "video/webm";
-  const blob = new Blob(recordedChunks, { type: mimeType });
-  stopCameraStream();
-  document.getElementById("cameraOverlay").classList.remove("show");
-
-  if (!blob.size){
-    console.error("Video recording produced no data");
-    return;
-  }
-  try { openLabelPrompt("video", blob); }
-  catch(err){ console.error(err); addCaptureWithoutPrompt("video", blob); }
-}
 
 async function handleFile(e, kind){
   const file = e.target.files[0];
