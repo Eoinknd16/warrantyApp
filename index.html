@@ -89,27 +89,12 @@
     font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700;}
   .thumb .rm{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:8px;
     background:rgba(0,0,0,.65);color:#fff;border:none;font-size:16px;display:flex;align-items:center;justify-content:center;}
-  .thumb .bar{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.5);}
-  .thumb .bar i{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s;}
-  .thumb .status{position:absolute;bottom:4px;right:4px;width:20px;height:20px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
-  .status.ok{background:var(--success);color:var(--success-text);}
-  .status.err{background:var(--danger);color:#fff;}
 
   .empty-hint{font-size:14px;color:var(--text-dim);text-align:center;padding:14px;border:1px dashed var(--border);border-radius:var(--radius);}
-
-  .banner{border-radius:var(--radius);padding:12px 14px;font-size:14px;display:none;gap:10px;align-items:center;}
-  .banner.show{display:flex;}
-  .banner-warn{background:#3A2E00;color:#F5C542;border:1px solid #5A4700;}
-  .banner-danger{background:#3A0F0F;color:#FF9C9C;border:1px solid #5A1616;}
 
   .center-msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;}
   .center-msg .badge{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;}
   .badge-success{background:var(--success);color:var(--success-text);}
-
-  .progress-total{height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden;}
-  .progress-total i{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s;}
-  .progress-text{font-size:14px;color:var(--text-dim);text-align:center;}
 
   .spacer{flex:1;}
   footer.actions{padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
@@ -185,36 +170,15 @@
       <div id="captureEmptyHint" class="empty-hint">No files yet — take at least one photo or video to submit</div>
       <div class="thumbs" id="thumbs"></div>
       <div class="spacer"></div>
-      <div class="banner banner-warn" id="pendingBanner"></div>
-      <button class="btn btn-primary" id="submitBtn" disabled onclick="startSubmit()">Submit job</button>
-    </section>
-
-    <!-- STEP 5: submitting -->
-    <section class="screen" id="screen-5">
-      <div class="center-msg">
-        <h2 class="big-title">Uploading&hellip;</h2>
-        <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:8px;">
-          <div class="progress-total"><i id="totalProgressBar"></i></div>
-          <div class="progress-text" id="totalProgressText">0 of 0 files</div>
-        </div>
-        <p class="sub">Keep this page open until this finishes</p>
-      </div>
+      <button class="btn btn-primary" id="submitBtn" disabled onclick="startSubmit()">Send job</button>
     </section>
 
     <!-- STEP 6: done -->
     <section class="screen" id="screen-6">
       <div class="center-msg">
-        <div class="badge badge-success">&#10003;</div>
-        <h2 class="big-title" id="doneTitle">Job submitted</h2>
+        <div class="badge badge-success">&#9993;</div>
+        <h2 class="big-title" id="doneTitle">Almost done</h2>
         <p class="sub" id="doneSub"></p>
-      </div>
-    </section>
-
-    <!-- STEP 7: partial failure -->
-    <section class="screen" id="screen-7">
-      <div class="center-msg">
-        <h2 class="big-title" style="color:var(--danger)">Some files didn't upload</h2>
-        <p class="sub" id="failSub">They've been saved on this device and will retry automatically when you have signal.</p>
       </div>
     </section>
 
@@ -240,24 +204,28 @@
 
 <script>
 /* ============================================================
-   CONFIG — edit these two things before deploying
+   CONFIG — edit before deploying
    ============================================================ */
 const CONFIG = {
-  // Paste the URL from your Power Automate "When an HTTP request is received" trigger here.
-  uploadUrl: "https://defaultbcba1da2ec9e4d9ebf80669745c764.a9.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/31/workflows/6865d0d7500c46f7b20cca43f6a0c4e4/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=hv3wlAI6n3aN8ude5Q1_5glM1wPFQXgCdMNkPaVWtL4",
+  // The inbox your Power Automate flow watches. The mechanic still has to
+  // pick/type this in their Mail app — browsers can't pre-fill the "To"
+  // field on a shared email, so make sure this address is saved as a
+  // contact on each phone so it autocompletes after a couple of letters.
+  warrantyEmail: "EDIT ME - warranty@yourdealer.com",
 
   // Replace with your mechanics' names. This is a placeholder list.
   mechanics: [
-    "Adrian",
-    "Eamonn",
-    "Jack",
-    "Kieran",
-    "Renier",
-    "Sergui"
+    "EDIT ME - Mechanic 1",
+    "EDIT ME - Mechanic 2",
+    "EDIT ME - Mechanic 3",
+    "EDIT ME - Mechanic 4"
   ],
 
   // Quick-pick labels shown after every photo/video capture.
-  // Filenames end up as "<WIP> <label>.<ext>" e.g. "12345 VIN.jpg".
+  // Attachment filenames are "<REG>_<WIP> <label>.<ext>" e.g. "231D12345_12345 VIN.jpg" —
+  // the flow strips the "<REG>_" prefix off before saving, so the file that ends up
+  // in SharePoint is just "<WIP> <label>.jpg". The reg prefix only exists so the
+  // flow can tell which folder to file it into without trusting the email subject.
   // limit: 1 means only one of these is kept per job — capturing another
   //        replaces the previous one. limit: 0 means unlimited.
   // "Other" always appears last, is unlimited, and lets the mechanic type a custom label.
@@ -278,7 +246,7 @@ let state = {
   wip: "",
   reg: "",
   jobId: null,
-  captures: [] // {id, kind, blob, previewUrl, filename, label, status, progress}
+  captures: [] // {id, kind, blob, previewUrl, filename, label}
 };
 
 let pendingCapture = null; // {kind, blob, previewUrl} awaiting a label
@@ -295,7 +263,7 @@ function goToStep(n){
 
   const titles = {
     1: "Warranty job photos", 2: "Enter WIP number", 3: "Enter reg",
-    4: "Add photos & video", 5: "Uploading", 6: "Job submitted", 7: "Upload issue"
+    4: "Add photos & video", 6: "Almost done"
   };
   document.getElementById("headerTitle").textContent = titles[n] || "Warranty job photos";
   document.getElementById("backBtn").classList.toggle("show", n >= 2 && n <= 4);
@@ -315,7 +283,7 @@ function renderBreadcrumb(){
   if (state.mechanic) parts.push("<b>" + escapeHtml(state.mechanic) + "</b>");
   if (state.wip) parts.push("WIP <b>" + escapeHtml(state.wip) + "</b>");
   if (state.reg) parts.push("Reg <b>" + escapeHtml(state.reg) + "</b>");
-  if (parts.length && state.step >= 2 && state.step <= 5){
+  if (parts.length && state.step >= 2 && state.step <= 6){
     el.innerHTML = parts.join(" &middot; ");
     el.classList.add("show");
   } else {
@@ -331,11 +299,6 @@ function renderFooter(){
     const diffBtn = mkBtn("Different mechanic", "btn", () => resetForNewJob(false));
     footer.appendChild(sameBtn);
     footer.appendChild(diffBtn);
-  } else if (state.step === 7){
-    const retryBtn = mkBtn("Retry now", "btn btn-primary", () => flushQueue(true));
-    const okBtn = mkBtn("Start next job", "btn", () => resetForNewJob(true));
-    footer.appendChild(retryBtn);
-    footer.appendChild(okBtn);
   }
 }
 
@@ -536,9 +499,7 @@ function confirmLabel(rawLabel){
     blob: pendingCapture.blob,
     previewUrl: pendingCapture.previewUrl,
     filename: filename,
-    label: label,
-    status: "pending",
-    progress: 0
+    label: label
   });
 
   pendingCapture = null;
@@ -561,7 +522,7 @@ function sanitizeLabel(rawLabel){
 function buildFilename(label, ext){
   const existingCount = countCaptures(label);
   const suffix = existingCount > 0 ? " (" + (existingCount + 1) + ")" : "";
-  return state.wip + " " + label + suffix + "." + ext;
+  return state.reg + "_" + state.wip + " " + label + suffix + "." + ext;
 }
 
 function stampPhoto(file){
@@ -633,25 +594,6 @@ function renderCaptures(){
       div.appendChild(rm);
     }
 
-    if (c.status === "uploading" || c.status === "pending" && state.step === 5){
-      const bar = document.createElement("div");
-      bar.className = "bar";
-      bar.innerHTML = '<i style="width:' + (c.progress||0) + '%"></i>';
-      div.appendChild(bar);
-    }
-    if (c.status === "done"){
-      const s = document.createElement("div");
-      s.className = "status ok";
-      s.textContent = "\u2713";
-      div.appendChild(s);
-    }
-    if (c.status === "error"){
-      const s = document.createElement("div");
-      s.className = "status err";
-      s.textContent = "!";
-      div.appendChild(s);
-    }
-
     wrap.appendChild(div);
   });
 
@@ -659,7 +601,7 @@ function renderCaptures(){
 }
 
 /* ============================================================
-   SUBMIT / UPLOAD
+   SUBMIT — hand the files to the native share sheet (Mail)
    ============================================================ */
 function newJobId(){
   return "job_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
@@ -667,194 +609,43 @@ function newJobId(){
 
 async function startSubmit(){
   if (!state.captures.length) return;
+
+  if (!navigator.share){
+    alert("Sharing isn't supported in this browser. Open this page in Safari on iPhone or Chrome on Android.");
+    return;
+  }
+
   state.jobId = newJobId();
-  goToStep(5);
 
-  let done = 0;
-  const total = state.captures.length;
-  updateTotalProgress(done, total);
+  const files = state.captures.map(c => new File(
+    [c.blob],
+    c.filename,
+    { type: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4") }
+  ));
 
-  const failures = [];
-
-  for (const c of state.captures){
-    c.status = "uploading";
-    try {
-      await uploadCapture(c, pct => {
-        c.progress = pct;
-      });
-      c.status = "done";
-    } catch(err){
-      console.error("Upload failed", c.filename, err);
-      c.status = "error";
-      failures.push(c);
-      await queueForRetry(c);
-    }
-    done++;
-    updateTotalProgress(done, total);
+  if (navigator.canShare && !navigator.canShare({ files: files })){
+    alert("Your phone can't share this many files or this much data at once. Try sending fewer files, or trim any long videos, then send the rest separately.");
+    return;
   }
 
-  if (failures.length === 0){
-    document.getElementById("doneTitle").textContent = "Job submitted";
-    document.getElementById("doneSub").textContent =
-      total + (total === 1 ? " file" : " files") + " uploaded for " + state.reg + " / " + state.wip;
-    goToStep(6);
-  } else {
-    document.getElementById("failSub").textContent =
-      failures.length + " of " + total + " file(s) couldn't upload and " +
-      "have been saved on this device. They'll retry automatically once you're back online, " +
-      "or tap retry now.";
-    goToStep(7);
-    tryAutoFlushSoon();
-  }
-}
+  const subject = "Warranty photos " + state.reg + " " + state.wip;
+  const body = "Mechanic: " + state.mechanic + "\nReg: " + state.reg + "\nWIP: " + state.wip +
+    "\n\nSend this to " + (CONFIG.warrantyEmail.indexOf("EDIT ME") === 0 ? "the warranty inbox" : CONFIG.warrantyEmail) + " to file these photos.";
 
-function updateTotalProgress(done, total){
-  const pct = total ? Math.round((done/total) * 100) : 0;
-  document.getElementById("totalProgressBar").style.width = pct + "%";
-  document.getElementById("totalProgressText").textContent = done + " of " + total + " files";
-}
-
-function blobToBase64(blob){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function uploadCapture(c, onProgress){
-  return new Promise(async (resolve, reject) => {
-    if (!CONFIG.uploadUrl || CONFIG.uploadUrl.indexOf("PASTE_") === 0){
-      reject(new Error("Upload URL not configured"));
-      return;
-    }
-    let base64;
-    try { base64 = await blobToBase64(c.blob); } catch(err){ reject(err); return; }
-
-    const payload = {
-      jobId: state.jobId,
-      mechanic: state.mechanic,
-      reg: state.reg,
-      wip: state.wip,
-      filename: c.filename,
-      contentType: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4"),
-      kind: c.kind,
-      capturedAt: new Date().toISOString(),
-      base64: base64
-    };
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", CONFIG.uploadUrl, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.upload.onprogress = evt => {
-      if (evt.lengthComputable && onProgress) onProgress(Math.round((evt.loaded/evt.total)*100));
-      renderCaptures();
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300){ if (onProgress) onProgress(100); resolve(); }
-      else reject(new Error("HTTP " + xhr.status));
-    };
-    xhr.onerror = () => reject(new Error("Network error"));
-    xhr.send(JSON.stringify(payload));
-  });
-}
-
-/* ============================================================
-   OFFLINE RETRY QUEUE (IndexedDB)
-   ============================================================ */
-const DB_NAME = "warrantyUploadQueue";
-const STORE_NAME = "pending";
-
-function openQueueDb(){
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore(STORE_NAME, { keyPath: "id" });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function queueForRetry(c){
   try {
-    const db = await openQueueDb();
-    const base64 = await blobToBase64(c.blob);
-    const record = {
-      id: c.id,
-      jobId: state.jobId,
-      mechanic: state.mechanic,
-      reg: state.reg,
-      wip: state.wip,
-      filename: c.filename,
-      contentType: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4"),
-      kind: c.kind,
-      capturedAt: new Date().toISOString(),
-      base64: base64
-    };
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).put(record);
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
+    await navigator.share({ files: files, title: subject, text: body });
+    document.getElementById("doneTitle").textContent = "Almost done";
+    document.getElementById("doneSub").textContent =
+      "Check the message that just opened — make sure it's addressed to " +
+      (CONFIG.warrantyEmail.indexOf("EDIT ME") === 0 ? "the warranty inbox" : CONFIG.warrantyEmail) +
+      " and tap Send to finish submitting " + state.reg + " / " + state.wip + ".";
+    goToStep(6);
   } catch(err){
-    console.error("Could not queue for retry", err);
+    // User cancelled the share sheet, or the OS couldn't hand off the files — stay on
+    // step 4 so they can just try Send again rather than losing their captures.
+    console.log("Share cancelled or failed", err);
   }
 }
-
-async function flushQueue(manual){
-  if (!navigator.onLine) return;
-  if (!CONFIG.uploadUrl || CONFIG.uploadUrl.indexOf("PASTE_") === 0) return;
-  let db;
-  try { db = await openQueueDb(); } catch(err){ return; }
-
-  const records = await new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const req = tx.objectStore(STORE_NAME).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-
-  if (!records.length) return;
-
-  for (const rec of records){
-    try {
-      const xhr = new XMLHttpRequest();
-      await new Promise((resolve, reject) => {
-        xhr.open("POST", CONFIG.uploadUrl, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error("HTTP " + xhr.status));
-        xhr.onerror = () => reject(new Error("Network error"));
-        xhr.send(JSON.stringify(rec));
-      });
-      const db2 = await openQueueDb();
-      const tx = db2.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).delete(rec.id);
-    } catch(err){
-      // leave it queued, try again later
-    }
-  }
-
-  const remaining = await new Promise((resolve) => {
-    openQueueDb().then(db3 => {
-      const tx = db3.transaction(STORE_NAME, "readonly");
-      const req = tx.objectStore(STORE_NAME).count();
-      req.onsuccess = () => resolve(req.result);
-    });
-  });
-
-  if (manual){
-    if (remaining === 0) resetForNewJob(true);
-  }
-}
-
-function tryAutoFlushSoon(){
-  setTimeout(() => flushQueue(false), 4000);
-}
-
-window.addEventListener("online", () => flushQueue(false));
 
 /* ============================================================
    RESET / NEW JOB
@@ -885,7 +676,6 @@ function init(){
   initRegInput();
   renderCaptures();
   goToStep(1);
-  flushQueue(false);
 }
 
 init();
