@@ -64,7 +64,7 @@
   .keypad-display{font-size:56px;font-weight:700;letter-spacing:8px;text-align:center;
     background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
     padding:22px 10px;font-variant-numeric:tabular-nums;min-height:110px;display:flex;align-items:center;justify-content:center;}
-  .keypad-display .ph{color:var(--text-dim);}
+  .keypad-display .ph{color:var(--text-dim);font-size:19px;font-weight:600;letter-spacing:normal;}
   .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
   .keypad button{min-height:64px;font-size:26px;font-weight:700;border-radius:var(--radius);
     border:1px solid var(--border);background:var(--surface);color:var(--text);}
@@ -176,7 +176,7 @@
     <section class="screen" id="screen-3">
       <div class="step-label">Step 3 of 4</div>
       <h2 class="big-title">Enter the reg</h2>
-      <div class="keypad-display" id="regDisplay"><span class="ph">Reg</span></div>
+      <div class="keypad-display" id="regDisplay"><span class="ph">Tap keys below</span></div>
       <div class="reg-kb">
         <div class="reg-kb-toprow">
           <button class="btn reg-mode-btn" id="regModeBtn" onclick="toggleRegMode()">ABC</button>
@@ -430,9 +430,29 @@ function wipDigit(d){
   state.wip += d;
   updateWipDisplay();
   if (state.wip.length === 5){
-    checkForAdminNote(state.wip);
-    checkForJob(state.wip);
-    setTimeout(() => goToStep(3), 180);
+    handleWipComplete(state.wip);
+  }
+}
+
+async function handleWipComplete(wip){
+  checkForAdminNote(wip); // fire-and-forget — shows whenever it resolves, doesn't gate navigation
+
+  // Give the "is this WIP already linked to a reg" lookup a couple of
+  // seconds to answer. If Firestore's slow to respond, don't leave the
+  // mechanic staring at a frozen screen — just fall through to the normal
+  // reg entry screen instead of auto-skipping.
+  const lookup = checkForJob(wip);
+  const timeout = new Promise(resolve => setTimeout(() => resolve(null), 2500));
+  const linkedReg = await Promise.race([lookup, timeout]);
+
+  if (state.wip !== wip) return; // mechanic already cleared/changed the WIP while we were waiting
+
+  if (linkedReg){
+    state.reg = linkedReg;
+    updateRegDisplay();
+    proceedToCapture();
+  } else {
+    goToStep(3);
   }
 }
 
@@ -457,29 +477,32 @@ async function checkForJob(wip){
   const el = document.getElementById("jobHistoryNote");
   el.style.display = "none";
   el.innerHTML = "";
-  if (!db) return;
+  if (!db) return null;
 
   try {
     const doc = await db.collection("jobs").doc(wip).get();
-    if (!doc.exists) return;
+    if (!doc.exists) return null;
     const data = doc.data();
 
-    // Pre-fill the reg from last time — still shown and still editable on the
-    // reg screen, just saves retyping. Worth a glance in case this WIP number
-    // ever gets reused for a different vehicle down the line.
-    if (data.reg && !state.reg){
+    // If this resolves after the auto-skip race above already timed out
+    // (mechanic sitting on the reg screen typing), still fill in whatever
+    // they haven't already started typing themselves — never overwrite
+    // something they're mid-way through entering.
+    if (data.reg && state.wip === wip && !state.reg){
       state.reg = data.reg;
       updateRegDisplay();
     }
 
     if (Array.isArray(data.history) && data.history.length){
       el.innerHTML = '<span class="jh-label">Already sent for this job</span>' +
-        escapeHtml(summarizeHistory(data.history)) +
-        '<span class="jh-when">Reg auto-filled below — check it\u2019s still right</span>';
+        escapeHtml(summarizeHistory(data.history));
       el.style.display = "block";
     }
+
+    return data.reg || null;
   } catch(err){
     console.error("Couldn't check job history", err);
+    return null;
   }
 }
 
@@ -555,7 +578,7 @@ function regClear(){
 
 function updateRegDisplay(){
   const el = document.getElementById("regDisplay");
-  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Reg</span>';
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
 
   document.getElementById("folderPreview").innerHTML = state.reg
     ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
@@ -566,6 +589,10 @@ function updateRegDisplay(){
 function continueFromReg(){
   if (state.reg.length < 3) return;
   vibrate(30);
+  proceedToCapture();
+}
+
+function proceedToCapture(){
   linkRegToJob();
   goToStep(4);
   renderCaptures();
