@@ -93,6 +93,13 @@
   .admin-note .admin-note-label{display:block;font-size:11px;text-transform:uppercase;
     letter-spacing:.5px;color:var(--accent);margin-bottom:4px;font-weight:800;}
 
+  .job-history-note{background:#152A38;border:1px solid #3E7FA6;color:#B9DCEF;
+    border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.4;font-weight:600;
+    margin:14px 20px 0;}
+  .job-history-note .jh-label{display:block;font-size:11px;text-transform:uppercase;
+    letter-spacing:.5px;color:#6FB8DA;margin-bottom:4px;font-weight:800;}
+  .job-history-note .jh-when{display:block;font-size:12px;font-weight:500;color:#7FA8C0;margin-top:4px;}
+
   .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
   #importBtn{min-height:60px;font-size:15px;}
@@ -143,6 +150,7 @@
   </header>
   <div id="breadcrumb"></div>
   <div class="admin-note" id="adminNote" style="display:none;"></div>
+  <div class="job-history-note" id="jobHistoryNote" style="display:none;"></div>
 </div>
 
   <main>
@@ -423,6 +431,7 @@ function wipDigit(d){
   updateWipDisplay();
   if (state.wip.length === 5){
     checkForAdminNote(state.wip);
+    checkForJob(state.wip);
     setTimeout(() => goToStep(3), 180);
   }
 }
@@ -442,6 +451,45 @@ async function checkForAdminNote(wip){
   } catch(err){
     console.error("Couldn't check for an admin note", err);
   }
+}
+
+async function checkForJob(wip){
+  const el = document.getElementById("jobHistoryNote");
+  el.style.display = "none";
+  el.innerHTML = "";
+  if (!db) return;
+
+  try {
+    const doc = await db.collection("jobs").doc(wip).get();
+    if (!doc.exists) return;
+    const data = doc.data();
+
+    // Pre-fill the reg from last time — still shown and still editable on the
+    // reg screen, just saves retyping. Worth a glance in case this WIP number
+    // ever gets reused for a different vehicle down the line.
+    if (data.reg && !state.reg){
+      state.reg = data.reg;
+      updateRegDisplay();
+    }
+
+    if (Array.isArray(data.history) && data.history.length){
+      el.innerHTML = '<span class="jh-label">Already sent for this job</span>' +
+        escapeHtml(summarizeHistory(data.history)) +
+        '<span class="jh-when">Reg auto-filled below — check it\u2019s still right</span>';
+      el.style.display = "block";
+    }
+  } catch(err){
+    console.error("Couldn't check job history", err);
+  }
+}
+
+function summarizeHistory(history){
+  const counts = {};
+  history.forEach(h => {
+    const key = h.label || "Photo";
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return Object.keys(counts).map(label => counts[label] > 1 ? label + " (x" + counts[label] + ")" : label).join(" \u2022 ");
 }
 
 function updateWipDisplay(){
@@ -518,8 +566,20 @@ function updateRegDisplay(){
 function continueFromReg(){
   if (state.reg.length < 3) return;
   vibrate(30);
+  linkRegToJob();
   goToStep(4);
   renderCaptures();
+}
+
+function linkRegToJob(){
+  if (!db) return;
+  // Fire-and-forget — saved as soon as the reg is confirmed, not just on
+  // submit, so the link exists even if this particular visit never sends.
+  db.collection("jobs").doc(state.wip).set({
+    reg: state.reg,
+    lastMechanic: state.mechanic,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }).catch(err => console.error("Couldn't link reg to WIP", err));
 }
 
 /* ============================================================
@@ -846,6 +906,7 @@ async function startSubmit(){
 
   try {
     await navigator.share({ files: files, title: subject, text: body });
+    recordJobHistory();
     document.getElementById("doneTitle").textContent = "Almost done";
     document.getElementById("doneSub").textContent =
       "Check the message that just opened — make sure it's addressed to " + recipientText +
@@ -858,6 +919,25 @@ async function startSubmit(){
   }
 }
 
+function recordJobHistory(){
+  if (!db) return;
+  // Reflects what the app handed to the share sheet, not confirmed proof it
+  // reached SharePoint — same gap as everywhere else in this design. Good
+  // enough for "did I already get the VIN shot" at a glance.
+  const entries = state.captures.map(c => ({
+    label: c.label,
+    kind: c.kind,
+    sentAt: new Date().toISOString()
+  }));
+
+  db.collection("jobs").doc(state.wip).set({
+    reg: state.reg,
+    lastMechanic: state.mechanic,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    history: firebase.firestore.FieldValue.arrayUnion(...entries)
+  }, { merge: true }).catch(err => console.error("Couldn't record job history", err));
+}
+
 /* ============================================================
    RESET / NEW JOB
    ============================================================ */
@@ -868,6 +948,8 @@ function resetForNewJob(keepMechanic){
   document.getElementById("labelOverlay").classList.remove("show");
   document.getElementById("adminNote").style.display = "none";
   document.getElementById("adminNote").innerHTML = "";
+  document.getElementById("jobHistoryNote").style.display = "none";
+  document.getElementById("jobHistoryNote").innerHTML = "";
   state = {
     step: 1,
     mechanic: keepMechanic ? state.mechanic : null,
