@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PWA check</title>
+<style>
+  :root{
+    --bg:#17181A; --surface:#212226; --surface-2:#2B2D31; --border:#3A3C41;
+    --text:#F4F2EC; --text-dim:#A9A69D; --accent:#F5B300; --accent-text:#1A1300;
+    --success:#2FA84F; --success-text:#06210D; --danger:#E5484D; --danger-text:#2B0705;
+    --radius:14px; --tap:76px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-user-select:none;user-select:none;}
+  #app{max-width:720px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;}
+
+  header{padding:16px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--bg);z-index:10;}
+  header h1{font-size:18px;font-weight:700;margin:0;flex:1;}
+  #backBtn{width:52px;height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:22px;display:none;align-items:center;justify-content:center;}
+  #backBtn.show{display:flex;}
+
+  main{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;}
+  .screen{display:none;flex-direction:column;gap:14px;flex:1;}
+  .screen.active{display:flex;}
+
+  .step-label{font-size:14px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.6px;}
+  .big-title{font-size:24px;font-weight:700;margin:0 0 4px;}
+  .sub{font-size:15px;color:var(--text-dim);margin:0;}
+
+  button{font-family:inherit;cursor:pointer;}
+  .btn{min-height:var(--tap);border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:19px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 18px;
+    transition:transform .06s ease, background .1s ease;}
+  .btn:active{transform:scale(.97);background:var(--surface-2);}
+  .btn-primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-size:21px;}
+  .btn-primary:active{background:#DBA200;}
+  .btn-primary[disabled]{background:var(--surface-2);color:var(--text-dim);border-color:var(--border);opacity:.6;pointer-events:none;}
+  .btn-list{display:flex;flex-direction:column;gap:12px;}
+
+  .keypad-display{font-size:44px;font-weight:700;text-align:center;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 10px;font-variant-numeric:tabular-nums;min-height:100px;display:flex;align-items:center;justify-content:center;}
+  .keypad-display .ph{color:var(--text-dim);font-size:19px;font-weight:600;}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .keypad button{min-height:64px;font-size:26px;font-weight:700;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .keypad button:active{background:var(--surface-2);transform:scale(.96);}
+
+  .spacer{flex:1;}
+
+  .verdict{border-radius:16px;padding:24px 20px;text-align:center;}
+  .verdict.needed{background:#3A0F0F;border:1px solid var(--danger);}
+  .verdict.not-needed{background:#0C2A16;border:1px solid var(--success);}
+  .verdict .vtitle{font-size:26px;font-weight:800;margin-bottom:6px;}
+  .verdict.needed .vtitle{color:#FF9C9C;}
+  .verdict.not-needed .vtitle{color:#7EE0A0;}
+  .verdict .vreason{font-size:15px;color:var(--text-dim);}
+
+  .media-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:6px 18px;}
+  .media-list h3{font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);
+    margin:14px 0 4px;}
+  .media-list ul{margin:0 0 14px;padding-left:20px;}
+  .media-list li{font-size:16px;padding:4px 0;}
+
+  footer.actions{padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <button id="backBtn" onclick="goBack()">&#8592;</button>
+    <h1 id="headerTitle">PWA check</h1>
+  </header>
+
+  <main>
+
+    <!-- STEP 1: job type -->
+    <section class="screen" id="screen-1">
+      <div class="step-label">Step 1 of 3</div>
+      <h2 class="big-title">What's the job?</h2>
+      <p class="sub">Pick whatever's closest — this decides what Kia needs from you</p>
+      <div class="btn-list" id="jobTypeList"><p style="color:var(--text-dim);text-align:center;">Loading job types&hellip;</p></div>
+    </section>
+
+    <!-- STEP 2: claim value -->
+    <section class="screen" id="screen-2">
+      <div class="step-label">Step 2 of 3</div>
+      <h2 class="big-title">Estimated claim value</h2>
+      <p class="sub" id="valueSub">Whole euros, no need for cents</p>
+      <div class="keypad-display" id="valueDisplay"><span class="ph">&euro;0</span></div>
+      <div class="keypad" id="valueKeypad"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="submitValue()">Check</button>
+    </section>
+
+    <!-- STEP 3: result -->
+    <section class="screen" id="screen-3">
+      <div class="verdict" id="verdictBox">
+        <div class="vtitle" id="verdictTitle"></div>
+        <div class="vreason" id="verdictReason"></div>
+      </div>
+      <div class="media-list" id="mediaList"></div>
+      <div class="spacer"></div>
+    </section>
+
+  </main>
+
+  <footer class="actions" id="footerActions"></footer>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   FIREBASE — same project/config as index.html and admin.html.
+   PWA rules are edited from admin.html and read live from here,
+   so Kia's policy can change without ever touching this file.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "EDIT ME",
+  authDomain: "EDIT ME",
+  projectId: "EDIT ME",
+  storageBucket: "EDIT ME",
+  messagingSenderId: "EDIT ME",
+  appId: "EDIT ME"
+};
+
+let db = null;
+try {
+  if (FIREBASE_CONFIG.apiKey !== "EDIT ME"){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+  }
+} catch(err){
+  console.error("Firebase init failed", err);
+}
+
+let PWA_RULES = { claimValueThreshold: 1250, jobTypes: [] };
+
+async function loadPwaRules(){
+  if (!db){
+    document.getElementById("jobTypeList").innerHTML =
+      '<p style="color:var(--text-dim);text-align:center;">Firebase isn\u2019t configured in this file yet.</p>';
+    return;
+  }
+  try {
+    const doc = await db.collection("config").doc("pwaRules").get();
+    if (doc.exists){
+      const data = doc.data();
+      PWA_RULES.claimValueThreshold = typeof data.claimValueThreshold === "number" ? data.claimValueThreshold : 1250;
+      PWA_RULES.jobTypes = Array.isArray(data.jobTypes) ? data.jobTypes : [];
+    }
+  } catch(err){
+    console.error("Couldn't load PWA rules", err);
+  }
+  renderJobTypes();
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {
+  step: 1,
+  jobType: null,
+  value: ""
+};
+
+function vibrate(ms){ if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} } }
+
+function goToStep(n){
+  state.step = n;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + n).classList.add("active");
+  const titles = { 1: "PWA check", 2: "Claim value", 3: "Result" };
+  document.getElementById("headerTitle").textContent = titles[n] || "PWA check";
+  document.getElementById("backBtn").classList.toggle("show", n >= 2);
+  renderFooter();
+}
+
+function goBack(){
+  if (state.step === 2) goToStep(1);
+  else if (state.step === 3) goToStep(state.jobType && state.jobType.alwaysPWA ? 1 : 2);
+}
+
+function renderFooter(){
+  const footer = document.getElementById("footerActions");
+  footer.innerHTML = "";
+  if (state.step === 3){
+    const b = document.createElement("button");
+    b.className = "btn btn-primary";
+    b.textContent = "Check another job";
+    b.onclick = resetTool;
+    footer.appendChild(b);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============================================================
+   STEP 1 — job type
+   ============================================================ */
+function renderJobTypes(){
+  const list = document.getElementById("jobTypeList");
+  list.innerHTML = "";
+  if (!PWA_RULES.jobTypes.length){
+    list.innerHTML = '<p style="color:var(--text-dim);text-align:center;">No job types set up yet \u2014 ask the office to add some.</p>';
+    return;
+  }
+  PWA_RULES.jobTypes.forEach(jt => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = jt.name;
+    b.onclick = () => selectJobType(jt);
+    list.appendChild(b);
+  });
+}
+
+function selectJobType(jt){
+  vibrate(20);
+  state.jobType = jt;
+  state.value = "";
+  if (jt.alwaysPWA){
+    // No need to ask for a value — this job type always needs PWA.
+    showResult();
+  } else {
+    updateValueDisplay();
+    goToStep(2);
+  }
+}
+
+/* ============================================================
+   STEP 2 — claim value keypad
+   ============================================================ */
+function renderValueKeypad(){
+  const pad = document.getElementById("valueKeypad");
+  pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","clear","0","back"];
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    if (k === "clear"){ b.textContent = "Clear"; b.style.fontSize = "16px"; b.onclick = () => { state.value=""; updateValueDisplay(); }; }
+    else if (k === "back"){ b.innerHTML = "&#9003;"; b.onclick = () => { state.value = state.value.slice(0,-1); updateValueDisplay(); }; }
+    else { b.textContent = k; b.onclick = () => valueDigit(k); }
+    pad.appendChild(b);
+  });
+}
+
+function valueDigit(d){
+  if (state.value.length >= 7) return; // sanity cap, not a real limit
+  vibrate(15);
+  state.value += d;
+  updateValueDisplay();
+}
+
+function updateValueDisplay(){
+  const el = document.getElementById("valueDisplay");
+  el.innerHTML = state.value
+    ? "&euro;" + Number(state.value).toLocaleString()
+    : '<span class="ph">&euro;0</span>';
+}
+
+function submitValue(){
+  vibrate(30);
+  showResult();
+}
+
+/* ============================================================
+   STEP 3 — result
+   ============================================================ */
+function showResult(){
+  const jt = state.jobType;
+  const value = Number(state.value || 0);
+  const overThreshold = value > PWA_RULES.claimValueThreshold;
+  const needed = jt.alwaysPWA || overThreshold;
+
+  const box = document.getElementById("verdictBox");
+  const titleEl = document.getElementById("verdictTitle");
+  const reasonEl = document.getElementById("verdictReason");
+
+  box.className = "verdict " + (needed ? "needed" : "not-needed");
+  titleEl.textContent = needed ? "PWA needed" : "No PWA needed";
+
+  if (jt.alwaysPWA){
+    reasonEl.textContent = jt.name + " jobs always need PWA, regardless of claim value.";
+  } else if (overThreshold){
+    reasonEl.textContent = "Claim value is over \u20ac" + PWA_RULES.claimValueThreshold.toLocaleString() + ".";
+  } else {
+    reasonEl.textContent = "Under \u20ac" + PWA_RULES.claimValueThreshold.toLocaleString() + " and this job type doesn't require it by default.";
+  }
+
+  const mediaEl = document.getElementById("mediaList");
+  mediaEl.innerHTML = "<h3>" + escapeHtml(jt.name) + " \u2014 what Kia needs</h3><ul>" +
+    jt.requiredMedia.map(m => "<li>" + escapeHtml(m) + "</li>").join("") +
+    "</ul>";
+
+  goToStep(3);
+}
+
+function resetTool(){
+  state = { step: 1, jobType: null, value: "" };
+  goToStep(1);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  renderValueKeypad();
+  goToStep(1);
+  loadPwaRules();
+}
+
+init();
+</script>
+</body>
+</html>
