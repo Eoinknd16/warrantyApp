@@ -78,6 +78,14 @@
 
   .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
     padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+
+  .checklist-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .checklist-row:last-child{border-bottom:none;}
+  .checklist-row input{width:20px;height:20px;flex-shrink:0;}
+  .checklist-row span{font-size:14px;}
+  .checklist-row .rm-item{margin-left:auto;background:none;border:none;color:var(--text-dim);
+    font-size:16px;width:24px;height:24px;border-radius:50%;flex-shrink:0;}
+  .checklist-row .rm-item:active{background:var(--surface);}
   .job-open-card .joc-info{font-size:14px;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:4px;}
   .job-open-card button{margin:0;min-height:40px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
@@ -99,9 +107,16 @@
   <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
   <div class="status" id="wipStatus"></div>
 
-  <div class="pwa-flag-row" id="pwaFlagRow" style="display:none;">
-    <span id="pwaFlagStatus"></span>
-    <button class="btn btn-secondary" id="pwaFlagToggleBtn" style="margin:0;min-height:44px;width:auto;padding:0 16px;"></button>
+  <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
+    <div class="pwa-flag-row" id="pwaFlagRow">
+      <span id="pwaFlagStatus"></span>
+    </div>
+    <p class="sub" style="margin:10px 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+    <div id="pwaWipChecklist"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn" style="margin:0;min-height:44px;" onclick="savePwaFlagForWip()">Save PWA requirement</button>
+      <button class="btn btn-secondary" style="margin:0;min-height:44px;" onclick="clearPwaFlagForWip()">Clear flag</button>
+    </div>
   </div>
 
   <label for="msgField">Message</label>
@@ -138,6 +153,20 @@
     </button>
     <div class="collapsible-body">
       <div id="jobTypesList"><p class="empty">Loading…</p></div>
+    </div>
+  </div>
+
+  <div class="collapsible" id="pwaItemsSection">
+    <button class="collapsible-header" onclick="toggleCollapsible('pwaItemsSection')">
+      <span>PWA requirement items</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p class="sub" style="margin:0 0 12px;">The checklist you pick from when flagging a specific job as needing PWA (above, in the WIP field). Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
+      <div id="pwaItemsList"><p class="empty">Loading…</p></div>
+      <div class="add-row" style="margin-top:10px;">
+        <input type="text" id="newPwaItemInput" placeholder="e.g. Fault video">
+        <button class="btn btn-secondary" onclick="addPwaChecklistItem()">Add</button>
+      </div>
     </div>
   </div>
 
@@ -208,12 +237,12 @@ document.getElementById("wipField").addEventListener("input", async (e) => {
   const wip = e.target.value.trim();
   const wipStatusEl = document.getElementById("wipStatus");
   const msgField = document.getElementById("msgField");
-  const flagRow = document.getElementById("pwaFlagRow");
+  const flagSection = document.getElementById("pwaFlagSection");
 
   if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
     wipStatusEl.textContent = "";
     wipStatusEl.className = "status";
-    flagRow.style.display = "none";
+    flagSection.style.display = "none";
     return;
   }
 
@@ -240,33 +269,142 @@ document.getElementById("wipField").addEventListener("input", async (e) => {
   await refreshPwaFlagRow(wip);
 });
 
+let pwaChecklistItemsCache = [];
+let pwaChecklistItemsLoaded = false;
+let currentWipForFlag = "";
+
+async function loadPwaChecklistItems(){
+  const listEl = document.getElementById("pwaItemsList");
+  try {
+    const doc = await db.collection("config").doc("pwaChecklistItems").get();
+    pwaChecklistItemsCache = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+    pwaChecklistItemsLoaded = true;
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  renderPwaChecklistItemsList();
+}
+
+function renderPwaChecklistItemsList(){
+  const listEl = document.getElementById("pwaItemsList");
+  if (!pwaChecklistItemsCache.length){
+    listEl.innerHTML = '<p class="empty">No items yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  pwaChecklistItemsCache.forEach((item, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(item) + "</span>";
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removePwaChecklistItem(i);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function savePwaChecklistItemsToFirestore(){
+  await db.collection("config").doc("pwaChecklistItems").set({ items: pwaChecklistItemsCache });
+}
+
+async function addPwaChecklistItem(){
+  const input = document.getElementById("newPwaItemInput");
+  const val = input.value.trim();
+  if (!val) return;
+  pwaChecklistItemsCache.push(val);
+  input.value = "";
+  try {
+    await savePwaChecklistItemsToFirestore();
+    renderPwaChecklistItemsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function removePwaChecklistItem(index){
+  pwaChecklistItemsCache.splice(index, 1);
+  try {
+    await savePwaChecklistItemsToFirestore();
+    renderPwaChecklistItemsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
 async function refreshPwaFlagRow(wip){
+  currentWipForFlag = wip;
+  const section = document.getElementById("pwaFlagSection");
   const flagRow = document.getElementById("pwaFlagRow");
   const flagStatus = document.getElementById("pwaFlagStatus");
-  const flagBtn = document.getElementById("pwaFlagToggleBtn");
+  const checklistEl = document.getElementById("pwaWipChecklist");
+
+  if (!pwaChecklistItemsLoaded) await loadPwaChecklistItems();
 
   let flagged = false;
+  let selectedItems = [];
   try {
     const doc = await db.collection("jobs").doc(wip).get();
-    flagged = !!(doc.exists && doc.data().pwaFlag);
+    if (doc.exists){
+      flagged = !!doc.data().pwaFlag;
+      selectedItems = Array.isArray(doc.data().pwaRequiredItems) ? doc.data().pwaRequiredItems : [];
+    }
   } catch(err){
     console.error(err);
   }
 
-  flagRow.style.display = "flex";
+  section.style.display = "block";
   flagRow.classList.toggle("flagged", flagged);
-  flagStatus.textContent = flagged ? "\ud83d\udd34 Flagged as needing PWA" : "Not flagged";
-  flagBtn.textContent = flagged ? "Clear flag" : "Flag as needing PWA";
-  flagBtn.onclick = () => togglePwaFlag(wip, !flagged);
+  flagStatus.textContent = flagged
+    ? "\ud83d\udd34 Flagged as needing PWA" + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
+    : "Not flagged";
+
+  if (!pwaChecklistItemsCache.length){
+    checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some in "PWA requirement items" below.</p>';
+    return;
+  }
+
+  checklistEl.innerHTML = "";
+  pwaChecklistItemsCache.forEach(item => {
+    const row = document.createElement("label");
+    row.className = "checklist-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = item;
+    cb.checked = selectedItems.includes(item);
+    row.appendChild(cb);
+    const span = document.createElement("span");
+    span.textContent = item;
+    row.appendChild(span);
+    checklistEl.appendChild(row);
+  });
 }
 
-async function togglePwaFlag(wip, newValue){
+async function savePwaFlagForWip(){
+  if (!currentWipForFlag) return;
+  const checked = Array.from(document.querySelectorAll("#pwaWipChecklist input[type=checkbox]:checked")).map(cb => cb.value);
   try {
-    await db.collection("jobs").doc(wip).set({ pwaFlag: newValue }, { merge: true });
-    refreshPwaFlagRow(wip);
+    await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
+    refreshPwaFlagRow(currentWipForFlag);
   } catch(err){
     console.error(err);
-    alert("Couldn't update the flag — check your Firebase config.");
+    alert("Couldn't save — check your Firebase config.");
+  }
+}
+
+async function clearPwaFlagForWip(){
+  if (!currentWipForFlag) return;
+  try {
+    await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: false, pwaRequiredItems: [] }, { merge: true });
+    refreshPwaFlagRow(currentWipForFlag);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't clear the flag — check your Firebase config.");
   }
 }
 
@@ -706,6 +844,7 @@ async function closeJobs(wipList){
 
 loadNotes();
 loadPwaRules();
+loadPwaChecklistItems();
 </script>
 </body>
 </html>
