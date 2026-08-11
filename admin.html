@@ -60,6 +60,12 @@
   .job-card-actions button{margin:0;min-height:44px;flex:1;}
   .btn-secondary{background:none;color:var(--text);border:1px solid var(--border);}
   .btn-delete{background:none;color:var(--danger);border:1px solid var(--danger);}
+
+  .pwa-flag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;}
+  .pwa-flag-row span{font-size:14px;font-weight:600;}
+  .pwa-flag-row.flagged{border-color:var(--danger);background:#2B0705;}
+  .pwa-flag-row.flagged span{color:#FF9C9C;}
 </style>
 </head>
 <body>
@@ -70,6 +76,11 @@
   <label for="wipField">WIP number</label>
   <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
   <div class="status" id="wipStatus"></div>
+
+  <div class="pwa-flag-row" id="pwaFlagRow" style="display:none;">
+    <span id="pwaFlagStatus"></span>
+    <button class="btn btn-secondary" id="pwaFlagToggleBtn" style="margin:0;min-height:44px;width:auto;padding:0 16px;"></button>
+  </div>
 
   <label for="msgField">Message</label>
   <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
@@ -89,7 +100,14 @@
 
   <label for="thresholdField">Claim value threshold (&euro;) — over this, PWA is always needed</label>
   <input type="text" id="thresholdField" inputmode="numeric" placeholder="1250">
-  <button class="btn" onclick="saveThreshold()">Save threshold</button>
+
+  <label for="labourRateField" style="margin-top:16px;">Hourly labour rate (&euro;) — set once, rarely changes</label>
+  <input type="text" id="labourRateField" inputmode="decimal" placeholder="91.72">
+
+  <label for="bufferField" style="margin-top:16px;">Warn "check with the office" when estimated total is within this much of the threshold (&euro;)</label>
+  <input type="text" id="bufferField" inputmode="numeric" placeholder="200">
+
+  <button class="btn" onclick="saveClaimSettings()">Save settings</button>
   <div class="status" id="thresholdStatus"></div>
 
   <div class="list">
@@ -144,10 +162,12 @@ document.getElementById("wipField").addEventListener("input", async (e) => {
   const wip = e.target.value.trim();
   const wipStatusEl = document.getElementById("wipStatus");
   const msgField = document.getElementById("msgField");
+  const flagRow = document.getElementById("pwaFlagRow");
 
   if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
     wipStatusEl.textContent = "";
     wipStatusEl.className = "status";
+    flagRow.style.display = "none";
     return;
   }
 
@@ -170,7 +190,39 @@ document.getElementById("wipField").addEventListener("input", async (e) => {
     wipStatusEl.textContent = "Couldn't check for an existing note.";
     wipStatusEl.className = "status err";
   }
+
+  await refreshPwaFlagRow(wip);
 });
+
+async function refreshPwaFlagRow(wip){
+  const flagRow = document.getElementById("pwaFlagRow");
+  const flagStatus = document.getElementById("pwaFlagStatus");
+  const flagBtn = document.getElementById("pwaFlagToggleBtn");
+
+  let flagged = false;
+  try {
+    const doc = await db.collection("jobs").doc(wip).get();
+    flagged = !!(doc.exists && doc.data().pwaFlag);
+  } catch(err){
+    console.error(err);
+  }
+
+  flagRow.style.display = "flex";
+  flagRow.classList.toggle("flagged", flagged);
+  flagStatus.textContent = flagged ? "\ud83d\udd34 Flagged as needing PWA" : "Not flagged";
+  flagBtn.textContent = flagged ? "Clear flag" : "Flag as needing PWA";
+  flagBtn.onclick = () => togglePwaFlag(wip, !flagged);
+}
+
+async function togglePwaFlag(wip, newValue){
+  try {
+    await db.collection("jobs").doc(wip).set({ pwaFlag: newValue }, { merge: true });
+    refreshPwaFlagRow(wip);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update the flag — check your Firebase config.");
+  }
+}
 
 async function sendNote(){
   const wip = document.getElementById("wipField").value.trim();
@@ -255,7 +307,7 @@ function escapeHtml(s){
 /* ============================================================
    PWA RULES
    ============================================================ */
-let pwaRulesCache = { claimValueThreshold: 1250, jobTypes: [] };
+let pwaRulesCache = { claimValueThreshold: 1250, labourRate: 91.72, nearThresholdBuffer: 200, jobTypes: [] };
 
 async function loadPwaRules(){
   try {
@@ -263,6 +315,8 @@ async function loadPwaRules(){
     if (doc.exists){
       const data = doc.data();
       pwaRulesCache.claimValueThreshold = typeof data.claimValueThreshold === "number" ? data.claimValueThreshold : 1250;
+      pwaRulesCache.labourRate = typeof data.labourRate === "number" ? data.labourRate : 91.72;
+      pwaRulesCache.nearThresholdBuffer = typeof data.nearThresholdBuffer === "number" ? data.nearThresholdBuffer : 200;
       pwaRulesCache.jobTypes = Array.isArray(data.jobTypes) ? data.jobTypes : [];
     }
   } catch(err){
@@ -271,6 +325,8 @@ async function loadPwaRules(){
     return;
   }
   document.getElementById("thresholdField").value = pwaRulesCache.claimValueThreshold;
+  document.getElementById("labourRateField").value = pwaRulesCache.labourRate;
+  document.getElementById("bufferField").value = pwaRulesCache.nearThresholdBuffer;
   renderJobTypesList();
 }
 
@@ -278,15 +334,21 @@ async function savePwaRulesToFirestore(){
   await db.collection("config").doc("pwaRules").set(pwaRulesCache);
 }
 
-async function saveThreshold(){
-  const val = Number(document.getElementById("thresholdField").value);
+async function saveClaimSettings(){
+  const threshold = Number(document.getElementById("thresholdField").value);
+  const rate = Number(document.getElementById("labourRateField").value);
+  const buffer = Number(document.getElementById("bufferField").value);
   const statusEl = document.getElementById("thresholdStatus");
-  if (!val || val <= 0){
-    statusEl.textContent = "Enter a valid number.";
+
+  if (!threshold || threshold <= 0 || !rate || rate <= 0 || buffer < 0 || isNaN(buffer)){
+    statusEl.textContent = "Check all three values are valid numbers.";
     statusEl.className = "status err";
     return;
   }
-  pwaRulesCache.claimValueThreshold = val;
+
+  pwaRulesCache.claimValueThreshold = threshold;
+  pwaRulesCache.labourRate = rate;
+  pwaRulesCache.nearThresholdBuffer = buffer;
   try {
     await savePwaRulesToFirestore();
     statusEl.textContent = "Saved.";
