@@ -220,7 +220,7 @@
   <div id="breadcrumb"></div>
   <div class="note-badges">
     <button class="note-badge" id="pwaFlagBadge" onclick="showNoteOverlay('pwaFlag')">
-      <span>&#128308;</span><span>PWA required</span>
+      <span>&#128308;</span><span id="pwaFlagBadgeLabel">PWA required</span>
     </button>
     <button class="note-badge" id="adminNoteBadge" onclick="showNoteOverlay('admin')">
       <span>&#128276;</span><span>Note</span>
@@ -364,7 +364,7 @@
 
 <div id="pwaSendCheckOverlay">
   <div class="pwa-send-badge">&#128308;</div>
-  <h2 class="big-title">This job needs PWA</h2>
+  <h2 class="big-title" id="pwaSendCheckTitle">This job needs PWA</h2>
   <p class="sub">Before you send &mdash; have you got everything on this list?</p>
   <ul id="pwaSendCheckList" class="pwa-send-list"></ul>
   <div class="spacer"></div>
@@ -429,12 +429,15 @@ try {
    CONFIG — edit before deploying
    ============================================================ */
 const CONFIG = {
-  // Every address the job should go to. The FIRST one must be the inbox your
-  // Power Automate flow watches — that's the one the folder-filing logic
-  // depends on. Any others (e.g. a manager) just get a copy for visibility.
-  // The mechanic still has to enter these in their Mail app — browsers can't
-  // pre-fill the "To"/"Cc" fields on a shared email — so save these as
-  // contacts on each phone so they autocomplete after a couple of letters.
+  // First-run seed only — once the app has loaded once with Firebase
+  // configured, the real list lives in Firestore and is managed from the
+  // admin panel's Settings page. Editing this array after that point does
+  // nothing; it's only used to fill Firestore the very first time.
+  // The FIRST one must be the inbox your Power Automate flow watches —
+  // that's the one the folder-filing logic depends on. Any others (e.g. a
+  // manager) just get a copy for visibility. The mechanic still has to
+  // enter these in their Mail app — browsers can't pre-fill the "To"/"Cc"
+  // fields — so save these as contacts on each phone so they autocomplete.
   warrantyEmails: [
     "servicelimerick@hinchys.ie",
     "ekennedy@hinchys.ie"
@@ -480,6 +483,7 @@ let state = {
   wip: "",
   reg: "",
   jobId: null,
+  location: null, // {lat, lon} — fetched once per job, reused across every photo's stamp
   captures: [] // {id, kind, blob, previewUrl, filename, label}
 };
 
@@ -573,6 +577,68 @@ async function loadMechanics(){
     mechanicsList = CONFIG.mechanics || [];
   }
   renderMechanics();
+}
+
+let emailRecipients = [];
+let CURRENCY = "\u20ac";
+
+/* ============================================================
+   TERMINOLOGY — "PWA" is Kia-specific language. Any other
+   manufacturer setting swaps it for generic wording everywhere
+   this shows up, without touching the underlying logic at all.
+   ============================================================ */
+const TERMINOLOGY = {
+  kia: { short: "PWA", full: "Prior Work Approval" },
+  generic: { short: "Approval", full: "Prior Approval" }
+};
+let manufacturer = "kia";
+let PWA_TERM = TERMINOLOGY.kia.short;
+let PWA_TERM_FULL = TERMINOLOGY.kia.full;
+
+function applyTerminology(){
+  const t = TERMINOLOGY[manufacturer] || TERMINOLOGY.kia;
+  PWA_TERM = t.short;
+  PWA_TERM_FULL = t.full;
+
+  const headerBtn = document.getElementById("pwaHeaderBtn");
+  if (headerBtn) headerBtn.setAttribute("aria-label", "Check " + PWA_TERM + " requirement");
+
+  const badgeLabel = document.getElementById("pwaFlagBadgeLabel");
+  if (badgeLabel) badgeLabel.textContent = PWA_TERM + " required";
+
+  const sendCheckTitle = document.getElementById("pwaSendCheckTitle");
+  if (sendCheckTitle) sendCheckTitle.textContent = "This job needs " + PWA_TERM;
+}
+
+async function loadAppSettings(){
+  if (!db){
+    emailRecipients = CONFIG.warrantyEmails || [];
+    applyTerminology();
+    return;
+  }
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists){
+      const data = doc.data();
+      emailRecipients = Array.isArray(data.emailRecipients) && data.emailRecipients.length
+        ? data.emailRecipients : (CONFIG.warrantyEmails || []);
+      CURRENCY = data.currencySymbol || "\u20ac";
+      manufacturer = data.manufacturer || "kia";
+      if (!Array.isArray(data.emailRecipients) || !data.emailRecipients.length){
+        // First run — nothing set yet, seed from CONFIG so Settings has something to show.
+        db.collection("config").doc("appSettings").set({ emailRecipients: emailRecipients }, { merge: true })
+          .catch(err => console.error("Couldn't seed email recipients", err));
+      }
+    } else {
+      emailRecipients = CONFIG.warrantyEmails || [];
+      db.collection("config").doc("appSettings").set({ emailRecipients: emailRecipients })
+        .catch(err => console.error("Couldn't seed app settings", err));
+    }
+  } catch(err){
+    console.error("Couldn't load app settings", err);
+    emailRecipients = CONFIG.warrantyEmails || [];
+  }
+  applyTerminology();
 }
 
 function renderMechanics(){
@@ -789,7 +855,7 @@ function showNoteOverlay(type){
     titleEl.textContent = "Note from the office";
     bodyEl.innerHTML = '<p>' + escapeHtml(currentAdminNoteMessage || "") + '</p>';
   } else if (type === "pwaFlag"){
-    titleEl.textContent = "PWA required";
+    titleEl.textContent = PWA_TERM + " required";
     bodyEl.innerHTML = "";
     if (currentPwaRequiredItems.length){
       const intro = document.createElement("p");
@@ -813,7 +879,7 @@ function showNoteOverlay(type){
         bodyEl.appendChild(row);
       });
     } else {
-      bodyEl.innerHTML = "<p>This job has been flagged by the office as needing Prior Work Approval before you go ahead.</p>";
+      bodyEl.innerHTML = "<p>This job has been flagged by the office as needing " + PWA_TERM_FULL + " before you go ahead.</p>";
     }
   } else {
     titleEl.textContent = "Already sent for this job";
@@ -940,7 +1006,7 @@ function renderPwaPartKeypad(){
 
 function updatePwaPartDisplay(){
   const el = document.getElementById("pwaPartDisplay");
-  el.innerHTML = pwaPartValue ? "&euro;" + Number(pwaPartValue).toLocaleString() : '<span class="ph">&euro;0</span>';
+  el.innerHTML = pwaPartValue ? CURRENCY + Number(pwaPartValue).toLocaleString() : '<span class="ph">' + CURRENCY + '0</span>';
 }
 
 function pwaGoToLabourStep(){
@@ -997,8 +1063,8 @@ function pwaShowResult(){
 
   if (jt.alwaysPWA){
     verdictClass = "needed";
-    verdictTitle = "PWA needed";
-    reasonText = jt.name + " jobs always need PWA, regardless of claim value.";
+    verdictTitle = PWA_TERM + " needed";
+    reasonText = jt.name + " jobs always need " + PWA_TERM + ", regardless of claim value.";
     breakdownEl.innerHTML = "";
   } else {
     const partValue = Number(pwaPartValue || 0);
@@ -1010,22 +1076,22 @@ function pwaShowResult(){
 
     if (total > threshold){
       verdictClass = "needed";
-      verdictTitle = "PWA needed";
-      reasonText = "Estimated total is over \u20ac" + threshold.toLocaleString() + ".";
+      verdictTitle = PWA_TERM + " needed";
+      reasonText = "Estimated total is over " + CURRENCY + threshold.toLocaleString() + ".";
     } else if (total >= threshold - buffer){
       verdictClass = "caution";
       verdictTitle = "Check with the office first";
-      reasonText = "Estimated total is close to the \u20ac" + threshold.toLocaleString() + " limit \u2014 check in person before deciding either way.";
+      reasonText = "Estimated total is close to the " + CURRENCY + threshold.toLocaleString() + " limit \u2014 check in person before deciding either way.";
     } else {
       verdictClass = "not-needed";
-      verdictTitle = "No PWA needed";
-      reasonText = "Estimated total is comfortably under \u20ac" + threshold.toLocaleString() + ".";
+      verdictTitle = "No " + PWA_TERM + " needed";
+      reasonText = "Estimated total is comfortably under " + CURRENCY + threshold.toLocaleString() + ".";
     }
 
     breakdownEl.innerHTML =
-      '<div class="breakdown-row"><span>Part value</span><span>\u20ac' + partValue.toLocaleString() + '</span></div>' +
-      '<div class="breakdown-row"><span>Labour (' + formatHoursMinutes(pwaHours, pwaMinutes) + ' @ \u20ac' + pwaRulesData.labourRate + '/hr)</span><span>\u20ac' + labourCost.toFixed(2) + '</span></div>' +
-      '<div class="breakdown-row"><span>Estimated total</span><span>\u20ac' + total.toFixed(2) + '</span></div>';
+      '<div class="breakdown-row"><span>Part value</span><span>' + CURRENCY + partValue.toLocaleString() + '</span></div>' +
+      '<div class="breakdown-row"><span>Labour (' + formatHoursMinutes(pwaHours, pwaMinutes) + ' @ ' + CURRENCY + pwaRulesData.labourRate + '/hr)</span><span>' + CURRENCY + labourCost.toFixed(2) + '</span></div>' +
+      '<div class="breakdown-row"><span>Estimated total</span><span>' + CURRENCY + total.toFixed(2) + '</span></div>';
   }
 
   box.className = "verdict " + verdictClass;
@@ -1135,8 +1201,18 @@ function continueFromReg(){
 
 function proceedToCapture(){
   linkRegToJob();
+  requestLocation();
   goToStep(4);
   renderCaptures();
+}
+
+function requestLocation(){
+  if (!navigator.geolocation) { state.location = null; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => { state.location = { lat: pos.coords.latitude, lon: pos.coords.longitude }; },
+    err => { console.log("Location unavailable", err); state.location = null; },
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+  );
 }
 
 function linkRegToJob(){
@@ -1360,22 +1436,34 @@ function buildFilename(label, ext){
   return state.reg + "_" + state.wip + " " + label + " " + code + "." + ext;
 }
 
-function drawTimestampBar(ctx, width, height){
-  const barHeight = Math.max(48, Math.round(height * 0.045));
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(0, height - barHeight, width, barHeight);
-
+function drawTimestampBar(ctx, width, height, location){
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
   const dateStr = pad(now.getDate()) + "/" + pad(now.getMonth()+1) + "/" + now.getFullYear() +
                   " " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
-  const label = state.reg + "  \u2022  WIP " + state.wip + "  \u2022  " + dateStr;
+  const line1 = state.reg + "  \u2022  WIP " + state.wip + "  \u2022  " + dateStr;
+  const line2 = location ? ("Location: " + location.lat.toFixed(5) + ", " + location.lon.toFixed(5)) : null;
 
-  const fontSize = Math.max(20, Math.round(barHeight * 0.42));
+  const singleLineHeight = Math.max(48, Math.round(height * 0.045));
+  const barHeight = line2 ? Math.round(singleLineHeight * 1.9) : singleLineHeight;
+
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, height - barHeight, width, barHeight);
+
+  const fontSize = Math.max(20, Math.round(singleLineHeight * 0.42));
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, 16, height - barHeight / 2, width - 32);
+
+  if (line2){
+    ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line1, 16, height - barHeight + singleLineHeight * 0.55, width - 32);
+    const line2FontSize = Math.max(16, Math.round(fontSize * 0.8));
+    ctx.font = "600 " + line2FontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line2, 16, height - barHeight + singleLineHeight * 1.5, width - 32);
+  } else {
+    ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line1, 16, height - barHeight / 2, width - 32);
+  }
 }
 
 function stampPhoto(file){
@@ -1387,7 +1475,7 @@ function stampPhoto(file){
       canvas.height = img.height;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0);
-      drawTimestampBar(ctx, img.width, img.height);
+      drawTimestampBar(ctx, img.width, img.height, state.location);
       canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.9);
       URL.revokeObjectURL(img.src);
     };
@@ -1489,8 +1577,8 @@ async function actuallySubmit(){
     return;
   }
 
-  const recipientsConfigured = CONFIG.warrantyEmails.length && CONFIG.warrantyEmails[0].indexOf("EDIT ME") !== 0;
-  const recipientText = recipientsConfigured ? CONFIG.warrantyEmails.join("; ") : "the warranty addresses";
+  const recipientsConfigured = emailRecipients.length && emailRecipients[0].indexOf("EDIT ME") !== 0;
+  const recipientText = recipientsConfigured ? emailRecipients.join("; ") : "the warranty addresses";
 
   const subject = "[WarrantyApp] " + state.reg + " " + state.wip;
   const body = "Mechanic: " + state.mechanic + "\nReg: " + state.reg + "\nWIP: " + state.wip +
@@ -1553,6 +1641,7 @@ function resetForNewJob(keepMechanic){
     wip: "",
     reg: "",
     jobId: null,
+    location: null,
     captures: []
   };
   updateWipDisplay();
@@ -1567,6 +1656,7 @@ function resetForNewJob(keepMechanic){
    ============================================================ */
 function init(){
   loadMechanics();
+  loadAppSettings();
   renderWipKeypad();
   updateWipDisplay();
   initRegInput();
