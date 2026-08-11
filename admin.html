@@ -81,6 +81,13 @@
   .job-open-card .joc-info{font-size:14px;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:4px;}
   .job-open-card button{margin:0;min-height:40px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
+  .job-open-card{align-items:center;}
+  .joc-checkbox{width:20px;height:20px;flex-shrink:0;}
+
+  .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .bulk-bar .checkbox-label{margin:0;text-transform:none;font-size:14px;}
+  .bulk-bar button{margin:0;min-height:40px;width:auto;padding:0 16px;font-size:13px;}
 </style>
 </head>
 <body>
@@ -164,6 +171,13 @@
     <div class="collapsible-body">
       <p class="sub" style="margin:0 0 12px;">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched — this is purely for clearing data that no longer needs to be kept here.</p>
       <input type="text" id="jobSearchField" placeholder="Search by WIP or reg…">
+      <div class="bulk-bar" id="bulkBar" style="margin-top:12px;">
+        <label class="checkbox-label" style="margin:0;">
+          <input type="checkbox" id="selectAllJobs" onclick="toggleSelectAllJobs(this.checked)">
+          Select all
+        </label>
+        <button class="btn btn-delete" id="closeSelectedBtn" onclick="closeSelectedJobs()" disabled>Close selected (0)</button>
+      </div>
       <div id="openJobsList" style="margin-top:12px;"><p class="empty">Loading…</p></div>
     </div>
   </div>
@@ -570,6 +584,8 @@ function toggleCollapsible(id){
    ============================================================ */
 let openJobsCache = [];
 let openJobsLoaded = false;
+let selectedJobs = new Set();
+let currentlyFilteredJobs = [];
 
 async function loadOpenJobs(){
   const listEl = document.getElementById("openJobsList");
@@ -592,26 +608,40 @@ document.getElementById("jobSearchField").addEventListener("input", (e) => {
 function renderOpenJobsList(filterText){
   const listEl = document.getElementById("openJobsList");
   const filter = (filterText || "").trim().toLowerCase();
-  const filtered = filter
+  currentlyFilteredJobs = filter
     ? openJobsCache.filter(j => j.id.toLowerCase().includes(filter) || (j.reg || "").toLowerCase().includes(filter))
     : openJobsCache;
 
-  if (!filtered.length){
+  if (!currentlyFilteredJobs.length){
     listEl.innerHTML = '<p class="empty">' +
       (openJobsCache.length ? "No jobs match that search." : "No open jobs right now.") + '</p>';
-    return;
+  } else {
+    listEl.innerHTML = "";
+    currentlyFilteredJobs.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
   }
-  listEl.innerHTML = "";
-  filtered.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
+  updateBulkControls();
 }
 
 function buildOpenJobCard(job){
   const card = document.createElement("div");
   card.className = "job-open-card";
 
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "joc-checkbox";
+  checkbox.checked = selectedJobs.has(job.id);
+  checkbox.onchange = () => {
+    if (checkbox.checked) selectedJobs.add(job.id);
+    else selectedJobs.delete(job.id);
+    updateBulkControls();
+  };
+  card.appendChild(checkbox);
+
   const info = document.createElement("div");
   info.className = "joc-info";
-  const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toLocaleDateString() : "";
+  const when = job.updatedAt && job.updatedAt.toDate
+    ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+    : "unknown";
   const historyCount = Array.isArray(job.history) ? job.history.length : 0;
   info.innerHTML =
     "<b>WIP " + escapeHtml(job.id) + "</b>" + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
@@ -619,29 +649,58 @@ function buildOpenJobCard(job){
     (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
     historyCount + " sent" +
     (job.pwaFlag ? " &middot; \ud83d\udd34 PWA flagged" : "") +
-    (when ? " &middot; " + when : "") +
-    "</div>";
+    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>';
   card.appendChild(info);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
-  closeBtn.onclick = () => closeJob(job.id);
+  closeBtn.onclick = () => closeJobs([job.id]);
   card.appendChild(closeBtn);
 
   return card;
 }
 
-async function closeJob(wip){
-  if (!confirm("Close job " + wip + "? This permanently deletes its Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+function toggleSelectAllJobs(checked){
+  currentlyFilteredJobs.forEach(job => {
+    if (checked) selectedJobs.add(job.id);
+    else selectedJobs.delete(job.id);
+  });
+  renderOpenJobsList(document.getElementById("jobSearchField").value);
+}
+
+function updateBulkControls(){
+  const btn = document.getElementById("closeSelectedBtn");
+  btn.textContent = "Close selected (" + selectedJobs.size + ")";
+  btn.disabled = selectedJobs.size === 0;
+
+  const selectAllCb = document.getElementById("selectAllJobs");
+  selectAllCb.checked = currentlyFilteredJobs.length > 0 &&
+    currentlyFilteredJobs.every(job => selectedJobs.has(job.id));
+}
+
+function closeSelectedJobs(){
+  closeJobs(Array.from(selectedJobs));
+}
+
+async function closeJobs(wipList){
+  if (!wipList.length) return;
+  const plural = wipList.length > 1;
+  const label = plural ? wipList.length + " jobs" : "job " + wipList[0];
+  if (!confirm("Close " + label + "? This permanently deletes " + (plural ? "their" : "its") +
+    " Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+
   try {
-    await db.collection("jobs").doc(wip).delete();
-    await db.collection("wipNotes").doc(wip).delete();
-    openJobsCache = openJobsCache.filter(j => j.id !== wip);
+    for (const wip of wipList){
+      await db.collection("jobs").doc(wip).delete();
+      await db.collection("wipNotes").doc(wip).delete();
+      selectedJobs.delete(wip);
+    }
+    openJobsCache = openJobsCache.filter(j => !wipList.includes(j.id));
     renderOpenJobsList(document.getElementById("jobSearchField").value);
   } catch(err){
     console.error(err);
-    alert("Couldn't close the job — try again.");
+    alert("Couldn't close " + (plural ? "all of the selected jobs" : "the job") + " — try again.");
   }
 }
 
