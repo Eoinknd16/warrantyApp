@@ -13,6 +13,14 @@
     --radius:12px;
   }
   *{box-sizing:border-box;}
+  body.light{
+    --bg:#F3F3EF; --surface:#FFFFFF; --surface-2:#EDEDE7; --border:#DBDBD3;
+    --text:#1B1C1F; --text-dim:#6B6A66; --accent:#C98A00; --accent-text:#FFFFFF;
+    --danger:#C22A2E; --success:#1F8A3D; --info:#2C6E93;
+  }
+  body.light .pwa-flag-row.flagged{background:#FBEAEA;}
+  body.light .pwa-flag-row.flagged span{color:#B3272B;}
+  body.light .activity-row .meta, body.light .joc-meta, body.light .note-card .when{color:var(--text-dim);}
   body{margin:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
   button, input, textarea{font-family:inherit;}
@@ -30,7 +38,7 @@
     text-decoration:none;margin-bottom:2px;cursor:pointer;width:100%;}
   .nav-item:hover{background:var(--surface-2);color:var(--text);}
   .nav-item.active{background:var(--accent);color:var(--accent-text);}
-  .nav-link{margin-top:auto;border-top:1px solid var(--border);padding-top:16px;}
+  .nav-link{border-top:1px solid var(--border);padding-top:16px;}
 
   #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
   #topbar{margin-bottom:26px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
@@ -46,6 +54,7 @@
     .brand{display:none;}
     .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
     .nav-link{margin-top:0;border-top:none;padding-top:0;}
+    #themeToggleBtn{margin-top:0;}
     #mainArea{padding:18px;}
   }
 
@@ -198,10 +207,10 @@
       Dashboard</button>
     <button class="nav-item" data-page="notes" onclick="showPage('notes')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      Notes &amp; PWA flags</button>
+      <span id="navLabelNotes">Notes &amp; PWA flags</span></button>
     <button class="nav-item" data-page="rules" onclick="showPage('rules')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      PWA rules</button>
+      <span id="navLabelRules">PWA rules</span></button>
     <button class="nav-item" data-page="checklist" onclick="showPage('checklist')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Checklist items</button>
@@ -211,6 +220,13 @@
     <button class="nav-item" data-page="mechanics" onclick="showPage('mechanics')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Mechanics</button>
+    <button class="nav-item" data-page="settings" onclick="showPage('settings')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Settings</button>
+    <button class="nav-item" id="themeToggleBtn" onclick="toggleTheme()" style="margin-top:auto;">
+      <svg class="icon" id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="icon" id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="themeToggleLabel">Light mode</span></button>
     <a href="training-guide.html" target="_blank" class="nav-item nav-link">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Training guide</a>
@@ -283,8 +299,8 @@
     <div class="page" id="page-rules">
       <div class="panel">
         <h2>Claim settings</h2>
-        <p class="panel-sub">Used by the mechanic app's PWA checker.</p>
-        <label for="thresholdField">Claim value threshold (&euro;) &mdash; over this, PWA is always needed</label>
+        <p class="panel-sub" id="claimSettingsSub">Used by the mechanic app's PWA checker.</p>
+        <label for="thresholdField" id="thresholdLabel">Claim value threshold (&euro;) &mdash; over this, PWA is always needed</label>
         <input type="text" id="thresholdField" inputmode="numeric" placeholder="1250">
         <label for="labourRateField">Hourly labour rate (&euro;) &mdash; set once, rarely changes</label>
         <input type="text" id="labourRateField" inputmode="decimal" placeholder="91.72">
@@ -296,7 +312,7 @@
 
       <div class="panel">
         <h2>Job types</h2>
-        <p class="panel-sub">What Kia needs for each job type &mdash; read live by the mechanic app.</p>
+        <p class="panel-sub" id="jobTypesSub">What Kia needs for each job type &mdash; read live by the mechanic app.</p>
         <div id="jobTypesList"><p class="empty">Loading…</p></div>
       </div>
 
@@ -306,7 +322,7 @@
         <input type="text" id="newJobName" placeholder="e.g. Transmission">
         <label class="checkbox-label" for="newJobAlwaysPWA" style="margin-top:16px;">
           <input type="checkbox" id="newJobAlwaysPWA">
-          Always needs PWA, regardless of claim value
+          <span id="alwaysPwaLabel">Always needs PWA, regardless of claim value</span>
         </label>
         <label for="newJobMediaInput">Required photos/videos</label>
         <div class="add-row">
@@ -322,8 +338,8 @@
     <!-- ============ CHECKLIST ITEMS ============ -->
     <div class="page" id="page-checklist">
       <div class="panel">
-        <h2>PWA requirement items</h2>
-        <p class="panel-sub">The checklist you pick from when flagging a specific job as needing PWA. Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
+        <h2 id="checklistTitle">PWA requirement items</h2>
+        <p class="panel-sub" id="checklistSub">The checklist you pick from when flagging a specific job as needing PWA. Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
         <div id="pwaItemsList"><p class="empty">Loading…</p></div>
         <div class="add-row" style="margin-top:10px;">
           <input type="text" id="newPwaItemInput" placeholder="e.g. Fault video">
@@ -336,7 +352,7 @@
     <div class="page" id="page-jobs">
       <div class="panel">
         <h2>Open jobs</h2>
-        <p class="panel-sub">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched.</p>
+        <p class="panel-sub" id="openJobsDesc">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched.</p>
         <div class="jobs-toolbar">
           <div><input type="text" id="jobSearchField" placeholder="Search by WIP or reg…"></div>
           <button class="btn btn-secondary btn-inline no-print" onclick="exportOpenJobsCSV()" style="margin-top:0;">
@@ -368,6 +384,66 @@
           <button class="btn btn-secondary btn-inline" onclick="addMechanicAdmin()">Add</button>
         </div>
         <div class="status" id="mechanicAdminStatus"></div>
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div class="page" id="page-settings">
+      <div class="panel">
+        <h2>Manufacturer</h2>
+        <p class="panel-sub">Swaps terminology throughout the whole app &mdash; e.g. "PWA" only makes sense for Kia. Pick anything else and it switches to generic wording everywhere, no other changes needed.</p>
+        <label class="checkbox-label" style="margin-top:0;">
+          <input type="radio" name="manufacturerChoice" value="kia" id="mfrRadioKia" onchange="saveManufacturer('kia')">
+          Kia
+        </label>
+        <label class="checkbox-label">
+          <input type="radio" name="manufacturerChoice" value="generic" id="mfrRadioGeneric" onchange="saveManufacturer('generic')">
+          Other / generic
+        </label>
+        <div class="status" id="manufacturerStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Dealer details</h2>
+        <p class="panel-sub">Used for branding across the app and on exported reports.</p>
+        <label for="dealerNameField">Business name</label>
+        <input type="text" id="dealerNameField" placeholder="e.g. Hinchys Kia">
+        <label for="dealerAddressField">Address</label>
+        <input type="text" id="dealerAddressField" placeholder="e.g. Dock Road, Limerick">
+        <button class="btn" onclick="saveDealerDetails()">Save dealer details</button>
+        <div class="status" id="dealerStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Warranty email recipients</h2>
+        <p class="panel-sub">Every address a job should go to. The <b>first</b> one must be the inbox your Power Automate flow watches &mdash; that's the one the folder-filing logic depends on. Anyone else just gets a copy for visibility. Mechanics still have to pick these in their Mail app, so keep them saved as contacts on each phone.</p>
+        <div id="emailRecipientsList"><p class="empty">Loading…</p></div>
+        <div class="add-row" style="margin-top:10px;">
+          <input type="text" id="newEmailInput" placeholder="e.g. warranty@yourdealer.ie">
+          <button class="btn btn-secondary btn-inline" onclick="addEmailRecipient()">Add</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Currency</h2>
+        <p class="panel-sub">Used throughout the PWA checker's value calculator.</p>
+        <label for="currencyField">Currency symbol</label>
+        <input type="text" id="currencyField" placeholder="€" maxlength="3" style="max-width:120px;">
+        <button class="btn" onclick="saveCurrency()">Save currency</button>
+        <div class="status" id="currencyStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Appearance</h2>
+        <p class="panel-sub">Just for your device &mdash; each person who opens this admin panel can pick their own.</p>
+        <label class="checkbox-label" style="margin-top:0;">
+          <input type="radio" name="themeChoice" value="dark" id="themeRadioDark" onchange="setTheme('dark')">
+          Dark
+        </label>
+        <label class="checkbox-label">
+          <input type="radio" name="themeChoice" value="light" id="themeRadioLight" onchange="setTheme('light')">
+          Light
+        </label>
       </div>
     </div>
 
@@ -427,13 +503,70 @@ function csvEscape(val){
 /* ============================================================
    NAVIGATION
    ============================================================ */
+/* ============================================================
+   TERMINOLOGY — "PWA" is Kia-specific language. Any other
+   manufacturer setting swaps it for generic wording everywhere
+   this shows up, without touching any of the underlying logic.
+   ============================================================ */
+const TERMINOLOGY = {
+  kia: { short: "PWA", full: "Prior Work Approval", mfrName: "Kia" },
+  generic: { short: "Approval", full: "Prior Approval", mfrName: "the manufacturer" }
+};
+let manufacturer = "kia";
+let PWA_TERM = TERMINOLOGY.kia.short;
+let PWA_TERM_FULL = TERMINOLOGY.kia.full;
+
+function applyTerminology(){
+  const t = TERMINOLOGY[manufacturer] || TERMINOLOGY.kia;
+  PWA_TERM = t.short;
+  PWA_TERM_FULL = t.full;
+
+  document.getElementById("navLabelNotes").innerHTML = "Notes &amp; " + PWA_TERM + " flags";
+  document.getElementById("navLabelRules").textContent = PWA_TERM + " rules";
+  document.getElementById("thresholdLabel").innerHTML = "Claim value threshold (&euro;) &mdash; over this, " + PWA_TERM + " is always needed";
+  document.getElementById("claimSettingsSub").textContent = "Used by the mechanic app's " + PWA_TERM + " checker.";
+  document.getElementById("jobTypesSub").textContent = "What " + t.mfrName + " needs for each job type \u2014 read live by the mechanic app.";
+  document.getElementById("alwaysPwaLabel").textContent = "Always needs " + PWA_TERM + ", regardless of claim value";
+  document.getElementById("checklistTitle").textContent = PWA_TERM + " requirement items";
+  document.getElementById("checklistSub").innerHTML = "The checklist you pick from when flagging a specific job as needing " + PWA_TERM + ". Add whatever " + t.mfrName + " might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.";
+  document.getElementById("openJobsDesc").textContent = '"Close job" permanently deletes that job\'s Firebase data (reg link, send history, note, ' + PWA_TERM + ' flag). SharePoint files are untouched.';
+
+  PAGE_INFO.notes = ["Notes & " + PWA_TERM + " flags", "Send a note or flag a job for a specific WIP"];
+  PAGE_INFO.rules = [PWA_TERM + " rules", t.mfrName + "'s claim rules, read live by the mechanic app"];
+  PAGE_INFO.checklist = [PWA_TERM + " requirement items", "The library you pick from when flagging a job"];
+
+  if (WIDGET_LIBRARY["stat-pwaFlagged"]) WIDGET_LIBRARY["stat-pwaFlagged"].title = PWA_TERM + " flagged";
+  if (WIDGET_LIBRARY["chart-pwa"]) WIDGET_LIBRARY["chart-pwa"].title = PWA_TERM + " flagged vs not";
+
+  // Refresh whatever's currently on screen so the change is visible immediately,
+  // not just after navigating away and back.
+  const activeBtn = document.querySelector(".nav-item.active[data-page]");
+  if (activeBtn) showPage(activeBtn.dataset.page);
+}
+
+async function saveManufacturer(value){
+  manufacturer = value;
+  applyTerminology();
+  const statusEl = document.getElementById("manufacturerStatus");
+  try {
+    await db.collection("config").doc("appSettings").set({ manufacturer: value }, { merge: true });
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
 const PAGE_INFO = {
   dashboard: ["Dashboard", "A quick read on what's currently going on"],
   notes: ["Notes & PWA flags", "Send a note or flag a job for a specific WIP"],
   rules: ["PWA rules", "Kia's claim rules, read live by the mechanic app"],
   checklist: ["Checklist items", "The library you pick from when flagging a job"],
   jobs: ["Open jobs", "Everything currently tracked in Firebase"],
-  mechanics: ["Mechanics", "Who shows up on the app's first screen"]
+  mechanics: ["Mechanics", "Who shows up on the app's first screen"],
+  settings: ["Settings", "Dealer details, email routing, currency"]
 };
 
 function showPage(id){
@@ -446,11 +579,40 @@ function showPage(id){
   if (id === "dashboard") loadDashboard();
   else if (id === "jobs" && !openJobsLoaded) loadOpenJobs();
   else if (id === "mechanics" && !mechanicsAdminLoaded) loadMechanicsAdmin();
+  else if (id === "settings" && !appSettingsLoaded) loadAppSettingsAdmin();
 }
 
 function toggleCollapsible(id){
   document.getElementById(id).classList.toggle("open");
 }
+
+/* ============================================================
+   THEME — per-device preference, stored locally, not shared via Firestore
+   ============================================================ */
+function applyTheme(theme){
+  document.body.classList.toggle("light", theme === "light");
+  document.getElementById("iconSun").style.display = theme === "light" ? "none" : "block";
+  document.getElementById("iconMoon").style.display = theme === "light" ? "block" : "none";
+  document.getElementById("themeToggleLabel").textContent = theme === "light" ? "Dark mode" : "Light mode";
+  const darkRadio = document.getElementById("themeRadioDark");
+  const lightRadio = document.getElementById("themeRadioLight");
+  if (darkRadio && lightRadio){
+    darkRadio.checked = theme !== "light";
+    lightRadio.checked = theme === "light";
+  }
+}
+
+function setTheme(theme){
+  localStorage.setItem("warrantyAdminTheme", theme);
+  applyTheme(theme);
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function toggleTheme(){
+  setTheme(document.body.classList.contains("light") ? "dark" : "light");
+}
+
+applyTheme(localStorage.getItem("warrantyAdminTheme") || "dark");
 
 /* ============================================================
    DASHBOARD — customizable widget system
@@ -606,9 +768,12 @@ function renderDashboardWidgets(ctx){
 }
 
 function chartAxisOptions(){
+  const isLight = document.body.classList.contains("light");
+  const tickColor = isLight ? "#6B6A66" : "#9C9AA5";
+  const gridColor = isLight ? "#DBDBD3" : "#34363F";
   return {
-    x: { ticks: { color: "#9C9AA5", font: { size: 11 } }, grid: { color: "#34363F" } },
-    y: { ticks: { color: "#9C9AA5", font: { size: 11 }, precision: 0 }, grid: { color: "#34363F" }, beginAtZero: true }
+    x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
+    y: { ticks: { color: tickColor, font: { size: 11 }, precision: 0 }, grid: { color: gridColor }, beginAtZero: true }
   };
 }
 
@@ -639,11 +804,12 @@ function renderWidgetBody(type, body, ctx){
     body.appendChild(wrap);
 
     const notFlagged = Math.max(ctx.totalOpen - ctx.flaggedCount, 0);
+    const isLight = document.body.classList.contains("light");
     const chart = new Chart(canvas.getContext("2d"), {
       type: "doughnut",
       data: { labels: ["Flagged", "Not flagged"], datasets: [{ data: [ctx.flaggedCount, notFlagged],
-        backgroundColor: ["#E5484D", "#34363F"], borderWidth: 0 }] },
-      options: { plugins: { legend: { position: "bottom", labels: { color: "#9C9AA5" } } }, maintainAspectRatio: false }
+        backgroundColor: ["#E5484D", isLight ? "#DBDBD3" : "#34363F"], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: "bottom", labels: { color: isLight ? "#6B6A66" : "#9C9AA5" } } }, maintainAspectRatio: false }
     });
     dashChartInstances.push(chart);
 
@@ -667,7 +833,7 @@ function buildActivityRow(job){
   row.innerHTML =
     '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
     '<div class="meta">' + (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
-    historyCount + " sent" + (job.pwaFlag ? " &middot; \ud83d\udd34 PWA" : "") + '</div></div>' +
+    historyCount + " sent" + (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM : "") + '</div></div>' +
     '<div class="meta">' + escapeHtml(when) + '</div>';
   return row;
 }
@@ -751,7 +917,7 @@ function exportDashboardCSV(){
   const ctx = lastDashboardCtx;
   const rows = [["Metric", "Value"]];
   rows.push(["Open jobs", ctx.totalOpen]);
-  rows.push(["PWA flagged", ctx.flaggedCount]);
+  rows.push([PWA_TERM + " flagged", ctx.flaggedCount]);
   rows.push(["Active notes", ctx.activeNotes]);
   rows.push(["Items sent", ctx.totalSent]);
   rows.push(["Checklists complete", ctx.flaggedCount ? (ctx.completedFlagged + " / " + ctx.flaggedCount) : ""]);
@@ -768,7 +934,7 @@ function exportDashboardCSV(){
 }
 
 function exportOpenJobsCSV(){
-  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", "PWA Flagged", "Last Updated"]];
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated"]];
   currentlyFilteredJobs.forEach(job => {
     const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
     rows.push([
@@ -911,7 +1077,7 @@ async function refreshPwaFlagRow(wip){
   section.style.display = "block";
   flagRow.classList.toggle("flagged", flagged);
   flagStatus.textContent = flagged
-    ? "\ud83d\udd34 Flagged as needing PWA" + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
+    ? "\ud83d\udd34 Flagged as needing " + PWA_TERM + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
     : "Not flagged";
 
   if (!pwaChecklistItemsCache.length){
@@ -1115,7 +1281,7 @@ function buildJobTypeCard(jt, index){
   alwaysCheckbox.type = "checkbox";
   alwaysCheckbox.checked = !!jt.alwaysPWA;
   alwaysLabel.appendChild(alwaysCheckbox);
-  alwaysLabel.appendChild(document.createTextNode("Always needs PWA, regardless of claim value"));
+  alwaysLabel.appendChild(document.createTextNode("Always needs " + PWA_TERM + ", regardless of claim value"));
   card.appendChild(alwaysLabel);
 
   let mediaItems = Array.isArray(jt.requiredMedia) ? jt.requiredMedia.slice() : [];
@@ -1321,7 +1487,7 @@ function buildOpenJobCard(job){
     '<div class="joc-meta">' +
     (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
     historyCount + " sent" +
-    (job.pwaFlag ? " &middot; \ud83d\udd34 PWA flagged" : "") +
+    (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
     '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>';
   card.appendChild(info);
 
@@ -1361,7 +1527,7 @@ async function closeJobs(wipList){
   const plural = wipList.length > 1;
   const label = plural ? wipList.length + " jobs" : "job " + wipList[0];
   if (!confirm("Close " + label + "? This permanently deletes " + (plural ? "their" : "its") +
-    " Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+    " Firebase data — reg link, send history, note, " + PWA_TERM + " flag. SharePoint files are not affected.")) return;
 
   try {
     for (const wip of wipList){
@@ -1459,8 +1625,168 @@ async function removeMechanicAdmin(index){
 }
 
 /* ============================================================
+   SETTINGS
+   ============================================================ */
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [] };
+let appSettingsLoaded = false;
+
+async function loadAppSettingsAdmin(){
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists){
+      const data = doc.data();
+      appSettingsCache.dealerName = data.dealerName || "";
+      appSettingsCache.dealerAddress = data.dealerAddress || "";
+      appSettingsCache.currencySymbol = data.currencySymbol || "\u20ac";
+      appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
+      manufacturer = data.manufacturer || "kia";
+    }
+    appSettingsLoaded = true;
+  } catch(err){
+    console.error(err);
+    document.getElementById("emailRecipientsList").innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  document.getElementById("dealerNameField").value = appSettingsCache.dealerName;
+  document.getElementById("dealerAddressField").value = appSettingsCache.dealerAddress;
+  document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
+  document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
+  document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
+  renderEmailRecipientsList();
+}
+
+async function saveAppSettingsToFirestore(){
+  await db.collection("config").doc("appSettings").set(appSettingsCache, { merge: true });
+}
+
+async function saveDealerDetails(){
+  const statusEl = document.getElementById("dealerStatus");
+  appSettingsCache.dealerName = document.getElementById("dealerNameField").value.trim();
+  appSettingsCache.dealerAddress = document.getElementById("dealerAddressField").value.trim();
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function saveCurrency(){
+  const statusEl = document.getElementById("currencyStatus");
+  const val = document.getElementById("currencyField").value.trim();
+  if (!val){
+    statusEl.textContent = "Enter a currency symbol first.";
+    statusEl.className = "status err";
+    return;
+  }
+  appSettingsCache.currencySymbol = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function renderEmailRecipientsList(){
+  const listEl = document.getElementById("emailRecipientsList");
+  if (!appSettingsCache.emailRecipients.length){
+    listEl.innerHTML = '<p class="empty">No recipients yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  appSettingsCache.emailRecipients.forEach((email, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(email) + (i === 0 ? " <b>(primary)</b>" : "") + "</span>";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "order-btn";
+    upBtn.textContent = "\u2191";
+    upBtn.disabled = i === 0;
+    upBtn.onclick = () => moveEmailRecipient(i, -1);
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "order-btn";
+    downBtn.textContent = "\u2193";
+    downBtn.disabled = i === appSettingsCache.emailRecipients.length - 1;
+    downBtn.onclick = () => moveEmailRecipient(i, 1);
+
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeEmailRecipient(i);
+
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function addEmailRecipient(){
+  const input = document.getElementById("newEmailInput");
+  const val = input.value.trim();
+  if (!val) return;
+  appSettingsCache.emailRecipients.push(val);
+  input.value = "";
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function removeEmailRecipient(index){
+  appSettingsCache.emailRecipients.splice(index, 1);
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function moveEmailRecipient(index, delta){
+  const newIndex = index + delta;
+  if (newIndex < 0 || newIndex >= appSettingsCache.emailRecipients.length) return;
+  const tmp = appSettingsCache.emailRecipients[index];
+  appSettingsCache.emailRecipients[index] = appSettingsCache.emailRecipients[newIndex];
+  appSettingsCache.emailRecipients[newIndex] = tmp;
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function loadManufacturerSetting(){
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists && doc.data().manufacturer){
+      manufacturer = doc.data().manufacturer;
+    }
+  } catch(err){
+    console.error("Couldn't load manufacturer setting", err);
+  }
+  applyTerminology();
+}
+
+/* ============================================================
    INIT
    ============================================================ */
+loadManufacturerSetting();
 loadDashboard();
 loadNotes();
 loadPwaRules();
