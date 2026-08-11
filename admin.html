@@ -13,6 +13,10 @@
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
   #app{max-width:640px;margin:0 auto;padding:24px 20px 60px;}
+  .training-link{display:inline-flex;align-items:center;font-size:13px;font-weight:600;
+    color:var(--text-dim);text-decoration:none;border:1px solid var(--border);border-radius:20px;
+    padding:6px 14px;margin-bottom:16px;background:var(--surface);}
+  .training-link:active{background:var(--surface-2);}
   h1{font-size:22px;margin:0 0 4px;}
   .sub{color:var(--text-dim);font-size:14px;margin:0 0 24px;}
   label{display:block;font-size:13px;color:var(--text-dim);font-weight:600;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px;}
@@ -100,6 +104,7 @@
 </head>
 <body>
 <div id="app">
+  <a href="training-guide.html" target="_blank" class="training-link">&#128218;&nbsp; Training guide</a>
   <h1>Send a note to a WIP</h1>
   <p class="sub">The mechanic sees this the moment they type in that WIP number in the app.</p>
 
