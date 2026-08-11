@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warranty app — training guide</title>
+<style>
+  :root{
+    --bg:#17181A; --surface:#212226; --surface-2:#2B2D31; --border:#3A3C41;
+    --text:#F4F2EC; --text-dim:#A9A69D; --accent:#F5B300; --accent-text:#1A1300;
+    --danger:#E5484D; --success:#2FA84F;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    line-height:1.5;}
+  #app{max-width:680px;margin:0 auto;padding:28px 20px 60px;}
+  h1{font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--text-dim);font-size:15px;margin:0 0 28px;}
+  h2.group-title{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim);
+    margin:32px 0 10px;}
+
+  .collapsible{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+  .collapsible-header{width:100%;background:var(--surface);border:none;color:var(--text);
+    padding:16px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px;
+    text-align:left;cursor:pointer;}
+  .collapsible-header .icon{font-size:18px;}
+  .collapsible-header .chevron{margin-left:auto;transition:transform .15s ease;color:var(--text-dim);font-size:14px;}
+  .collapsible.open .collapsible-header .chevron{transform:rotate(90deg);}
+  .collapsible-body{display:none;padding:0 16px 18px;border-top:1px solid var(--border);}
+  .collapsible.open .collapsible-body{display:block;padding-top:14px;}
+
+  .collapsible-body ol, .collapsible-body ul{margin:0 0 14px;padding-left:20px;}
+  .collapsible-body li{margin-bottom:8px;font-size:15px;}
+  .collapsible-body li:last-child{margin-bottom:0;}
+  .collapsible-body p{font-size:15px;margin:0 0 12px;}
+  .collapsible-body p:last-child{margin-bottom:0;}
+
+  .badge-example{display:inline-flex;align-items:center;gap:5px;border-radius:14px;padding:4px 10px;
+    font-size:12px;font-weight:700;vertical-align:middle;}
+  .badge-note{background:#3A2E00;color:#F5D77A;border:1px solid var(--accent);}
+  .badge-sent{background:#152A38;color:#B9DCEF;border:1px solid #3E7FA6;}
+  .badge-pwa{background:#2B0705;color:#FF9C9C;border:1px solid var(--danger);}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Warranty app — how it works</h1>
+  <p class="sub">Tap a topic to open it. Skip straight to whatever you need.</p>
+
+  <h2 class="group-title">Doing a job</h2>
+
+  <div class="collapsible" id="s1">
+    <button class="collapsible-header" onclick="toggle('s1')">
+      <span class="icon">&#128663;</span><span>Starting a job</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <ol>
+        <li>Open the app, tap your name.</li>
+        <li>Type in the 5-digit WIP number.</li>
+        <li>Type in the reg. <b>If you've already done this WIP before, it skips straight past this</b> — the reg auto-fills and you go straight to photos. It's still shown on screen so you can double-check it's right.</li>
+      </ol>
+      <p>Got the wrong reg showing? Tap the back arrow, fix it, tap Continue.</p>
+    </div>
+  </div>
+
+  <div class="collapsible" id="s2">
+    <button class="collapsible-header" onclick="toggle('s2')">
+      <span class="icon">&#128247;</span><span>Taking photos &amp; video</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <ul>
+        <li><b>Take photo</b> / <b>Record video</b> — opens your camera as normal.</li>
+        <li><b>Add from photos/files</b> — for screenshots or anything already on the phone. You can pick several at once.</li>
+        <li>After each one, you'll be asked what it's of (VIN, Mileage, Fault, LOT, or type your own). This decides the filename.</li>
+        <li>VIN and Mileage only keep one each — take another and it swaps out the old one. Fault, LOT, and Other can have as many as you need.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collapsible" id="s3">
+    <button class="collapsible-header" onclick="toggle('s3')">
+      <span class="icon">&#9993;</span><span>Sending the job</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <ol>
+        <li>Tap <b>Send job</b>.</li>
+        <li>Your phone's share menu opens — pick <b>Mail</b>.</li>
+        <li>Check the address is filled in, then <b>you must tap Send in Mail yourself</b> — the app can't do this last bit for you.</li>
+      </ol>
+      <p>If you don't actually hit Send in the Mail app, nothing gets filed — the photos aren't lost, but they won't go anywhere until you do.</p>
+    </div>
+  </div>
+
+  <h2 class="group-title">Notices you might see</h2>
+
+  <div class="collapsible" id="s4">
+    <button class="collapsible-header" onclick="toggle('s4')">
+      <span class="icon">&#128276;</span><span>Badges under the header</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p><span class="badge-example badge-note">&#128276; Note</span> — the office left you a message about this job. Tap it to read.</p>
+      <p><span class="badge-example badge-sent">&#128203; Sent (3)</span> — shows what's already been sent for this WIP on a previous visit, so you know what's still needed.</p>
+      <p><span class="badge-example badge-pwa">&#128308; PWA required</span> — this job needs Prior Work Approval. When you tap Send, you'll be asked to confirm you've got everything needed before it lets you proceed.</p>
+    </div>
+  </div>
+
+  <h2 class="group-title">Checking PWA yourself</h2>
+
+  <div class="collapsible" id="s5">
+    <button class="collapsible-header" onclick="toggle('s5')">
+      <span class="icon">&#128203;</span><span>The PWA checker</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p>Tap the &#128203; icon in the header, from any screen — it doesn't lose your progress on the job, "Back to job" just returns you exactly where you were.</p>
+      <ol>
+        <li>Pick the job type.</li>
+        <li>If needed, enter the <b>part value</b> (parts only, not labour).</li>
+        <li>Estimate the <b>labour time</b> — hours plus 0/15/30/45 minutes.</li>
+        <li>You'll get one of three answers: <b>PWA needed</b>, <b>check with the office first</b> (it's close to the limit), or <b>no PWA needed</b> — plus what Kia wants photographed for that job type.</li>
+      </ol>
+      <p>If a job's already been flagged by the office, you won't need to run this — the red badge tells you straight away.</p>
+    </div>
+  </div>
+
+  <h2 class="group-title">Office / admin side</h2>
+
+  <div class="collapsible" id="s6">
+    <button class="collapsible-header" onclick="toggle('s6')">
+      <span class="icon">&#128276;</span><span>Sending a note to a job</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p>Type the WIP number, type a message, tap Send note. The mechanic sees it the moment they enter that WIP.</p>
+    </div>
+  </div>
+
+  <div class="collapsible" id="s7">
+    <button class="collapsible-header" onclick="toggle('s7')">
+      <span class="icon">&#128308;</span><span>Flagging a job as needing PWA</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <ol>
+        <li>Type the WIP number.</li>
+        <li>Tap "Set required items" to open the checklist.</li>
+        <li>Tick whichever items this specific job needs.</li>
+        <li>Tap <b>Save PWA requirement</b>.</li>
+      </ol>
+      <p>The mechanic now sees a red badge on that job, and can't send it without first confirming they've got everything you ticked. <b>Clear flag</b> removes it.</p>
+    </div>
+  </div>
+
+  <div class="collapsible" id="s8">
+    <button class="collapsible-header" onclick="toggle('s8')">
+      <span class="icon">&#9881;</span><span>Managing job types &amp; PWA settings</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <ul>
+        <li><b>Claim value threshold</b> — over this, PWA is always needed.</li>
+        <li><b>Hourly labour rate</b> — used by the checker's calculator. Rarely needs changing.</li>
+        <li><b>"Check with the office" buffer</b> — how close to the threshold counts as a borderline case.</li>
+        <li><b>Job types</b> — add/edit/remove the categories mechanics pick from, and what photos each one needs.</li>
+        <li><b>PWA requirement items</b> — the master checklist you pick from when flagging a specific job (CVN, LOT, fault video, etc).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collapsible" id="s9">
+    <button class="collapsible-header" onclick="toggle('s9')">
+      <span class="icon">&#128203;</span><span>Closing old jobs</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p>Open the "Open jobs" list — search by WIP or reg, or just scroll. Tick the ones you're done with (or use "Select all"), tap <b>Close selected</b>.</p>
+      <p>This deletes that job's data from the app — reg link, history, notes, PWA flag. <b>It does not touch anything already sitting in SharePoint</b> — that stays exactly as is. This is just about clearing data the app doesn't need to keep anymore.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggle(id){
+  document.getElementById(id).classList.toggle("open");
+}
+</script>
+</body>
+</html>
