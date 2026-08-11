@@ -48,6 +48,7 @@
 
   <label for="wipField">WIP number</label>
   <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
+  <div class="status" id="wipStatus"></div>
 
   <label for="msgField">Message</label>
   <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
@@ -65,22 +66,54 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 /* ============================================================
-   CONFIG — paste your Firebase project's config here (Part 2 of
-   the setup guide walks through where to get this). It's safe for
-   this to be visible in the page source — Firebase access control
-   is enforced by Firestore's security rules, not by hiding this.
+   CONFIG — same Firebase project/config as index.html.
+   Safe for this to be visible in the page source — Firebase
+   access control is enforced by Firestore's security rules,
+   not by hiding this.
    ============================================================ */
 const FIREBASE_CONFIG = {
-  apiKey: "EDIT ME",
-  authDomain: "EDIT ME",
-  projectId: "EDIT ME",
-  storageBucket: "EDIT ME",
-  messagingSenderId: "EDIT ME",
-  appId: "EDIT ME"
+  apiKey: "AIzaSyBcpFoOaSmP1kx_fSbvXGeCdkzCTGSdvso",
+  authDomain: "warrantyapp-fb676.firebaseapp.com",
+  projectId: "warrantyapp-fb676",
+  storageBucket: "warrantyapp-fb676.firebasestorage.app",
+  messagingSenderId: "1031213749394",
+  appId: "1:1031213749394:web:cb5b7a818bb1507703c24b"
 };
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
+
+document.getElementById("wipField").addEventListener("input", async (e) => {
+  const wip = e.target.value.trim();
+  const wipStatusEl = document.getElementById("wipStatus");
+  const msgField = document.getElementById("msgField");
+
+  if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
+    wipStatusEl.textContent = "";
+    wipStatusEl.className = "status";
+    return;
+  }
+
+  wipStatusEl.textContent = "Checking for an existing note…";
+  wipStatusEl.className = "status";
+
+  try {
+    const doc = await db.collection("wipNotes").doc(wip).get();
+    if (doc.exists && doc.data().message){
+      msgField.value = doc.data().message;
+      wipStatusEl.textContent = "Editing the existing note for WIP " + wip + " — sending will overwrite it.";
+      wipStatusEl.className = "status ok";
+    } else {
+      msgField.value = "";
+      wipStatusEl.textContent = "No existing note for WIP " + wip + " — this will create a new one.";
+      wipStatusEl.className = "status";
+    }
+  } catch(err){
+    console.error(err);
+    wipStatusEl.textContent = "Couldn't check for an existing note.";
+    wipStatusEl.className = "status err";
+  }
+});
 
 async function sendNote(){
   const wip = document.getElementById("wipField").value.trim();
