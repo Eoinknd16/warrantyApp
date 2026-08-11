@@ -111,6 +111,10 @@
     padding:12px 0;border-bottom:1px solid var(--border);font-size:15px;}
   #noteDetailBody .hist-row span{color:var(--text-dim);font-size:13px;white-space:nowrap;}
   #noteDetailClose{margin-top:20px;}
+  .pwa-check-row{display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 4px;
+    border-bottom:1px solid var(--border);font-size:16px;font-weight:600;cursor:pointer;}
+  .pwa-check-row:last-child{border-bottom:none;}
+  .pwa-check-row input{width:24px;height:24px;flex-shrink:0;}
 
   #pwaOverlay{position:fixed;inset:0;background:var(--bg);z-index:120;
     display:none;flex-direction:column;padding:20px;overflow-y:auto;gap:14px;}
@@ -716,6 +720,7 @@ let currentAdminNoteMessage = null;
 let currentJobHistory = null;
 let currentPwaFlag = false;
 let currentPwaRequiredItems = [];
+let pwaChecklistCheckedState = new Set(); // mechanic's own tick-as-you-go progress, not saved anywhere
 
 async function checkForAdminNote(wip){
   currentAdminNoteMessage = null;
@@ -737,6 +742,7 @@ async function checkForJob(wip){
   currentJobHistory = null;
   currentPwaFlag = false;
   currentPwaRequiredItems = [];
+  pwaChecklistCheckedState = new Set();
   document.getElementById("jobHistoryBadge").classList.remove("show");
   document.getElementById("pwaFlagBadge").classList.remove("show");
   if (!db) return null;
@@ -783,7 +789,30 @@ function showNoteOverlay(type){
     bodyEl.innerHTML = '<p>' + escapeHtml(currentAdminNoteMessage || "") + '</p>';
   } else if (type === "pwaFlag"){
     titleEl.textContent = "PWA required";
-    bodyEl.innerHTML = "<p>This job has been flagged by the office as needing Prior Work Approval before you go ahead.</p>";
+    bodyEl.innerHTML = "";
+    if (currentPwaRequiredItems.length){
+      const intro = document.createElement("p");
+      intro.textContent = "Tick these off as you go \u2014 just for your own reference, this doesn't need to be filled in to send.";
+      bodyEl.appendChild(intro);
+      currentPwaRequiredItems.forEach((item, i) => {
+        const row = document.createElement("label");
+        row.className = "pwa-check-row";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = pwaChecklistCheckedState.has(i);
+        cb.onchange = () => {
+          if (cb.checked) pwaChecklistCheckedState.add(i);
+          else pwaChecklistCheckedState.delete(i);
+        };
+        row.appendChild(cb);
+        const span = document.createElement("span");
+        span.textContent = item;
+        row.appendChild(span);
+        bodyEl.appendChild(row);
+      });
+    } else {
+      bodyEl.innerHTML = "<p>This job has been flagged by the office as needing Prior Work Approval before you go ahead.</p>";
+    }
   } else {
     titleEl.textContent = "Already sent for this job";
     bodyEl.innerHTML = formatHistoryList(currentJobHistory || []);
@@ -1507,6 +1536,7 @@ function resetForNewJob(keepMechanic){
   currentJobHistory = null;
   currentPwaFlag = false;
   currentPwaRequiredItems = [];
+  pwaChecklistCheckedState = new Set();
   closeNoteOverlay();
   state = {
     step: 1,
