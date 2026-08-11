@@ -111,11 +111,18 @@
     <div class="pwa-flag-row" id="pwaFlagRow">
       <span id="pwaFlagStatus"></span>
     </div>
-    <p class="sub" style="margin:10px 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
-    <div id="pwaWipChecklist"></div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn" style="margin:0;min-height:44px;" onclick="savePwaFlagForWip()">Save PWA requirement</button>
-      <button class="btn btn-secondary" style="margin:0;min-height:44px;" onclick="clearPwaFlagForWip()">Clear flag</button>
+    <div class="collapsible" id="pwaFlagChecklistCollapsible">
+      <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
+        <span>Set required items</span><span class="chevron">&#9656;</span>
+      </button>
+      <div class="collapsible-body">
+        <p class="sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+        <div id="pwaWipChecklist"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn" style="margin:0;min-height:44px;" onclick="savePwaFlagForWip()">Save PWA requirement</button>
+          <button class="btn btn-secondary" style="margin:0;min-height:44px;" onclick="clearPwaFlagForWip()">Clear flag</button>
+        </div>
+      </div>
     </div>
   </div>
 
