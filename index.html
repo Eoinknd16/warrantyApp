@@ -139,6 +139,17 @@
     border-bottom:1px solid var(--border);font-size:15px;}
   .media-list .breakdown-row:last-child{border-bottom:none;font-weight:800;color:var(--accent);}
 
+  #pwaSendCheckOverlay{position:fixed;inset:0;background:rgba(10,10,11,.96);z-index:130;
+    display:none;flex-direction:column;padding:24px 20px;overflow-y:auto;text-align:center;}
+  #pwaSendCheckOverlay.show{display:flex;}
+  .pwa-send-badge{font-size:48px;margin-bottom:8px;}
+  .pwa-send-list{list-style:none;margin:16px 0;padding:0;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius);text-align:left;}
+  .pwa-send-list li{padding:14px 18px;border-bottom:1px solid var(--border);font-size:17px;font-weight:600;}
+  .pwa-send-list li:last-child{border-bottom:none;}
+  .pwa-send-list li::before{content:"\2713  ";color:var(--success);font-weight:800;}
+  #pwaSendCheckOverlay .btn{margin-bottom:10px;}
+
   .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
   #importBtn{min-height:60px;font-size:15px;}
@@ -225,7 +236,7 @@
     <section class="screen" id="screen-3">
       <div class="step-label">Step 3 of 4</div>
       <h2 class="big-title">Enter the reg</h2>
-      <div class="keypad-display" id="regDisplay"><span class="ph">Tap keys below</span></div>
+      <div class="keypad-display" id="regDisplay"><span class="ph">Reg</span></div>
       <div class="reg-kb">
         <div class="reg-kb-toprow">
           <button class="btn reg-mode-btn" id="regModeBtn" onclick="toggleRegMode()">ABC</button>
@@ -327,6 +338,16 @@
     <div class="spacer"></div>
     <button class="btn btn-primary" onclick="pwaResetTool()">Check another job</button>
   </div>
+</div>
+
+<div id="pwaSendCheckOverlay">
+  <div class="pwa-send-badge">&#128308;</div>
+  <h2 class="big-title">This job needs PWA</h2>
+  <p class="sub">Before you send &mdash; have you got everything on this list?</p>
+  <ul id="pwaSendCheckList" class="pwa-send-list"></ul>
+  <div class="spacer"></div>
+  <button class="btn btn-primary" onclick="confirmPwaSendCheck(true)">Yes, got it all &mdash; send</button>
+  <button class="btn" onclick="confirmPwaSendCheck(false)">No, let me check first</button>
 </div>
 
 <div id="labelOverlay">
@@ -554,6 +575,8 @@ async function handleWipComplete(wip){
 
 let currentAdminNoteMessage = null;
 let currentJobHistory = null;
+let currentPwaFlag = false;
+let currentPwaRequiredItems = [];
 
 async function checkForAdminNote(wip){
   currentAdminNoteMessage = null;
@@ -573,6 +596,8 @@ async function checkForAdminNote(wip){
 
 async function checkForJob(wip){
   currentJobHistory = null;
+  currentPwaFlag = false;
+  currentPwaRequiredItems = [];
   document.getElementById("jobHistoryBadge").classList.remove("show");
   document.getElementById("pwaFlagBadge").classList.remove("show");
   if (!db) return null;
@@ -592,6 +617,8 @@ async function checkForJob(wip){
     }
 
     if (data.pwaFlag){
+      currentPwaFlag = true;
+      currentPwaRequiredItems = Array.isArray(data.pwaRequiredItems) ? data.pwaRequiredItems : [];
       document.getElementById("pwaFlagBadge").classList.add("show");
     }
 
@@ -915,7 +942,7 @@ function regClear(){
 
 function updateRegDisplay(){
   const el = document.getElementById("regDisplay");
-  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Reg</span>';
 
   document.getElementById("folderPreview").innerHTML = state.reg
     ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
@@ -1240,7 +1267,31 @@ function newJobId(){
   return "job_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
 }
 
-async function startSubmit(){
+function startSubmit(){
+  if (!state.captures.length) return;
+  if (currentPwaFlag){
+    showPwaSendCheck();
+    return;
+  }
+  actuallySubmit();
+}
+
+function showPwaSendCheck(){
+  const listEl = document.getElementById("pwaSendCheckList");
+  if (currentPwaRequiredItems.length){
+    listEl.innerHTML = currentPwaRequiredItems.map(i => "<li>" + escapeHtml(i) + "</li>").join("");
+  } else {
+    listEl.innerHTML = "<li>Everything Kia needs for this job type</li>";
+  }
+  document.getElementById("pwaSendCheckOverlay").classList.add("show");
+}
+
+function confirmPwaSendCheck(confirmed){
+  document.getElementById("pwaSendCheckOverlay").classList.remove("show");
+  if (confirmed) actuallySubmit();
+}
+
+async function actuallySubmit(){
   if (!state.captures.length) return;
 
   if (!navigator.share){
@@ -1315,6 +1366,8 @@ function resetForNewJob(keepMechanic){
   document.getElementById("pwaFlagBadge").classList.remove("show");
   currentAdminNoteMessage = null;
   currentJobHistory = null;
+  currentPwaFlag = false;
+  currentPwaRequiredItems = [];
   closeNoteOverlay();
   state = {
     step: 1,
