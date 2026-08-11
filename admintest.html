@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warranty app — admin</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#15161A; --surface:#1E1F24; --surface-2:#282A31; --border:#34363F;
+    --text:#F4F2EC; --text-dim:#9C9AA5; --accent:#F5B300; --accent-text:#1A1300;
+    --danger:#E5484D; --success:#2FA84F; --info:#3E7FA6;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+  button, input, textarea{font-family:inherit;}
+
+  /* ---------- shell layout ---------- */
+  #shell{display:flex;min-height:100vh;}
+  #sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .brand{font-size:15px;font-weight:800;padding:10px 12px 22px;letter-spacing:.2px;}
+  .brand span{display:block;font-size:11px;font-weight:600;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.6px;margin-top:2px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;border:none;
+    background:none;color:var(--text-dim);font-size:14px;font-weight:600;text-align:left;
+    text-decoration:none;margin-bottom:2px;cursor:pointer;width:100%;}
+  .nav-item:hover{background:var(--surface-2);color:var(--text);}
+  .nav-item.active{background:var(--accent);color:var(--accent-text);}
+  .nav-icon{font-size:16px;width:18px;text-align:center;flex-shrink:0;}
+  .nav-link{margin-top:auto;border-top:1px solid var(--border);padding-top:16px;}
+
+  #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
+  #topbar{margin-bottom:26px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
+  #pageTitle{font-size:25px;font-weight:800;margin:0;}
+  #pageSub{color:var(--text-dim);font-size:14px;margin:4px 0 0;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  @media (max-width:880px){
+    #shell{flex-direction:column;}
+    #sidebar{width:100%;height:auto;position:static;flex-direction:row;overflow-x:auto;
+      padding:10px 12px;border-right:none;border-bottom:1px solid var(--border);align-items:center;}
+    .brand{display:none;}
+    .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
+    .nav-link{margin-top:0;border-top:none;padding-top:0;}
+    #mainArea{padding:18px;}
+  }
+
+  /* ---------- shared building blocks ---------- */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:20px;}
+  .panel h2{margin:0 0 4px;font-size:17px;font-weight:700;}
+  .panel h3{margin:0 0 16px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);}
+  .panel .panel-sub{color:var(--text-dim);font-size:13px;margin:0 0 18px;}
+
+  label{display:block;font-size:12px;color:var(--text-dim);font-weight:700;margin:16px 0 6px;
+    text-transform:uppercase;letter-spacing:.4px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], textarea{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    border-radius:9px;padding:11px 13px;font-size:15px;}
+  textarea{min-height:90px;resize:vertical;}
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;
+    min-height:42px;border-radius:9px;border:1px solid var(--accent);
+    background:var(--accent);color:var(--accent-text);font-size:14px;font-weight:700;padding:0 18px;
+    cursor:pointer;width:100%;}
+  .btn:disabled{opacity:.5;pointer-events:none;}
+  .btn-secondary{background:none;color:var(--text);border:1px solid var(--border);}
+  .btn-delete{background:none;color:var(--danger);border:1px solid var(--danger);}
+  .btn-block{width:100%;}
+  .btn-inline{width:auto;margin:0;padding:0 14px;min-height:38px;font-size:13px;}
+
+  .status{font-size:13px;margin-top:8px;min-height:18px;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+  .empty{color:var(--text-dim);font-size:14px;}
+
+  /* ---------- dashboard ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .stat-card .stat-value{font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;}
+  .stat-card .stat-label{font-size:12px;color:var(--text-dim);margin-top:6px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.3px;}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:880px){.chart-grid{grid-template-columns:1fr;}}
+  .chart-wrap{position:relative;height:220px;}
+  .activity-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+    padding:12px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .activity-row:last-child{border-bottom:none;padding-bottom:0;}
+  .activity-row .meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+
+  /* ---------- notes / flags ---------- */
+  .note-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+  .note-card .wip{font-weight:700;font-size:14px;margin-bottom:4px;}
+  .note-card .msg{font-size:14px;color:var(--text-dim);white-space:pre-wrap;}
+  .note-card .when{font-size:11px;color:var(--text-dim);margin-top:6px;}
+  .note-card button{flex-shrink:0;}
+
+  .pwa-flag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;margin-top:12px;}
+  .pwa-flag-row span{font-size:13px;font-weight:700;}
+  .pwa-flag-row.flagged{border-color:var(--danger);background:#2B0705;}
+  .pwa-flag-row.flagged span{color:#FF9C9C;}
+
+  .collapsible{margin-top:12px;border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+  .collapsible-header{width:100%;background:var(--surface-2);border:none;color:var(--text);
+    padding:14px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;
+    align-items:center;text-align:left;cursor:pointer;}
+  .collapsible-header .chevron{transition:transform .15s ease;font-size:13px;color:var(--text-dim);}
+  .collapsible.open .collapsible-header .chevron{transform:rotate(90deg);}
+  .collapsible-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+  .collapsible.open .collapsible-body{display:block;padding-top:14px;}
+
+  /* ---------- checklists / chips ---------- */
+  .checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;
+    color:var(--text);text-transform:none;letter-spacing:normal;margin:10px 0;cursor:pointer;}
+  .checkbox-label input{width:18px;height:18px;flex-shrink:0;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+  .chip{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
+    padding:6px 8px 6px 12px;font-size:13px;display:flex;align-items:center;gap:6px;}
+  .chip button{background:none;border:none;color:var(--text-dim);font-size:15px;
+    width:20px;height:20px;border-radius:50%;padding:0;line-height:1;cursor:pointer;}
+  .chip button:hover{background:var(--surface);}
+  .add-row{display:flex;gap:8px;}
+  .add-row input{flex:1;}
+  .add-row button{flex-shrink:0;}
+
+  .checklist-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .checklist-row:last-child{border-bottom:none;}
+  .checklist-row input{width:20px;height:20px;flex-shrink:0;}
+  .checklist-row span{font-size:14px;flex:1;}
+  .checklist-row .rm-item{margin-left:auto;background:none;border:none;color:var(--text-dim);
+    font-size:16px;width:26px;height:26px;border-radius:50%;flex-shrink:0;cursor:pointer;}
+  .checklist-row .rm-item:hover{background:var(--surface);}
+
+  /* ---------- job type cards ---------- */
+  .job-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:16px;margin-bottom:12px;}
+  .job-card input[type=text]{margin-bottom:10px;}
+  .job-card-actions{display:flex;gap:8px;margin-top:12px;}
+  .job-card-actions button{margin:0;min-height:40px;flex:1;font-size:13px;}
+
+  /* ---------- open jobs ---------- */
+  .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+  .job-open-card .joc-info{font-size:14px;flex:1;}
+  .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+  .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
+  .joc-checkbox{width:19px;height:19px;flex-shrink:0;}
+  .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .bulk-bar .checkbox-label{margin:0;}
+  .bulk-bar button{margin:0;min-height:38px;width:auto;padding:0 16px;font-size:13px;}
+</style>
+</head>
+<body>
+<div id="shell">
+
+  <nav id="sidebar">
+    <div class="brand">Warranty Admin<span>Hinchys Kia</span></div>
+    <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <span class="nav-icon">&#128202;</span>Dashboard</button>
+    <button class="nav-item" data-page="notes" onclick="showPage('notes')">
+      <span class="nav-icon">&#128276;</span>Notes &amp; PWA flags</button>
+    <button class="nav-item" data-page="rules" onclick="showPage('rules')">
+      <span class="nav-icon">&#9881;</span>PWA rules</button>
+    <button class="nav-item" data-page="checklist" onclick="showPage('checklist')">
+      <span class="nav-icon">&#9989;</span>Checklist items</button>
+    <button class="nav-item" data-page="jobs" onclick="showPage('jobs')">
+      <span class="nav-icon">&#128193;</span>Open jobs</button>
+    <button class="nav-item" data-page="mechanics" onclick="showPage('mechanics')">
+      <span class="nav-icon">&#128101;</span>Mechanics</button>
+    <a href="training-guide.html" target="_blank" class="nav-item nav-link">
+      <span class="nav-icon">&#128218;</span>Training guide</a>
+  </nav>
+
+  <main id="mainArea">
+    <div id="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSub"></p>
+      </div>
+    </div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid" id="statGrid"><p class="empty">Loading…</p></div>
+      <div class="chart-grid">
+        <div class="panel">
+          <h3>Sent items by type</h3>
+          <div class="chart-wrap"><canvas id="labelChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Jobs by mechanic</h3>
+          <div class="chart-wrap"><canvas id="mechanicChart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recent activity</h3>
+        <div id="recentActivityList"><p class="empty">Loading…</p></div>
+      </div>
+    </div>
+
+    <!-- ============ NOTES & PWA FLAGS ============ -->
+    <div class="page" id="page-notes">
+      <div class="panel">
+        <h2>Send a note / flag a job</h2>
+        <p class="panel-sub">The mechanic sees the note the moment they type in that WIP number in the app.</p>
+
+        <label for="wipField">WIP number</label>
+        <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
+        <div class="status" id="wipStatus"></div>
+
+        <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
+          <div class="pwa-flag-row" id="pwaFlagRow"><span id="pwaFlagStatus"></span></div>
+          <div class="collapsible" id="pwaFlagChecklistCollapsible">
+            <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
+              <span>Set required items</span><span class="chevron">&#9656;</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="panel-sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+              <div id="pwaWipChecklist"></div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn btn-inline" onclick="savePwaFlagForWip()">Save PWA requirement</button>
+                <button class="btn btn-secondary btn-inline" onclick="clearPwaFlagForWip()">Clear flag</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <label for="msgField">Message</label>
+        <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
+        <button class="btn" onclick="sendNote()" id="sendBtn">Send note</button>
+        <div class="status" id="sendStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Active notes</h3>
+        <div id="notesList"><p class="empty">Loading…</p></div>
+      </div>
+    </div>
+
+    <!-- ============ PWA RULES ============ -->
+    <div class="page" id="page-rules">
+      <div class="panel">
+        <h2>Claim settings</h2>
+        <p class="panel-sub">Used by the mechanic app's PWA checker.</p>
+        <label for="thresholdField">Claim value threshold (&euro;) &mdash; over this, PWA is always needed</label>
+        <input type="text" id="thresholdField" inputmode="numeric" placeholder="1250">
+        <label for="labourRateField">Hourly labour rate (&euro;) &mdash; set once, rarely changes</label>
+        <input type="text" id="labourRateField" inputmode="decimal" placeholder="91.72">
+        <label for="bufferField">"Check with the office" buffer (&euro;) &mdash; how close to the threshold counts as borderline</label>
+        <input type="text" id="bufferField" inputmode="numeric" placeholder="200">
+        <button class="btn" onclick="saveClaimSettings()">Save settings</button>
+        <div class="status" id="thresholdStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Job types</h2>
+        <p class="panel-sub">What Kia needs for each job type &mdash; read live by the mechanic app.</p>
+        <div id="jobTypesList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div class="panel">
+        <h3>Add a new job type</h3>
+        <label for="newJobName">Job type name</label>
+        <input type="text" id="newJobName" placeholder="e.g. Transmission">
+        <label class="checkbox-label" for="newJobAlwaysPWA" style="margin-top:16px;">
+          <input type="checkbox" id="newJobAlwaysPWA">
+          Always needs PWA, regardless of claim value
+        </label>
+        <label for="newJobMediaInput">Required photos/videos</label>
+        <div class="add-row">
+          <input type="text" id="newJobMediaInput" placeholder="e.g. VIN">
+          <button class="btn btn-secondary btn-inline" onclick="addNewJobMediaItem()">Add</button>
+        </div>
+        <div class="chip-row" id="newJobMediaChips"></div>
+        <button class="btn" onclick="createJobType()">Create job type</button>
+        <div class="status" id="newJobStatus"></div>
+      </div>
+    </div>
+
+    <!-- ============ CHECKLIST ITEMS ============ -->
+    <div class="page" id="page-checklist">
+      <div class="panel">
+        <h2>PWA requirement items</h2>
+        <p class="panel-sub">The checklist you pick from when flagging a specific job as needing PWA. Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
+        <div id="pwaItemsList"><p class="empty">Loading…</p></div>
+        <div class="add-row" style="margin-top:10px;">
+          <input type="text" id="newPwaItemInput" placeholder="e.g. Fault video">
+          <button class="btn btn-secondary btn-inline" onclick="addPwaChecklistItem()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OPEN JOBS ============ -->
+    <div class="page" id="page-jobs">
+      <div class="panel">
+        <h2>Open jobs</h2>
+        <p class="panel-sub">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched.</p>
+        <input type="text" id="jobSearchField" placeholder="Search by WIP or reg…">
+        <div class="bulk-bar" id="bulkBar" style="margin-top:14px;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="selectAllJobs" onclick="toggleSelectAllJobs(this.checked)">
+            Select all
+          </label>
+          <button class="btn btn-delete" id="closeSelectedBtn" onclick="closeSelectedJobs()" disabled>Close selected (0)</button>
+        </div>
+        <div id="openJobsList"><p class="empty">Loading…</p></div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANICS ============ -->
+    <div class="page" id="page-mechanics">
+      <div class="panel">
+        <h2>Current mechanics</h2>
+        <p class="panel-sub">Same list mechanics see on the app's first screen &mdash; changes here show up there immediately, and vice versa.</p>
+        <div id="mechanicsAdminList"><p class="empty">Loading…</p></div>
+      </div>
+      <div class="panel">
+        <h3>Add a mechanic</h3>
+        <div class="add-row">
+          <input type="text" id="newMechanicAdminInput" placeholder="Name">
+          <button class="btn btn-secondary btn-inline" onclick="addMechanicAdmin()">Add</button>
+        </div>
+        <div class="status" id="mechanicAdminStatus"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   CONFIG — same Firebase project/config as index.html.
+   Safe for this to be visible in the page source — Firebase
+   access control is enforced by Firestore's security rules,
+   not by hiding this.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBcpFoOaSmP1kx_fSbvXGeCdkzCTGSdvso",
+  authDomain: "warrantyapp-fb676.firebaseapp.com",
+  projectId: "warrantyapp-fb676",
+  storageBucket: "warrantyapp-fb676.firebasestorage.app",
+  messagingSenderId: "1031213749394",
+  appId: "1:1031213749394:web:cb5b7a818bb1507703c24b"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+const PAGE_INFO = {
+  dashboard: ["Dashboard", "A quick read on what's currently going on"],
+  notes: ["Notes & PWA flags", "Send a note or flag a job for a specific WIP"],
+  rules: ["PWA rules", "Kia's claim rules, read live by the mechanic app"],
+  checklist: ["Checklist items", "The library you pick from when flagging a job"],
+  jobs: ["Open jobs", "Everything currently tracked in Firebase"],
+  mechanics: ["Mechanics", "Who shows up on the app's first screen"]
+};
+
+function showPage(id){
+  document.querySelectorAll(".nav-item[data-page]").forEach(b => b.classList.toggle("active", b.dataset.page === id));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-" + id).classList.add("active");
+  document.getElementById("pageTitle").textContent = PAGE_INFO[id][0];
+  document.getElementById("pageSub").textContent = PAGE_INFO[id][1];
+
+  if (id === "dashboard") loadDashboard();
+  else if (id === "jobs" && !openJobsLoaded) loadOpenJobs();
+  else if (id === "mechanics" && !mechanicsAdminLoaded) loadMechanicsAdmin();
+}
+
+function toggleCollapsible(id){
+  document.getElementById(id).classList.toggle("open");
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+let labelChartInstance = null;
+let mechanicChartInstance = null;
+
+async function loadDashboard(){
+  const statGrid = document.getElementById("statGrid");
+  statGrid.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const [jobsSnap, notesSnap] = await Promise.all([
+      db.collection("jobs").orderBy("updatedAt", "desc").get(),
+      db.collection("wipNotes").get()
+    ]);
+    const jobs = jobsSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+
+    // Share this fetch with the Open Jobs page so it doesn't have to re-query.
+    openJobsCache = jobs;
+    openJobsLoaded = true;
+
+    const totalOpen = jobs.length;
+    const flaggedCount = jobs.filter(j => j.pwaFlag).length;
+    const totalSent = jobs.reduce((sum, j) => sum + (Array.isArray(j.history) ? j.history.length : 0), 0);
+
+    let completedFlagged = 0;
+    jobs.forEach(j => {
+      if (j.pwaFlag && Array.isArray(j.pwaRequiredItems) && j.pwaRequiredItems.length){
+        const checked = Array.isArray(j.pwaCheckedItems) ? j.pwaCheckedItems.length : 0;
+        if (checked >= j.pwaRequiredItems.length) completedFlagged++;
+      }
+    });
+
+    statGrid.innerHTML = "";
+    addStatCard(statGrid, totalOpen, "Open jobs");
+    addStatCard(statGrid, flaggedCount, "PWA flagged");
+    addStatCard(statGrid, notesSnap.size, "Active notes");
+    addStatCard(statGrid, totalSent, "Items sent");
+    if (flaggedCount) addStatCard(statGrid, completedFlagged + " / " + flaggedCount, "Checklists complete");
+
+    renderLabelChart(jobs);
+    renderMechanicChart(jobs);
+    renderRecentActivity(jobs);
+  } catch(err){
+    console.error(err);
+    statGrid.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+function addStatCard(container, value, label){
+  const card = document.createElement("div");
+  card.className = "stat-card";
+  card.innerHTML = '<div class="stat-value">' + value + '</div><div class="stat-label">' + escapeHtml(label) + '</div>';
+  container.appendChild(card);
+}
+
+function chartAxisOptions(){
+  return {
+    x: { ticks: { color: "#9C9AA5", font: { size: 11 } }, grid: { color: "#34363F" } },
+    y: { ticks: { color: "#9C9AA5", font: { size: 11 }, precision: 0 }, grid: { color: "#34363F" }, beginAtZero: true }
+  };
+}
+
+function renderLabelChart(jobs){
+  const counts = {};
+  jobs.forEach(j => {
+    if (Array.isArray(j.history)){
+      j.history.forEach(h => { const key = h.label || "Other"; counts[key] = (counts[key] || 0) + 1; });
+    }
+  });
+  const labels = Object.keys(counts);
+  const ctx = document.getElementById("labelChart").getContext("2d");
+  if (labelChartInstance) labelChartInstance.destroy();
+  if (!labels.length){ return; }
+  labelChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: { labels: labels, datasets: [{ data: labels.map(l => counts[l]), backgroundColor: "#F5B300", borderRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: chartAxisOptions(), maintainAspectRatio: false }
+  });
+}
+
+function renderMechanicChart(jobs){
+  const counts = {};
+  jobs.forEach(j => { const key = j.lastMechanic || "Unknown"; counts[key] = (counts[key] || 0) + 1; });
+  const labels = Object.keys(counts);
+  const ctx = document.getElementById("mechanicChart").getContext("2d");
+  if (mechanicChartInstance) mechanicChartInstance.destroy();
+  if (!labels.length){ return; }
+  mechanicChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: { labels: labels, datasets: [{ data: labels.map(l => counts[l]), backgroundColor: "#3E7FA6", borderRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: chartAxisOptions(), maintainAspectRatio: false }
+  });
+}
+
+function renderRecentActivity(jobs){
+  const listEl = document.getElementById("recentActivityList");
+  if (!jobs.length){
+    listEl.innerHTML = '<p class="empty">No activity yet.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  jobs.slice(0, 8).forEach(job => {
+    const when = job.updatedAt && job.updatedAt.toDate
+      ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+      : "unknown";
+    const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+    const row = document.createElement("div");
+    row.className = "activity-row";
+    row.innerHTML =
+      '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+      '<div class="meta">' + (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
+      historyCount + " sent" + (job.pwaFlag ? " &middot; \ud83d\udd34 PWA" : "") + '</div></div>' +
+      '<div class="meta">' + escapeHtml(when) + '</div>';
+    listEl.appendChild(row);
+  });
+}
+
+/* ============================================================
+   NOTES & PWA FLAGS
+   ============================================================ */
+document.getElementById("wipField").addEventListener("input", async (e) => {
+  const wip = e.target.value.trim();
+  const wipStatusEl = document.getElementById("wipStatus");
+  const msgField = document.getElementById("msgField");
+  const flagSection = document.getElementById("pwaFlagSection");
+
+  if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
+    wipStatusEl.textContent = "";
+    wipStatusEl.className = "status";
+    flagSection.style.display = "none";
+    return;
+  }
+
+  wipStatusEl.textContent = "Checking for an existing note…";
+  wipStatusEl.className = "status";
+
+  try {
+    const doc = await db.collection("wipNotes").doc(wip).get();
+    if (doc.exists && doc.data().message){
+      msgField.value = doc.data().message;
+      wipStatusEl.textContent = "Editing the existing note for WIP " + wip + " — sending will overwrite it.";
+      wipStatusEl.className = "status ok";
+    } else {
+      msgField.value = "";
+      wipStatusEl.textContent = "No existing note for WIP " + wip + " — this will create a new one.";
+      wipStatusEl.className = "status";
+    }
+  } catch(err){
+    console.error(err);
+    wipStatusEl.textContent = "Couldn't check for an existing note.";
+    wipStatusEl.className = "status err";
+  }
+
+  await refreshPwaFlagRow(wip);
+});
+
+let pwaChecklistItemsCache = [];
+let pwaChecklistItemsLoaded = false;
+let currentWipForFlag = "";
+
+async function loadPwaChecklistItems(){
+  const listEl = document.getElementById("pwaItemsList");
+  try {
+    const doc = await db.collection("config").doc("pwaChecklistItems").get();
+    pwaChecklistItemsCache = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+    pwaChecklistItemsLoaded = true;
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  renderPwaChecklistItemsList();
+}
+
+function renderPwaChecklistItemsList(){
+  const listEl = document.getElementById("pwaItemsList");
+  if (!pwaChecklistItemsCache.length){
+    listEl.innerHTML = '<p class="empty">No items yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  pwaChecklistItemsCache.forEach((item, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(item) + "</span>";
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removePwaChecklistItem(i);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function savePwaChecklistItemsToFirestore(){
+  await db.collection("config").doc("pwaChecklistItems").set({ items: pwaChecklistItemsCache });
+}
+
+async function addPwaChecklistItem(){
+  const input = document.getElementById("newPwaItemInput");
+  const val = input.value.trim();
+  if (!val) return;
+  pwaChecklistItemsCache.push(val);
+  input.value = "";
+  try {
+    await savePwaChecklistItemsToFirestore();
+    renderPwaChecklistItemsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function removePwaChecklistItem(index){
+  pwaChecklistItemsCache.splice(index, 1);
+  try {
+    await savePwaChecklistItemsToFirestore();
+    renderPwaChecklistItemsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function refreshPwaFlagRow(wip){
+  currentWipForFlag = wip;
+  const section = document.getElementById("pwaFlagSection");
+  const flagRow = document.getElementById("pwaFlagRow");
+  const flagStatus = document.getElementById("pwaFlagStatus");
+  const checklistEl = document.getElementById("pwaWipChecklist");
+
+  if (!pwaChecklistItemsLoaded) await loadPwaChecklistItems();
+
+  let flagged = false;
+  let selectedItems = [];
+  try {
+    const doc = await db.collection("jobs").doc(wip).get();
+    if (doc.exists){
+      flagged = !!doc.data().pwaFlag;
+      selectedItems = Array.isArray(doc.data().pwaRequiredItems) ? doc.data().pwaRequiredItems : [];
+    }
+  } catch(err){
+    console.error(err);
+  }
+
+  section.style.display = "block";
+  flagRow.classList.toggle("flagged", flagged);
+  flagStatus.textContent = flagged
+    ? "\ud83d\udd34 Flagged as needing PWA" + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
+    : "Not flagged";
+
+  if (!pwaChecklistItemsCache.length){
+    checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some on the Checklist items page.</p>';
+    return;
+  }
+
+  checklistEl.innerHTML = "";
+  pwaChecklistItemsCache.forEach(item => {
+    const row = document.createElement("label");
+    row.className = "checklist-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = item;
+    cb.checked = selectedItems.includes(item);
+    row.appendChild(cb);
+    const span = document.createElement("span");
+    span.textContent = item;
+    row.appendChild(span);
+    checklistEl.appendChild(row);
+  });
+}
+
+async function savePwaFlagForWip(){
+  if (!currentWipForFlag) return;
+  const checked = Array.from(document.querySelectorAll("#pwaWipChecklist input[type=checkbox]:checked")).map(cb => cb.value);
+  try {
+    await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
+    refreshPwaFlagRow(currentWipForFlag);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — check your Firebase config.");
+  }
+}
+
+async function clearPwaFlagForWip(){
+  if (!currentWipForFlag) return;
+  try {
+    await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: false, pwaRequiredItems: [] }, { merge: true });
+    refreshPwaFlagRow(currentWipForFlag);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't clear the flag — check your Firebase config.");
+  }
+}
+
+async function sendNote(){
+  const wip = document.getElementById("wipField").value.trim();
+  const message = document.getElementById("msgField").value.trim();
+  const statusEl = document.getElementById("sendStatus");
+  const btn = document.getElementById("sendBtn");
+
+  if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
+    statusEl.textContent = "WIP should be exactly 5 digits.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (!message){
+    statusEl.textContent = "Type a message first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = "Sending…";
+  statusEl.className = "status";
+
+  try {
+    await db.collection("wipNotes").doc(wip).set({
+      message: message,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = "Sent — the mechanic will see it as soon as they enter that WIP.";
+    statusEl.className = "status ok";
+    document.getElementById("msgField").value = "";
+    loadNotes();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send — check your Firebase config is filled in correctly.";
+    statusEl.className = "status err";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadNotes(){
+  const listEl = document.getElementById("notesList");
+  try {
+    const snapshot = await db.collection("wipNotes").orderBy("createdAt", "desc").get();
+    if (snapshot.empty){
+      listEl.innerHTML = '<p class="empty">No active notes right now.</p>';
+      return;
+    }
+    listEl.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const when = data.createdAt ? data.createdAt.toDate().toLocaleString() : "";
+      const card = document.createElement("div");
+      card.className = "note-card";
+      card.innerHTML =
+        '<div><div class="wip">WIP ' + escapeHtml(doc.id) + '</div>' +
+        '<div class="msg">' + escapeHtml(data.message || "") + '</div>' +
+        '<div class="when">' + escapeHtml(when) + '</div></div>' +
+        '<button class="btn btn-secondary btn-inline" onclick="clearNote(\'' + doc.id + '\')">Clear</button>';
+      listEl.appendChild(card);
+    });
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load notes — check your Firebase config.</p>';
+  }
+}
+
+async function clearNote(wip){
+  try {
+    await db.collection("wipNotes").doc(wip).delete();
+    loadNotes();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't clear that note — try again.");
+  }
+}
+
+/* ============================================================
+   PWA RULES
+   ============================================================ */
+let pwaRulesCache = { claimValueThreshold: 1250, labourRate: 91.72, nearThresholdBuffer: 200, jobTypes: [] };
+
+async function loadPwaRules(){
+  try {
+    const doc = await db.collection("config").doc("pwaRules").get();
+    if (doc.exists){
+      const data = doc.data();
+      pwaRulesCache.claimValueThreshold = typeof data.claimValueThreshold === "number" ? data.claimValueThreshold : 1250;
+      pwaRulesCache.labourRate = typeof data.labourRate === "number" ? data.labourRate : 91.72;
+      pwaRulesCache.nearThresholdBuffer = typeof data.nearThresholdBuffer === "number" ? data.nearThresholdBuffer : 200;
+      pwaRulesCache.jobTypes = Array.isArray(data.jobTypes) ? data.jobTypes : [];
+    }
+  } catch(err){
+    console.error(err);
+    document.getElementById("jobTypesList").innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  document.getElementById("thresholdField").value = pwaRulesCache.claimValueThreshold;
+  document.getElementById("labourRateField").value = pwaRulesCache.labourRate;
+  document.getElementById("bufferField").value = pwaRulesCache.nearThresholdBuffer;
+  renderJobTypesList();
+}
+
+async function savePwaRulesToFirestore(){
+  await db.collection("config").doc("pwaRules").set(pwaRulesCache);
+}
+
+async function saveClaimSettings(){
+  const threshold = Number(document.getElementById("thresholdField").value);
+  const rate = Number(document.getElementById("labourRateField").value);
+  const buffer = Number(document.getElementById("bufferField").value);
+  const statusEl = document.getElementById("thresholdStatus");
+
+  if (!threshold || threshold <= 0 || !rate || rate <= 0 || buffer < 0 || isNaN(buffer)){
+    statusEl.textContent = "Check all three values are valid numbers.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  pwaRulesCache.claimValueThreshold = threshold;
+  pwaRulesCache.labourRate = rate;
+  pwaRulesCache.nearThresholdBuffer = buffer;
+  try {
+    await savePwaRulesToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function renderJobTypesList(){
+  const listEl = document.getElementById("jobTypesList");
+  listEl.innerHTML = "";
+  if (!pwaRulesCache.jobTypes.length){
+    listEl.innerHTML = '<p class="empty">No job types yet — add one below.</p>';
+    return;
+  }
+  pwaRulesCache.jobTypes.forEach((jt, index) => listEl.appendChild(buildJobTypeCard(jt, index)));
+}
+
+function buildJobTypeCard(jt, index){
+  const card = document.createElement("div");
+  card.className = "job-card";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.value = jt.name || "";
+  card.appendChild(nameInput);
+
+  const alwaysLabel = document.createElement("label");
+  alwaysLabel.className = "checkbox-label";
+  const alwaysCheckbox = document.createElement("input");
+  alwaysCheckbox.type = "checkbox";
+  alwaysCheckbox.checked = !!jt.alwaysPWA;
+  alwaysLabel.appendChild(alwaysCheckbox);
+  alwaysLabel.appendChild(document.createTextNode("Always needs PWA, regardless of claim value"));
+  card.appendChild(alwaysLabel);
+
+  let mediaItems = Array.isArray(jt.requiredMedia) ? jt.requiredMedia.slice() : [];
+  const chipRow = document.createElement("div");
+  chipRow.className = "chip-row";
+
+  function renderChips(){
+    chipRow.innerHTML = "";
+    mediaItems.forEach((item, i) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.appendChild(document.createTextNode(item));
+      const rm = document.createElement("button");
+      rm.textContent = "\u00d7";
+      rm.onclick = () => { mediaItems.splice(i, 1); renderChips(); };
+      chip.appendChild(rm);
+      chipRow.appendChild(chip);
+    });
+  }
+  renderChips();
+  card.appendChild(chipRow);
+
+  const addRow = document.createElement("div");
+  addRow.className = "add-row";
+  const addInput = document.createElement("input");
+  addInput.type = "text";
+  addInput.placeholder = "Add required item";
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn btn-secondary btn-inline";
+  addBtn.textContent = "Add";
+  addBtn.onclick = () => {
+    const val = addInput.value.trim();
+    if (val){ mediaItems.push(val); addInput.value = ""; renderChips(); }
+  };
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  card.appendChild(addRow);
+
+  const actions = document.createElement("div");
+  actions.className = "job-card-actions";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "btn";
+  saveBtn.style.marginTop = "0";
+  saveBtn.textContent = "Save";
+  saveBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+    if (!name) { alert("Job type needs a name."); return; }
+    pwaRulesCache.jobTypes[index] = { name: name, alwaysPWA: alwaysCheckbox.checked, requiredMedia: mediaItems };
+    try {
+      await savePwaRulesToFirestore();
+      renderJobTypesList();
+    } catch(err){
+      console.error(err);
+      alert("Couldn't save — try again.");
+    }
+  };
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "btn btn-delete";
+  deleteBtn.textContent = "Delete";
+  deleteBtn.onclick = async () => {
+    if (!confirm('Delete "' + jt.name + '"? Mechanics will stop seeing it as an option.')) return;
+    pwaRulesCache.jobTypes.splice(index, 1);
+    try {
+      await savePwaRulesToFirestore();
+      renderJobTypesList();
+    } catch(err){
+      console.error(err);
+      alert("Couldn't delete — try again.");
+    }
+  };
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(deleteBtn);
+  card.appendChild(actions);
+
+  return card;
+}
+
+let newJobMediaItems = [];
+
+function addNewJobMediaItem(){
+  const input = document.getElementById("newJobMediaInput");
+  const val = input.value.trim();
+  if (!val) return;
+  newJobMediaItems.push(val);
+  input.value = "";
+  renderNewJobChips();
+}
+
+function renderNewJobChips(){
+  const row = document.getElementById("newJobMediaChips");
+  row.innerHTML = "";
+  newJobMediaItems.forEach((item, i) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.appendChild(document.createTextNode(item));
+    const rm = document.createElement("button");
+    rm.textContent = "\u00d7";
+    rm.onclick = () => { newJobMediaItems.splice(i, 1); renderNewJobChips(); };
+    chip.appendChild(rm);
+    row.appendChild(chip);
+  });
+}
+
+async function createJobType(){
+  const nameEl = document.getElementById("newJobName");
+  const name = nameEl.value.trim();
+  const statusEl = document.getElementById("newJobStatus");
+
+  if (!name){
+    statusEl.textContent = "Give it a name first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const alwaysPWA = document.getElementById("newJobAlwaysPWA").checked;
+  pwaRulesCache.jobTypes.push({ name: name, alwaysPWA: alwaysPWA, requiredMedia: newJobMediaItems.slice() });
+
+  try {
+    await savePwaRulesToFirestore();
+    nameEl.value = "";
+    document.getElementById("newJobAlwaysPWA").checked = false;
+    newJobMediaItems = [];
+    renderNewJobChips();
+    statusEl.textContent = "Added.";
+    statusEl.className = "status ok";
+    renderJobTypesList();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+/* ============================================================
+   OPEN JOBS
+   ============================================================ */
+let openJobsCache = [];
+let openJobsLoaded = false;
+let selectedJobs = new Set();
+let currentlyFilteredJobs = [];
+
+async function loadOpenJobs(){
+  const listEl = document.getElementById("openJobsList");
+  listEl.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("jobs").orderBy("updatedAt", "desc").get();
+    openJobsCache = snapshot.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    openJobsLoaded = true;
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+document.getElementById("jobSearchField").addEventListener("input", (e) => {
+  renderOpenJobsList(e.target.value);
+});
+
+function renderOpenJobsList(filterText){
+  const listEl = document.getElementById("openJobsList");
+  const filter = (filterText || "").trim().toLowerCase();
+  currentlyFilteredJobs = filter
+    ? openJobsCache.filter(j => j.id.toLowerCase().includes(filter) || (j.reg || "").toLowerCase().includes(filter))
+    : openJobsCache;
+
+  if (!currentlyFilteredJobs.length){
+    listEl.innerHTML = '<p class="empty">' +
+      (openJobsCache.length ? "No jobs match that search." : "No open jobs right now.") + '</p>';
+  } else {
+    listEl.innerHTML = "";
+    currentlyFilteredJobs.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
+  }
+  updateBulkControls();
+}
+
+function buildOpenJobCard(job){
+  const card = document.createElement("div");
+  card.className = "job-open-card";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "joc-checkbox";
+  checkbox.checked = selectedJobs.has(job.id);
+  checkbox.onchange = () => {
+    if (checkbox.checked) selectedJobs.add(job.id);
+    else selectedJobs.delete(job.id);
+    updateBulkControls();
+  };
+  card.appendChild(checkbox);
+
+  const info = document.createElement("div");
+  info.className = "joc-info";
+  const when = job.updatedAt && job.updatedAt.toDate
+    ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+    : "unknown";
+  const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+  info.innerHTML =
+    "<b>WIP " + escapeHtml(job.id) + "</b>" + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="joc-meta">' +
+    (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
+    historyCount + " sent" +
+    (job.pwaFlag ? " &middot; \ud83d\udd34 PWA flagged" : "") +
+    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>';
+  card.appendChild(info);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn btn-delete";
+  closeBtn.textContent = "Close job";
+  closeBtn.onclick = () => closeJobs([job.id]);
+  card.appendChild(closeBtn);
+
+  return card;
+}
+
+function toggleSelectAllJobs(checked){
+  currentlyFilteredJobs.forEach(job => {
+    if (checked) selectedJobs.add(job.id);
+    else selectedJobs.delete(job.id);
+  });
+  renderOpenJobsList(document.getElementById("jobSearchField").value);
+}
+
+function updateBulkControls(){
+  const btn = document.getElementById("closeSelectedBtn");
+  btn.textContent = "Close selected (" + selectedJobs.size + ")";
+  btn.disabled = selectedJobs.size === 0;
+
+  const selectAllCb = document.getElementById("selectAllJobs");
+  selectAllCb.checked = currentlyFilteredJobs.length > 0 &&
+    currentlyFilteredJobs.every(job => selectedJobs.has(job.id));
+}
+
+function closeSelectedJobs(){
+  closeJobs(Array.from(selectedJobs));
+}
+
+async function closeJobs(wipList){
+  if (!wipList.length) return;
+  const plural = wipList.length > 1;
+  const label = plural ? wipList.length + " jobs" : "job " + wipList[0];
+  if (!confirm("Close " + label + "? This permanently deletes " + (plural ? "their" : "its") +
+    " Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+
+  try {
+    for (const wip of wipList){
+      await db.collection("jobs").doc(wip).delete();
+      await db.collection("wipNotes").doc(wip).delete();
+      selectedJobs.delete(wip);
+    }
+    openJobsCache = openJobsCache.filter(j => !wipList.includes(j.id));
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't close " + (plural ? "all of the selected jobs" : "the job") + " — try again.");
+  }
+}
+
+/* ============================================================
+   MECHANICS
+   ============================================================ */
+let mechanicsAdminCache = [];
+let mechanicsAdminLoaded = false;
+
+async function loadMechanicsAdmin(){
+  const listEl = document.getElementById("mechanicsAdminList");
+  try {
+    const doc = await db.collection("config").doc("mechanics").get();
+    mechanicsAdminCache = (doc.exists && Array.isArray(doc.data().names)) ? doc.data().names : [];
+    mechanicsAdminLoaded = true;
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  renderMechanicsAdminList();
+}
+
+function renderMechanicsAdminList(){
+  const listEl = document.getElementById("mechanicsAdminList");
+  if (!mechanicsAdminCache.length){
+    listEl.innerHTML = '<p class="empty">No mechanics yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  mechanicsAdminCache.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(name) + "</span>";
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeMechanicAdmin(i);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function saveMechanicsAdminToFirestore(){
+  await db.collection("config").doc("mechanics").set({ names: mechanicsAdminCache });
+}
+
+async function addMechanicAdmin(){
+  const input = document.getElementById("newMechanicAdminInput");
+  const name = input.value.trim();
+  const statusEl = document.getElementById("mechanicAdminStatus");
+  if (!name) return;
+  if (mechanicsAdminCache.some(m => m.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "That name's already on the list.";
+    statusEl.className = "status err";
+    return;
+  }
+  mechanicsAdminCache.push(name);
+  input.value = "";
+  try {
+    await saveMechanicsAdminToFirestore();
+    renderMechanicsAdminList();
+    statusEl.textContent = "Added.";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — try again.";
+    statusEl.className = "status err";
+  }
+}
+
+async function removeMechanicAdmin(index){
+  const name = mechanicsAdminCache[index];
+  if (!confirm('Remove "' + name + '"?')) return;
+  mechanicsAdminCache.splice(index, 1);
+  try {
+    await saveMechanicsAdminToFirestore();
+    renderMechanicsAdminList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+loadDashboard();
+loadNotes();
+loadPwaRules();
+loadPwaChecklistItems();
+</script>
+</body>
+</html>
