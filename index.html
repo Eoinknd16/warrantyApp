@@ -720,7 +720,7 @@ let currentAdminNoteMessage = null;
 let currentJobHistory = null;
 let currentPwaFlag = false;
 let currentPwaRequiredItems = [];
-let pwaChecklistCheckedState = new Set(); // mechanic's own tick-as-you-go progress, not saved anywhere
+let currentPwaCheckedItems = new Set(); // tick-as-you-go progress, saved to Firestore so it's visible to any mechanic on this job
 
 async function checkForAdminNote(wip){
   currentAdminNoteMessage = null;
@@ -742,7 +742,7 @@ async function checkForJob(wip){
   currentJobHistory = null;
   currentPwaFlag = false;
   currentPwaRequiredItems = [];
-  pwaChecklistCheckedState = new Set();
+  currentPwaCheckedItems = new Set();
   document.getElementById("jobHistoryBadge").classList.remove("show");
   document.getElementById("pwaFlagBadge").classList.remove("show");
   if (!db) return null;
@@ -764,6 +764,7 @@ async function checkForJob(wip){
     if (data.pwaFlag){
       currentPwaFlag = true;
       currentPwaRequiredItems = Array.isArray(data.pwaRequiredItems) ? data.pwaRequiredItems : [];
+      currentPwaCheckedItems = new Set(Array.isArray(data.pwaCheckedItems) ? data.pwaCheckedItems : []);
       document.getElementById("pwaFlagBadge").classList.add("show");
     }
 
@@ -792,17 +793,18 @@ function showNoteOverlay(type){
     bodyEl.innerHTML = "";
     if (currentPwaRequiredItems.length){
       const intro = document.createElement("p");
-      intro.textContent = "Tick these off as you go \u2014 just for your own reference, this doesn't need to be filled in to send.";
+      intro.textContent = "Tick these off as you go \u2014 saved automatically, so anyone else who picks up this job sees what's already done.";
       bodyEl.appendChild(intro);
-      currentPwaRequiredItems.forEach((item, i) => {
+      currentPwaRequiredItems.forEach(item => {
         const row = document.createElement("label");
         row.className = "pwa-check-row";
         const cb = document.createElement("input");
         cb.type = "checkbox";
-        cb.checked = pwaChecklistCheckedState.has(i);
+        cb.checked = currentPwaCheckedItems.has(item);
         cb.onchange = () => {
-          if (cb.checked) pwaChecklistCheckedState.add(i);
-          else pwaChecklistCheckedState.delete(i);
+          if (cb.checked) currentPwaCheckedItems.add(item);
+          else currentPwaCheckedItems.delete(item);
+          savePwaCheckedItems();
         };
         row.appendChild(cb);
         const span = document.createElement("span");
@@ -819,6 +821,13 @@ function showNoteOverlay(type){
   }
 
   document.getElementById("noteDetailOverlay").classList.add("show");
+}
+
+function savePwaCheckedItems(){
+  if (!db || !state.wip) return;
+  db.collection("jobs").doc(state.wip).set({
+    pwaCheckedItems: Array.from(currentPwaCheckedItems)
+  }, { merge: true }).catch(err => console.error("Couldn't save checklist progress", err));
 }
 
 function closeNoteOverlay(){
@@ -1536,7 +1545,7 @@ function resetForNewJob(keepMechanic){
   currentJobHistory = null;
   currentPwaFlag = false;
   currentPwaRequiredItems = [];
-  pwaChecklistCheckedState = new Set();
+  currentPwaCheckedItems = new Set();
   closeNoteOverlay();
   state = {
     step: 1,
