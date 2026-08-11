@@ -66,6 +66,21 @@
   .pwa-flag-row span{font-size:14px;font-weight:600;}
   .pwa-flag-row.flagged{border-color:var(--danger);background:#2B0705;}
   .pwa-flag-row.flagged span{color:#FF9C9C;}
+
+  .collapsible{margin-top:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .collapsible-header{width:100%;background:var(--surface);border:none;color:var(--text);
+    padding:16px;font-size:16px;font-weight:700;display:flex;justify-content:space-between;
+    align-items:center;text-align:left;cursor:pointer;}
+  .collapsible-header .chevron{transition:transform .15s ease;font-size:14px;color:var(--text-dim);}
+  .collapsible.open .collapsible-header .chevron{transform:rotate(90deg);}
+  .collapsible-body{display:none;padding:0 16px 16px;border-top:1px solid var(--border);}
+  .collapsible.open .collapsible-body{display:block;padding-top:16px;}
+
+  .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .job-open-card .joc-info{font-size:14px;}
+  .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:4px;}
+  .job-open-card button{margin:0;min-height:40px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
 </style>
 </head>
 <body>
@@ -110,9 +125,13 @@
   <button class="btn" onclick="saveClaimSettings()">Save settings</button>
   <div class="status" id="thresholdStatus"></div>
 
-  <div class="list">
-    <h2>Job types</h2>
-    <div id="jobTypesList"><p class="empty">Loading…</p></div>
+  <div class="collapsible" id="jobTypesSection">
+    <button class="collapsible-header" onclick="toggleCollapsible('jobTypesSection')">
+      <span>Job types</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <div id="jobTypesList"><p class="empty">Loading…</p></div>
+    </div>
   </div>
 
   <div class="list">
@@ -134,6 +153,19 @@
 
     <button class="btn" onclick="createJobType()">Create job type</button>
     <div class="status" id="newJobStatus"></div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="collapsible" id="openJobsSection">
+    <button class="collapsible-header" onclick="toggleCollapsible('openJobsSection')">
+      <span>Open jobs</span><span class="chevron">&#9656;</span>
+    </button>
+    <div class="collapsible-body">
+      <p class="sub" style="margin:0 0 12px;">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched — this is purely for clearing data that no longer needs to be kept here.</p>
+      <input type="text" id="jobSearchField" placeholder="Search by WIP or reg…">
+      <div id="openJobsList" style="margin-top:12px;"><p class="empty">Loading…</p></div>
+    </div>
   </div>
 </div>
 
@@ -518,6 +550,98 @@ async function createJobType(){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
     statusEl.className = "status err";
+  }
+}
+
+/* ============================================================
+   COLLAPSIBLE SECTIONS
+   ============================================================ */
+function toggleCollapsible(id){
+  const el = document.getElementById(id);
+  const wasOpen = el.classList.contains("open");
+  el.classList.toggle("open");
+  if (!wasOpen && id === "openJobsSection" && !openJobsLoaded){
+    loadOpenJobs();
+  }
+}
+
+/* ============================================================
+   OPEN JOBS
+   ============================================================ */
+let openJobsCache = [];
+let openJobsLoaded = false;
+
+async function loadOpenJobs(){
+  const listEl = document.getElementById("openJobsList");
+  listEl.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("jobs").orderBy("updatedAt", "desc").get();
+    openJobsCache = snapshot.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    openJobsLoaded = true;
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+document.getElementById("jobSearchField").addEventListener("input", (e) => {
+  renderOpenJobsList(e.target.value);
+});
+
+function renderOpenJobsList(filterText){
+  const listEl = document.getElementById("openJobsList");
+  const filter = (filterText || "").trim().toLowerCase();
+  const filtered = filter
+    ? openJobsCache.filter(j => j.id.toLowerCase().includes(filter) || (j.reg || "").toLowerCase().includes(filter))
+    : openJobsCache;
+
+  if (!filtered.length){
+    listEl.innerHTML = '<p class="empty">' +
+      (openJobsCache.length ? "No jobs match that search." : "No open jobs right now.") + '</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  filtered.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
+}
+
+function buildOpenJobCard(job){
+  const card = document.createElement("div");
+  card.className = "job-open-card";
+
+  const info = document.createElement("div");
+  info.className = "joc-info";
+  const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toLocaleDateString() : "";
+  const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+  info.innerHTML =
+    "<b>WIP " + escapeHtml(job.id) + "</b>" + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="joc-meta">' +
+    (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
+    historyCount + " sent" +
+    (job.pwaFlag ? " &middot; \ud83d\udd34 PWA flagged" : "") +
+    (when ? " &middot; " + when : "") +
+    "</div>";
+  card.appendChild(info);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn btn-delete";
+  closeBtn.textContent = "Close job";
+  closeBtn.onclick = () => closeJob(job.id);
+  card.appendChild(closeBtn);
+
+  return card;
+}
+
+async function closeJob(wip){
+  if (!confirm("Close job " + wip + "? This permanently deletes its Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+  try {
+    await db.collection("jobs").doc(wip).delete();
+    await db.collection("wipNotes").doc(wip).delete();
+    openJobsCache = openJobsCache.filter(j => j.id !== wip);
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't close the job — try again.");
   }
 }
 
