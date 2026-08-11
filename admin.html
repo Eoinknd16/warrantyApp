@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warranty app — admin</title>
+<style>
+  :root{
+    --bg:#17181A; --surface:#212226; --surface-2:#2B2D31; --border:#3A3C41;
+    --text:#F4F2EC; --text-dim:#A9A69D; --accent:#F5B300; --accent-text:#1A1300;
+    --danger:#E5484D; --success:#2FA84F;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+  #app{max-width:640px;margin:0 auto;padding:24px 20px 60px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--text-dim);font-size:14px;margin:0 0 24px;}
+  label{display:block;font-size:13px;color:var(--text-dim);font-weight:600;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px;}
+  input[type=text], textarea{width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;font-size:16px;font-family:inherit;}
+  textarea{min-height:90px;resize:vertical;}
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--accent);}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{width:100%;margin-top:16px;min-height:50px;border-radius:10px;border:1px solid var(--accent);
+    background:var(--accent);color:var(--accent-text);font-size:16px;font-weight:700;}
+  .btn:disabled{opacity:.5;pointer-events:none;}
+  .status{font-size:14px;margin-top:10px;min-height:20px;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  .list{margin-top:36px;}
+  .list h2{font-size:16px;margin:0 0 12px;}
+  .note-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+  .note-card .wip{font-weight:700;font-size:15px;margin-bottom:4px;}
+  .note-card .msg{font-size:14px;color:var(--text-dim);white-space:pre-wrap;}
+  .note-card .when{font-size:11px;color:var(--text-dim);margin-top:6px;}
+  .note-card button{flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);
+    border-radius:8px;padding:8px 12px;font-size:13px;}
+  .note-card button:active{background:var(--surface-2);}
+  .empty{color:var(--text-dim);font-size:14px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Send a note to a WIP</h1>
+  <p class="sub">The mechanic sees this the moment they type in that WIP number in the app.</p>
+
+  <label for="wipField">WIP number</label>
+  <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
+
+  <label for="msgField">Message</label>
+  <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
+
+  <button class="btn" id="sendBtn" onclick="sendNote()">Send note</button>
+  <div class="status" id="sendStatus"></div>
+
+  <div class="list">
+    <h2>Active notes</h2>
+    <div id="notesList"><p class="empty">Loading…</p></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   CONFIG — paste your Firebase project's config here (Part 2 of
+   the setup guide walks through where to get this). It's safe for
+   this to be visible in the page source — Firebase access control
+   is enforced by Firestore's security rules, not by hiding this.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "EDIT ME",
+  authDomain: "EDIT ME",
+  projectId: "EDIT ME",
+  storageBucket: "EDIT ME",
+  messagingSenderId: "EDIT ME",
+  appId: "EDIT ME"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+
+async function sendNote(){
+  const wip = document.getElementById("wipField").value.trim();
+  const message = document.getElementById("msgField").value.trim();
+  const statusEl = document.getElementById("sendStatus");
+  const btn = document.getElementById("sendBtn");
+
+  if (wip.length !== 5 || !/^\d{5}$/.test(wip)){
+    statusEl.textContent = "WIP should be exactly 5 digits.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (!message){
+    statusEl.textContent = "Type a message first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = "Sending…";
+  statusEl.className = "status";
+
+  try {
+    await db.collection("wipNotes").doc(wip).set({
+      message: message,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = "Sent — the mechanic will see it as soon as they enter that WIP.";
+    statusEl.className = "status ok";
+    document.getElementById("msgField").value = "";
+    loadNotes();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send — check your Firebase config is filled in correctly.";
+    statusEl.className = "status err";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadNotes(){
+  const listEl = document.getElementById("notesList");
+  try {
+    const snapshot = await db.collection("wipNotes").orderBy("createdAt", "desc").get();
+    if (snapshot.empty){
+      listEl.innerHTML = '<p class="empty">No active notes right now.</p>';
+      return;
+    }
+    listEl.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const when = data.createdAt ? data.createdAt.toDate().toLocaleString() : "";
+      const card = document.createElement("div");
+      card.className = "note-card";
+      card.innerHTML =
+        '<div><div class="wip">WIP ' + escapeHtml(doc.id) + '</div>' +
+        '<div class="msg">' + escapeHtml(data.message || "") + '</div>' +
+        '<div class="when">' + escapeHtml(when) + '</div></div>' +
+        '<button onclick="clearNote(\'' + doc.id + '\')">Clear</button>';
+      listEl.appendChild(card);
+    });
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load notes — check your Firebase config.</p>';
+  }
+}
+
+async function clearNote(wip){
+  try {
+    await db.collection("wipNotes").doc(wip).delete();
+    loadNotes();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't clear that note — try again.");
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+loadNotes();
+</script>
+</body>
+</html>
