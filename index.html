@@ -87,18 +87,23 @@
   .folder-preview{font-size:14px;color:var(--text-dim);text-align:center;}
   .folder-preview code{color:var(--accent);font-size:15px;}
 
-  .admin-note{background:#3A2E00;border:1px solid var(--accent);color:#F5D77A;
-    border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.4;font-weight:600;
-    margin:14px 20px 0;}
-  .admin-note .admin-note-label{display:block;font-size:11px;text-transform:uppercase;
-    letter-spacing:.5px;color:var(--accent);margin-bottom:4px;font-weight:800;}
+  .note-badges{display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;}
+  .note-badge{border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;
+    display:none;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);}
+  .note-badge.show{display:inline-flex;}
+  .note-badge:active{transform:scale(.96);}
+  #adminNoteBadge{border-color:var(--accent);color:#F5D77A;background:#3A2E00;}
+  #jobHistoryBadge{border-color:#3E7FA6;color:#B9DCEF;background:#152A38;}
 
-  .job-history-note{background:#152A38;border:1px solid #3E7FA6;color:#B9DCEF;
-    border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.4;font-weight:600;
-    margin:14px 20px 0;}
-  .job-history-note .jh-label{display:block;font-size:11px;text-transform:uppercase;
-    letter-spacing:.5px;color:#6FB8DA;margin-bottom:4px;font-weight:800;}
-  .job-history-note .jh-when{display:block;font-size:12px;font-weight:500;color:#7FA8C0;margin-top:4px;}
+  #noteDetailOverlay{position:fixed;inset:0;background:rgba(10,10,11,.92);z-index:105;
+    display:none;flex-direction:column;padding:20px;overflow-y:auto;}
+  #noteDetailOverlay.show{display:flex;}
+  #noteDetailTitle{font-size:20px;font-weight:700;margin:0 0 16px;}
+  #noteDetailBody{font-size:16px;line-height:1.5;color:var(--text);flex:1;}
+  #noteDetailBody .hist-row{display:flex;justify-content:space-between;gap:12px;
+    padding:12px 0;border-bottom:1px solid var(--border);font-size:15px;}
+  #noteDetailBody .hist-row span{color:var(--text-dim);font-size:13px;white-space:nowrap;}
+  #noteDetailClose{margin-top:20px;}
 
   .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
@@ -149,8 +154,14 @@
     <h1 id="headerTitle">Warranty job photos</h1>
   </header>
   <div id="breadcrumb"></div>
-  <div class="admin-note" id="adminNote" style="display:none;"></div>
-  <div class="job-history-note" id="jobHistoryNote" style="display:none;"></div>
+  <div class="note-badges">
+    <button class="note-badge" id="adminNoteBadge" onclick="showNoteOverlay('admin')">
+      <span>&#128276;</span><span>Note</span>
+    </button>
+    <button class="note-badge" id="jobHistoryBadge" onclick="showNoteOverlay('history')">
+      <span>&#128203;</span><span id="jobHistoryBadgeText">Sent</span>
+    </button>
+  </div>
 </div>
 
   <main>
@@ -232,6 +243,12 @@
 <input type="file" id="photoInput" accept="image/*" capture="user" style="display:none">
 <input type="file" id="videoInput" accept="video/*" capture="user" style="display:none">
 <input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display:none">
+
+<div id="noteDetailOverlay">
+  <h2 id="noteDetailTitle" class="big-title">Note</h2>
+  <div id="noteDetailBody"></div>
+  <button class="btn btn-primary" id="noteDetailClose" onclick="closeNoteOverlay()">Close</button>
+</div>
 
 <div id="labelOverlay">
   <h2 class="big-title">What's this of?</h2>
@@ -456,17 +473,19 @@ async function handleWipComplete(wip){
   }
 }
 
+let currentAdminNoteMessage = null;
+let currentJobHistory = null;
+
 async function checkForAdminNote(wip){
-  const el = document.getElementById("adminNote");
-  el.style.display = "none";
-  el.innerHTML = "";
+  currentAdminNoteMessage = null;
+  document.getElementById("adminNoteBadge").classList.remove("show");
   if (!db) return; // Firebase not configured — silently skip, nothing else depends on this
 
   try {
     const doc = await db.collection("wipNotes").doc(wip).get();
     if (doc.exists && doc.data().message){
-      el.innerHTML = '<span class="admin-note-label">Note from the office</span>' + escapeHtml(doc.data().message);
-      el.style.display = "block";
+      currentAdminNoteMessage = doc.data().message;
+      document.getElementById("adminNoteBadge").classList.add("show");
     }
   } catch(err){
     console.error("Couldn't check for an admin note", err);
@@ -474,9 +493,8 @@ async function checkForAdminNote(wip){
 }
 
 async function checkForJob(wip){
-  const el = document.getElementById("jobHistoryNote");
-  el.style.display = "none";
-  el.innerHTML = "";
+  currentJobHistory = null;
+  document.getElementById("jobHistoryBadge").classList.remove("show");
   if (!db) return null;
 
   try {
@@ -494,9 +512,9 @@ async function checkForJob(wip){
     }
 
     if (Array.isArray(data.history) && data.history.length){
-      el.innerHTML = '<span class="jh-label">Already sent for this job</span>' +
-        escapeHtml(summarizeHistory(data.history));
-      el.style.display = "block";
+      currentJobHistory = data.history;
+      document.getElementById("jobHistoryBadgeText").textContent = "Sent (" + data.history.length + ")";
+      document.getElementById("jobHistoryBadge").classList.add("show");
     }
 
     return data.reg || null;
@@ -506,13 +524,33 @@ async function checkForJob(wip){
   }
 }
 
-function summarizeHistory(history){
-  const counts = {};
-  history.forEach(h => {
-    const key = h.label || "Photo";
-    counts[key] = (counts[key] || 0) + 1;
-  });
-  return Object.keys(counts).map(label => counts[label] > 1 ? label + " (x" + counts[label] + ")" : label).join(" \u2022 ");
+function showNoteOverlay(type){
+  const titleEl = document.getElementById("noteDetailTitle");
+  const bodyEl = document.getElementById("noteDetailBody");
+
+  if (type === "admin"){
+    titleEl.textContent = "Note from the office";
+    bodyEl.innerHTML = '<p>' + escapeHtml(currentAdminNoteMessage || "") + '</p>';
+  } else {
+    titleEl.textContent = "Already sent for this job";
+    bodyEl.innerHTML = formatHistoryList(currentJobHistory || []);
+  }
+
+  document.getElementById("noteDetailOverlay").classList.add("show");
+}
+
+function closeNoteOverlay(){
+  document.getElementById("noteDetailOverlay").classList.remove("show");
+}
+
+function formatHistoryList(history){
+  if (!history.length) return "<p>Nothing sent yet.</p>";
+  const sorted = history.slice().sort((a, b) => (b.sentAt || "").localeCompare(a.sentAt || ""));
+  return sorted.map(h => {
+    const d = h.sentAt ? new Date(h.sentAt) : null;
+    const when = d ? d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+    return '<div class="hist-row"><b>' + escapeHtml(h.label || "Photo") + '</b><span>' + escapeHtml(when) + '</span></div>';
+  }).join("");
 }
 
 function updateWipDisplay(){
@@ -973,10 +1011,11 @@ function resetForNewJob(keepMechanic){
   captureQueue.forEach(c => URL.revokeObjectURL(c.previewUrl));
   captureQueue = [];
   document.getElementById("labelOverlay").classList.remove("show");
-  document.getElementById("adminNote").style.display = "none";
-  document.getElementById("adminNote").innerHTML = "";
-  document.getElementById("jobHistoryNote").style.display = "none";
-  document.getElementById("jobHistoryNote").innerHTML = "";
+  document.getElementById("adminNoteBadge").classList.remove("show");
+  document.getElementById("jobHistoryBadge").classList.remove("show");
+  currentAdminNoteMessage = null;
+  currentJobHistory = null;
+  closeNoteOverlay();
   state = {
     step: 1,
     mechanic: keepMechanic ? state.mechanic : null,
