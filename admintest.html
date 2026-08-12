@@ -468,6 +468,15 @@
       </div>
 
       <div class="panel">
+        <h2>Session timeout</h2>
+        <p class="panel-sub">Re-locks the panel after this many minutes of inactivity, even if the tab stays open. It'll always also re-lock when the tab is closed, regardless of this setting.</p>
+        <label for="pinTimeoutField">Minutes (0 = only when the tab closes)</label>
+        <input type="text" id="pinTimeoutField" inputmode="numeric" placeholder="60" style="max-width:120px;">
+        <button class="btn" onclick="savePinTimeout()">Save timeout</button>
+        <div class="status" id="pinTimeoutStatus"></div>
+      </div>
+
+      <div class="panel">
         <h2>Users &amp; permissions</h2>
         <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
         <div id="usersList"><p class="empty">Loading…</p></div>
@@ -500,6 +509,23 @@
       <div class="status err" id="loginError"></div>
       <button class="btn" onclick="attemptLogin()">Unlock</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editUserOverlay">
+  <div class="modal-box">
+    <h2>Edit user</h2>
+    <label for="editUserName">Name</label>
+    <input type="text" id="editUserName" placeholder="Name">
+    <label for="editUserPin">New PIN (leave blank to keep their current one)</label>
+    <input type="text" id="editUserPin" inputmode="numeric" maxlength="6" placeholder="Leave blank to keep existing PIN">
+    <label>Pages this person can access</label>
+    <div id="editUserPagesChecklist"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="saveEditedUser()">Save changes</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closeEditUserOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="editUserStatus"></div>
   </div>
 </div>
 
@@ -683,8 +709,31 @@ applyTheme(localStorage.getItem("warrantyAdminTheme") || "dark");
    does and doesn't protect against.
    ============================================================ */
 let currentAdminUser = null; // {id, name, allowedPages} or null = unrestricted (no users configured yet)
+let pinTimeoutMinutes = 60; // 0 = only re-lock when the tab closes; set from Settings
+
+function recordActivity(){
+  if (currentAdminUser) sessionStorage.setItem("warrantyAdminLastActive", String(Date.now()));
+}
+document.addEventListener("click", recordActivity);
+document.addEventListener("keydown", recordActivity);
+
+function checkIdleTimeout(){
+  if (!currentAdminUser || !pinTimeoutMinutes || pinTimeoutMinutes <= 0) return;
+  const last = Number(sessionStorage.getItem("warrantyAdminLastActive") || 0);
+  const elapsedMin = (Date.now() - last) / 60000;
+  if (elapsedMin >= pinTimeoutMinutes){
+    sessionStorage.removeItem("warrantyAdminUserId");
+    currentAdminUser = null;
+    applyPermissions();
+    showLoginGate();
+  }
+}
+setInterval(checkIdleTimeout, 30000);
+
+
 let allUsersCache = [];
 let usersLoaded = false;
+let editingUserId = null;
 
 const ALL_PAGE_IDS = ["dashboard", "notes", "rules", "checklist", "jobs", "mechanics", "settings"];
 
@@ -709,12 +758,17 @@ async function checkLoginGate(){
   const stored = sessionStorage.getItem("warrantyAdminUserId");
   if (stored){
     const match = allUsersCache.find(u => u.id === stored);
-    if (match){
+    const lastActive = Number(sessionStorage.getItem("warrantyAdminLastActive") || 0);
+    const idleMin = (Date.now() - lastActive) / 60000;
+    const timedOut = pinTimeoutMinutes > 0 && idleMin >= pinTimeoutMinutes;
+    if (match && !timedOut){
       currentAdminUser = match;
+      recordActivity();
       applyPermissions();
       hideLoginGate();
       return;
     }
+    if (timedOut) sessionStorage.removeItem("warrantyAdminUserId");
   }
 
   showLoginGate();
@@ -743,6 +797,7 @@ async function attemptLogin(){
   if (match){
     currentAdminUser = match;
     sessionStorage.setItem("warrantyAdminUserId", match.id);
+    recordActivity();
     hideLoginGate();
     applyPermissions();
   } else {
@@ -835,13 +890,150 @@ function renderUsersList(){
     row.className = "checklist-row";
     const summary = summarizePermissions(user.allowedPages);
     row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + summary + "</span>";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "rm-item";
+    editBtn.style.fontSize = "13px";
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => openEditUserOverlay(user.id);
+    row.appendChild(editBtn);
+
     const rm = document.createElement("button");
     rm.className = "rm-item";
     rm.textContent = "\u00d7";
     rm.onclick = () => removeUser(user.id, user.name);
     row.appendChild(rm);
+
     listEl.appendChild(row);
   });
+}
+
+function openEditUserOverlay(userId){
+  const user = allUsersCache.find(u => u.id === userId);
+  if (!user) return;
+  editingUserId = userId;
+  document.getElementById("editUserName").value = user.name;
+  document.getElementById("editUserPin").value = "";
+  document.getElementById("editUserStatus").textContent = "";
+  renderPermissionSelectors("editUserPagesChecklist", user.allowedPages);
+  document.getElementById("editUserOverlay").classList.add("show");
+}
+
+function closeEditUserOverlay(){
+  document.getElementById("editUserOverlay").classList.remove("show");
+  editingUserId = null;
+}
+
+function renderPermissionSelectors(containerId, currentAllowedPages){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  ALL_PAGE_IDS.forEach(pageId => {
+    const row = document.createElement("div");
+    row.className = "permission-row";
+    const name = document.createElement("span");
+    name.textContent = PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId;
+    row.appendChild(name);
+
+    const select = document.createElement("select");
+    select.dataset.page = pageId;
+    ["none", "view", "edit"].forEach(level => {
+      const opt = document.createElement("option");
+      opt.value = level;
+      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
+      select.appendChild(opt);
+    });
+
+    let currentLevel = "edit";
+    if (currentAllowedPages){
+      if (Array.isArray(currentAllowedPages)) currentLevel = currentAllowedPages.includes(pageId) ? "edit" : "none";
+      else currentLevel = currentAllowedPages[pageId] || "none";
+    }
+    select.value = currentLevel;
+
+    if (pageId === "settings"){
+      select.value = "edit";
+      select.disabled = true;
+      const note = document.createElement("span");
+      note.className = "permission-locked-note";
+      note.textContent = "(always full access)";
+      row.appendChild(select);
+      row.appendChild(note);
+    } else {
+      row.appendChild(select);
+    }
+    el.appendChild(row);
+  });
+}
+
+async function saveEditedUser(){
+  if (!editingUserId) return;
+  const user = allUsersCache.find(u => u.id === editingUserId);
+  if (!user) return;
+
+  const nameEl = document.getElementById("editUserName");
+  const pinEl = document.getElementById("editUserPin");
+  const statusEl = document.getElementById("editUserStatus");
+  const name = nameEl.value.trim();
+  const newPin = pinEl.value.trim();
+
+  if (!name){
+    statusEl.textContent = "Name can't be empty.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (allUsersCache.some(u => u.id !== editingUserId && u.name.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "Someone else already has that name.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const allowedPages = {};
+  document.querySelectorAll("#editUserPagesChecklist select").forEach(sel => {
+    allowedPages[sel.dataset.page] = sel.value;
+  });
+  allowedPages.settings = "edit";
+
+  const updates = { name: name, allowedPages: allowedPages };
+  let pinChanged = false;
+
+  if (newPin){
+    if (!/^\d{4,6}$/.test(newPin)){
+      statusEl.textContent = "PIN needs to be 4\u20136 digits.";
+      statusEl.className = "status err";
+      return;
+    }
+    const newHash = await hashPin(newPin);
+    if (allUsersCache.some(u => u.id !== editingUserId && u.pinHash === newHash)){
+      statusEl.textContent = "That PIN is already in use by someone else.";
+      statusEl.className = "status err";
+      return;
+    }
+    updates.pinHash = newHash;
+    pinChanged = true;
+  }
+
+  const oldName = user.name;
+  const oldSummary = summarizePermissions(user.allowedPages);
+
+  try {
+    await db.collection("users").doc(editingUserId).update(updates);
+    Object.assign(user, updates); // same object instance as currentAdminUser if editing yourself — updates in place
+    renderUsersList();
+    closeEditUserOverlay();
+
+    const changes = [];
+    if (oldName !== name) changes.push('name "' + oldName + '" \u2192 "' + name + '"');
+    const newSummary = summarizePermissions(allowedPages);
+    if (oldSummary !== newSummary) changes.push("permissions: " + newSummary);
+    if (pinChanged) changes.push("PIN reset");
+    logAudit("Edited user \"" + name + "\"" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
+
+    if (currentAdminUser && currentAdminUser.id === editingUserId) applyPermissions();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
 }
 
 function summarizePermissions(allowedPages){
@@ -860,38 +1052,7 @@ function summarizePermissions(allowedPages){
 }
 
 function renderNewUserPagesChecklist(){
-  const el = document.getElementById("newUserPagesChecklist");
-  el.innerHTML = "";
-  ALL_PAGE_IDS.forEach(pageId => {
-    const row = document.createElement("div");
-    row.className = "permission-row";
-    const name = document.createElement("span");
-    name.textContent = PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId;
-    row.appendChild(name);
-
-    const select = document.createElement("select");
-    select.dataset.page = pageId;
-    ["none", "view", "edit"].forEach(level => {
-      const opt = document.createElement("option");
-      opt.value = level;
-      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
-      select.appendChild(opt);
-    });
-    select.value = "edit"; // default to full access, admin can dial back per page
-
-    if (pageId === "settings"){
-      select.value = "edit";
-      select.disabled = true; // always full — a user with no way back into Settings can lock everyone out
-      const note = document.createElement("span");
-      note.className = "permission-locked-note";
-      note.textContent = "(always full access)";
-      row.appendChild(select);
-      row.appendChild(note);
-    } else {
-      row.appendChild(select);
-    }
-    el.appendChild(row);
-  });
+  renderPermissionSelectors("newUserPagesChecklist", null); // null = default everything to full access
 }
 
 async function createUser(){
@@ -2047,7 +2208,7 @@ async function removeMechanicAdmin(index){
 /* ============================================================
    SETTINGS
    ============================================================ */
-let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [] };
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60 };
 let appSettingsLoaded = false;
 
 async function loadAppSettingsAdmin(){
@@ -2059,7 +2220,9 @@ async function loadAppSettingsAdmin(){
       appSettingsCache.dealerAddress = data.dealerAddress || "";
       appSettingsCache.currencySymbol = data.currencySymbol || "\u20ac";
       appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
+      appSettingsCache.pinTimeoutMinutes = typeof data.pinTimeoutMinutes === "number" ? data.pinTimeoutMinutes : 60;
       manufacturer = data.manufacturer || "kia";
+      pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
     }
     appSettingsLoaded = true;
   } catch(err){
@@ -2070,9 +2233,33 @@ async function loadAppSettingsAdmin(){
   document.getElementById("dealerNameField").value = appSettingsCache.dealerName;
   document.getElementById("dealerAddressField").value = appSettingsCache.dealerAddress;
   document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
+  document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
   document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
   document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
   renderEmailRecipientsList();
+}
+
+async function savePinTimeout(){
+  const val = Number(document.getElementById("pinTimeoutField").value);
+  const statusEl = document.getElementById("pinTimeoutStatus");
+  if (isNaN(val) || val < 0){
+    statusEl.textContent = "Enter 0 or a positive number of minutes.";
+    statusEl.className = "status err";
+    return;
+  }
+  const oldVal = appSettingsCache.pinTimeoutMinutes || 0;
+  appSettingsCache.pinTimeoutMinutes = val;
+  pinTimeoutMinutes = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed session timeout " + oldVal + "m \u2192 " + val + "m");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
 }
 
 async function saveAppSettingsToFirestore(){
@@ -2205,8 +2392,10 @@ async function moveEmailRecipient(index, delta){
 async function loadManufacturerSetting(){
   try {
     const doc = await db.collection("config").doc("appSettings").get();
-    if (doc.exists && doc.data().manufacturer){
-      manufacturer = doc.data().manufacturer;
+    if (doc.exists){
+      const data = doc.data();
+      if (data.manufacturer) manufacturer = data.manufacturer;
+      if (typeof data.pinTimeoutMinutes === "number") pinTimeoutMinutes = data.pinTimeoutMinutes;
     }
   } catch(err){
     console.error("Couldn't load manufacturer setting", err);
