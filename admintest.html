@@ -108,6 +108,20 @@
     align-items:center;justify-content:center;padding:20px;}
   .modal-overlay.show{display:flex;}
   #loginGateOverlay{background:var(--bg);}
+
+  .page.read-only{position:relative;}
+  .page.read-only::before{content:"View only \2014 you don't have edit access to this page";
+    display:block;background:#3A2E00;color:#F5D77A;border:1px solid var(--accent);
+    border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:700;}
+  .page.read-only button, .page.read-only input, .page.read-only textarea,
+  .page.read-only select{pointer-events:none;opacity:.55;}
+
+  .permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 0;border-bottom:1px solid var(--border);}
+  .permission-row:last-child{border-bottom:none;}
+  .permission-row span{font-size:14px;}
+  .permission-row select{width:auto;padding:6px 10px;font-size:13px;}
+  .permission-locked-note{font-size:11px;color:var(--text-dim);}
   .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
     padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
   .modal-box h2{margin:0 0 4px;font-size:18px;}
@@ -748,12 +762,24 @@ function logoutUser(){
   showLoginGate();
 }
 
-function applyPermissions(){
-  const allowed = currentAdminUser ? currentAdminUser.allowedPages : null; // null = everything
+function getPagePermission(pageId){
+  if (!currentAdminUser) return "edit"; // no users configured — unrestricted, as always
+  const ap = currentAdminUser.allowedPages;
+  if (Array.isArray(ap)) return ap.includes(pageId) ? "edit" : "none"; // legacy accounts created before view/edit existed
+  return (ap && ap[pageId]) || "none";
+}
 
+function canSeePage(pageId){ return getPagePermission(pageId) !== "none"; }
+function canEditPage(pageId){ return getPagePermission(pageId) === "edit"; }
+
+function applyPermissions(){
   document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
-    const canSee = !allowed || allowed.includes(btn.dataset.page);
-    btn.style.display = canSee ? "" : "none";
+    btn.style.display = canSeePage(btn.dataset.page) ? "" : "none";
+  });
+
+  document.querySelectorAll(".page[id^='page-']").forEach(pageEl => {
+    const pageId = pageEl.id.replace("page-", "");
+    pageEl.classList.toggle("read-only", canSeePage(pageId) && !canEditPage(pageId));
   });
 
   const userBtn = document.getElementById("currentUserBtn");
@@ -767,9 +793,9 @@ function applyPermissions(){
   // If whatever page is currently showing isn't allowed for this user, bump
   // them to the first page they're actually allowed to see.
   const activeBtn = document.querySelector(".nav-item.active[data-page]");
-  const activeAllowed = !allowed || (activeBtn && allowed.includes(activeBtn.dataset.page));
+  const activeAllowed = !activeBtn || canSeePage(activeBtn.dataset.page);
   if (!activeAllowed){
-    const firstAllowed = ALL_PAGE_IDS.find(id => allowed.includes(id)) || "dashboard";
+    const firstAllowed = ALL_PAGE_IDS.find(id => canSeePage(id)) || "dashboard";
     showPage(firstAllowed);
   }
 }
@@ -807,8 +833,8 @@ function renderUsersList(){
   allUsersCache.forEach(user => {
     const row = document.createElement("div");
     row.className = "checklist-row";
-    const pageCount = Array.isArray(user.allowedPages) ? user.allowedPages.length : 0;
-    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + pageCount + " of " + ALL_PAGE_IDS.length + " pages</span>";
+    const summary = summarizePermissions(user.allowedPages);
+    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + summary + "</span>";
     const rm = document.createElement("button");
     rm.className = "rm-item";
     rm.textContent = "\u00d7";
@@ -818,22 +844,53 @@ function renderUsersList(){
   });
 }
 
+function summarizePermissions(allowedPages){
+  let edit = 0, view = 0;
+  ALL_PAGE_IDS.forEach(pageId => {
+    let level;
+    if (Array.isArray(allowedPages)) level = allowedPages.includes(pageId) ? "edit" : "none";
+    else level = (allowedPages && allowedPages[pageId]) || "none";
+    if (level === "edit") edit++;
+    else if (level === "view") view++;
+  });
+  const parts = [];
+  if (edit) parts.push(edit + " edit");
+  if (view) parts.push(view + " view");
+  return parts.length ? parts.join(", ") : "no access";
+}
+
 function renderNewUserPagesChecklist(){
   const el = document.getElementById("newUserPagesChecklist");
   el.innerHTML = "";
   ALL_PAGE_IDS.forEach(pageId => {
-    const label = document.createElement("label");
-    label.className = "checkbox-label";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.value = pageId;
-    cb.checked = true; // default to full access, admin can untick
+    const row = document.createElement("div");
+    row.className = "permission-row";
+    const name = document.createElement("span");
+    name.textContent = PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId;
+    row.appendChild(name);
+
+    const select = document.createElement("select");
+    select.dataset.page = pageId;
+    ["none", "view", "edit"].forEach(level => {
+      const opt = document.createElement("option");
+      opt.value = level;
+      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
+      select.appendChild(opt);
+    });
+    select.value = "edit"; // default to full access, admin can dial back per page
+
     if (pageId === "settings"){
-      cb.disabled = true; // always on — a user with no way back into Settings can lock everyone out
+      select.value = "edit";
+      select.disabled = true; // always full — a user with no way back into Settings can lock everyone out
+      const note = document.createElement("span");
+      note.className = "permission-locked-note";
+      note.textContent = "(always full access)";
+      row.appendChild(select);
+      row.appendChild(note);
+    } else {
+      row.appendChild(select);
     }
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode((PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId) + (pageId === "settings" ? " (always included)" : "")));
-    el.appendChild(label);
+    el.appendChild(row);
   });
 }
 
@@ -867,8 +924,11 @@ async function createUser(){
     return;
   }
 
-  const allowedPages = Array.from(document.querySelectorAll("#newUserPagesChecklist input:checked")).map(cb => cb.value);
-  if (!allowedPages.includes("settings")) allowedPages.push("settings"); // never create a user who can't get back into Settings
+  const allowedPages = {};
+  document.querySelectorAll("#newUserPagesChecklist select").forEach(sel => {
+    allowedPages[sel.dataset.page] = sel.value;
+  });
+  allowedPages.settings = "edit"; // never create a user who can't get back into Settings
 
   try {
     const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages });
@@ -879,7 +939,7 @@ async function createUser(){
     renderNewUserPagesChecklist();
     statusEl.textContent = "Created.";
     statusEl.className = "status ok";
-    logAudit("Created user \"" + name + "\"");
+    logAudit("Created user \"" + name + "\" (" + summarizePermissions(allowedPages) + ")");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1364,6 +1424,7 @@ async function addPwaChecklistItem(){
   try {
     await savePwaChecklistItemsToFirestore();
     renderPwaChecklistItemsList();
+    logAudit("Added " + PWA_TERM + " checklist item \"" + val + "\"");
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -1371,10 +1432,12 @@ async function addPwaChecklistItem(){
 }
 
 async function removePwaChecklistItem(index){
+  const removed = pwaChecklistItemsCache[index];
   pwaChecklistItemsCache.splice(index, 1);
   try {
     await savePwaChecklistItemsToFirestore();
     renderPwaChecklistItemsList();
+    logAudit("Removed " + PWA_TERM + " checklist item \"" + removed + "\"");
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -1435,7 +1498,8 @@ async function savePwaFlagForWip(){
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
-    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM);
+    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM +
+      (checked.length ? " \u2014 items: " + checked.join(", ") : " (no specific items ticked)"));
   } catch(err){
     console.error(err);
     alert("Couldn't save — check your Firebase config.");
@@ -1484,7 +1548,7 @@ async function sendNote(){
     statusEl.className = "status ok";
     document.getElementById("msgField").value = "";
     loadNotes();
-    logAudit("Sent a note to WIP " + wip);
+    logAudit("Sent a note to WIP " + wip + ": \"" + (message.length > 60 ? message.slice(0, 60) + "\u2026" : message) + "\"");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't send — check your Firebase config is filled in correctly.";
@@ -1574,6 +1638,10 @@ async function saveClaimSettings(){
     return;
   }
 
+  const oldThreshold = pwaRulesCache.claimValueThreshold;
+  const oldRate = pwaRulesCache.labourRate;
+  const oldBuffer = pwaRulesCache.nearThresholdBuffer;
+
   pwaRulesCache.claimValueThreshold = threshold;
   pwaRulesCache.labourRate = rate;
   pwaRulesCache.nearThresholdBuffer = buffer;
@@ -1581,7 +1649,12 @@ async function saveClaimSettings(){
     await savePwaRulesToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
-    logAudit("Updated claim settings");
+    const changes = [];
+    const cur = (appSettingsCache && appSettingsCache.currencySymbol) || "\u20ac";
+    if (oldThreshold !== threshold) changes.push("threshold " + cur + oldThreshold + " \u2192 " + cur + threshold);
+    if (oldRate !== rate) changes.push("labour rate " + cur + oldRate + " \u2192 " + cur + rate);
+    if (oldBuffer !== buffer) changes.push("buffer " + cur + oldBuffer + " \u2192 " + cur + buffer);
+    logAudit("Updated claim settings" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1663,11 +1736,19 @@ function buildJobTypeCard(jt, index){
   saveBtn.onclick = async () => {
     const name = nameInput.value.trim();
     if (!name) { alert("Job type needs a name."); return; }
-    pwaRulesCache.jobTypes[index] = { name: name, alwaysPWA: alwaysCheckbox.checked, requiredMedia: mediaItems };
+    const before = pwaRulesCache.jobTypes[index];
+    const after = { name: name, alwaysPWA: alwaysCheckbox.checked, requiredMedia: mediaItems };
+    pwaRulesCache.jobTypes[index] = after;
     try {
       await savePwaRulesToFirestore();
       renderJobTypesList();
-      logAudit("Edited job type \"" + name + "\"");
+      const changes = [];
+      if (before.name !== after.name) changes.push("name \"" + before.name + "\" \u2192 \"" + after.name + "\"");
+      if (!!before.alwaysPWA !== !!after.alwaysPWA) changes.push("always " + PWA_TERM + ": " + (after.alwaysPWA ? "yes" : "no"));
+      const beforeMedia = (before.requiredMedia || []).join(", ");
+      const afterMedia = after.requiredMedia.join(", ");
+      if (beforeMedia !== afterMedia) changes.push("required items: " + (afterMedia || "none"));
+      logAudit("Edited job type \"" + after.name + "\"" + (changes.length ? " \u2014 " + changes.join("; ") : ""));
     } catch(err){
       console.error(err);
       alert("Couldn't save — try again.");
@@ -2000,13 +2081,18 @@ async function saveAppSettingsToFirestore(){
 
 async function saveDealerDetails(){
   const statusEl = document.getElementById("dealerStatus");
+  const oldName = appSettingsCache.dealerName;
+  const oldAddress = appSettingsCache.dealerAddress;
   appSettingsCache.dealerName = document.getElementById("dealerNameField").value.trim();
   appSettingsCache.dealerAddress = document.getElementById("dealerAddressField").value.trim();
   try {
     await saveAppSettingsToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
-    logAudit("Updated dealer details");
+    const changes = [];
+    if (oldName !== appSettingsCache.dealerName) changes.push('name "' + oldName + '" \u2192 "' + appSettingsCache.dealerName + '"');
+    if (oldAddress !== appSettingsCache.dealerAddress) changes.push('address "' + oldAddress + '" \u2192 "' + appSettingsCache.dealerAddress + '"');
+    logAudit("Updated dealer details" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -2022,12 +2108,13 @@ async function saveCurrency(){
     statusEl.className = "status err";
     return;
   }
+  const oldVal = appSettingsCache.currencySymbol;
   appSettingsCache.currencySymbol = val;
   try {
     await saveAppSettingsToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
-    logAudit("Changed currency symbol to " + val);
+    logAudit("Changed currency symbol " + oldVal + " \u2192 " + val);
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
