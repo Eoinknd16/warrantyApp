@@ -663,7 +663,10 @@ function showPage(id){
   document.getElementById("pageSub").textContent = PAGE_INFO[id][1];
 
   if (id === "dashboard") loadDashboard();
-  else if (id === "jobs" && !openJobsLoaded) loadOpenJobs();
+  else if (id === "jobs"){
+    if (!openJobsLoaded) loadOpenJobs(); // fetches, then renders
+    else renderOpenJobsList(document.getElementById("jobSearchField").value); // already fetched (e.g. by Dashboard) — just paint it
+  }
   else if (id === "mechanics" && !mechanicsAdminLoaded) loadMechanicsAdmin();
   else if (id === "settings"){
     if (!appSettingsLoaded) loadAppSettingsAdmin();
