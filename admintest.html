@@ -107,6 +107,7 @@
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;
     align-items:center;justify-content:center;padding:20px;}
   .modal-overlay.show{display:flex;}
+  #loginGateOverlay{background:var(--bg);}
   .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
     padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
   .modal-box h2{margin:0 0 4px;font-size:18px;}
@@ -474,14 +475,17 @@
   </main>
 </div>
 
-<div class="modal-overlay" id="loginGateOverlay" style="z-index:300;">
+<div class="modal-overlay show" id="loginGateOverlay" style="z-index:300;">
   <div class="modal-box" style="text-align:center;">
-    <h2>Enter your PIN</h2>
-    <p class="panel-sub" id="loginSub">Set up by whoever manages this panel.</p>
-    <input type="password" id="loginPinInput" inputmode="numeric" maxlength="6"
-      style="text-align:center;font-size:26px;letter-spacing:10px;" placeholder="PIN">
-    <div class="status err" id="loginError"></div>
-    <button class="btn" onclick="attemptLogin()">Unlock</button>
+    <p class="panel-sub" id="loginGateLoadingMsg">Loading…</p>
+    <div id="loginGateForm" style="display:none;">
+      <h2>Enter your PIN</h2>
+      <p class="panel-sub" id="loginSub">Set up by whoever manages this panel.</p>
+      <input type="password" id="loginPinInput" inputmode="numeric" maxlength="6"
+        style="text-align:center;font-size:26px;letter-spacing:10px;" placeholder="PIN">
+      <div class="status err" id="loginError"></div>
+      <button class="btn" onclick="attemptLogin()">Unlock</button>
+    </div>
   </div>
 </div>
 
@@ -684,6 +688,7 @@ async function checkLoginGate(){
     // No users set up yet — stays open, exactly like before this feature existed.
     currentAdminUser = null;
     applyPermissions();
+    hideLoginGate();
     return;
   }
 
@@ -693,6 +698,7 @@ async function checkLoginGate(){
     if (match){
       currentAdminUser = match;
       applyPermissions();
+      hideLoginGate();
       return;
     }
   }
@@ -701,9 +707,16 @@ async function checkLoginGate(){
 }
 
 function showLoginGate(){
+  document.getElementById("loginGateOverlay").classList.add("show");
+  document.getElementById("loginGateLoadingMsg").style.display = "none";
+  document.getElementById("loginGateForm").style.display = "block";
   document.getElementById("loginPinInput").value = "";
   document.getElementById("loginError").textContent = "";
-  document.getElementById("loginGateOverlay").classList.add("show");
+  document.getElementById("loginPinInput").focus();
+}
+
+function hideLoginGate(){
+  document.getElementById("loginGateOverlay").classList.remove("show");
 }
 
 async function attemptLogin(){
@@ -716,7 +729,7 @@ async function attemptLogin(){
   if (match){
     currentAdminUser = match;
     sessionStorage.setItem("warrantyAdminUserId", match.id);
-    document.getElementById("loginGateOverlay").classList.remove("show");
+    hideLoginGate();
     applyPermissions();
   } else {
     errEl.textContent = "Incorrect PIN.";
@@ -815,8 +828,11 @@ function renderNewUserPagesChecklist(){
     cb.type = "checkbox";
     cb.value = pageId;
     cb.checked = true; // default to full access, admin can untick
+    if (pageId === "settings"){
+      cb.disabled = true; // always on — a user with no way back into Settings can lock everyone out
+    }
     label.appendChild(cb);
-    label.appendChild(document.createTextNode(PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId));
+    label.appendChild(document.createTextNode((PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId) + (pageId === "settings" ? " (always included)" : "")));
     el.appendChild(label);
   });
 }
@@ -852,6 +868,7 @@ async function createUser(){
   }
 
   const allowedPages = Array.from(document.querySelectorAll("#newUserPagesChecklist input:checked")).map(cb => cb.value);
+  if (!allowedPages.includes("settings")) allowedPages.push("settings"); // never create a user who can't get back into Settings
 
   try {
     const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages });
