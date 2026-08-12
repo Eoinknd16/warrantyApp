@@ -28,7 +28,7 @@
 
   /* ---------- shell layout ---------- */
   #shell{display:flex;min-height:100vh;}
-  #sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+  #sidebar{width:230px;flex-shrink:0;background:var(--sidebar-bg, var(--surface));border-right:1px solid var(--border);
     display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
   .brand{font-size:15px;font-weight:800;padding:10px 12px 22px;letter-spacing:.2px;}
   .brand span{display:block;font-size:11px;font-weight:600;color:var(--text-dim);
@@ -115,6 +115,19 @@
     border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:700;}
   .page.read-only button, .page.read-only input, .page.read-only textarea,
   .page.read-only select{pointer-events:none;opacity:.55;}
+
+  .panel.read-only{position:relative;}
+  .panel.read-only::before{content:"View only \2014 you don't have edit access to this section";
+    display:block;background:#3A2E00;color:#F5D77A;border:1px solid var(--accent);
+    border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;font-weight:700;}
+  .panel.read-only button, .panel.read-only input, .panel.read-only textarea,
+  .panel.read-only select{pointer-events:none;opacity:.55;}
+
+  .color-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px;margin-top:18px;}
+  .color-field{display:flex;flex-direction:column;gap:6px;}
+  .color-field label{margin:0;font-size:11px;}
+  input[type=color]{width:100%;height:44px;padding:3px;border-radius:9px;border:1px solid var(--border);
+    background:var(--surface-2);cursor:pointer;}
 
   .permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:9px 0;border-bottom:1px solid var(--border);}
@@ -478,7 +491,7 @@
 
       <div class="panel" id="settingsPanel-appearance">
         <h2>Appearance</h2>
-        <p class="panel-sub">Just for your device &mdash; each person who opens this admin panel can pick their own.</p>
+        <p class="panel-sub">Theme below is just for your device. Colors are shared &mdash; whatever you pick applies for everyone who opens this panel.</p>
         <label class="checkbox-label" style="margin-top:0;">
           <input type="radio" name="themeChoice" value="dark" id="themeRadioDark" onchange="setTheme('dark')">
           Dark
@@ -487,6 +500,30 @@
           <input type="radio" name="themeChoice" value="light" id="themeRadioLight" onchange="setTheme('light')">
           Light
         </label>
+
+        <div class="color-grid">
+          <div class="color-field">
+            <label for="colorAccentField">Accent</label>
+            <input type="color" id="colorAccentField">
+          </div>
+          <div class="color-field">
+            <label for="colorSidebarField">Sidebar</label>
+            <input type="color" id="colorSidebarField">
+          </div>
+          <div class="color-field">
+            <label for="colorSuccessField">Success</label>
+            <input type="color" id="colorSuccessField">
+          </div>
+          <div class="color-field">
+            <label for="colorDangerField">Danger</label>
+            <input type="color" id="colorDangerField">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn" style="margin:0;" onclick="saveCustomColors()">Save colors</button>
+          <button class="btn btn-secondary" style="margin:0;" onclick="resetCustomColors()">Reset to defaults</button>
+        </div>
+        <div class="status" id="customColorsStatus"></div>
       </div>
 
       <div class="panel" id="settingsPanel-sessionTimeout">
@@ -735,6 +772,7 @@ function setTheme(theme){
   localStorage.setItem("warrantyAdminTheme", theme);
   applyTheme(theme);
   if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+  if (document.getElementById("colorAccentField")) populateColorFields();
 }
 
 function toggleTheme(){
@@ -742,6 +780,87 @@ function toggleTheme(){
 }
 
 applyTheme(localStorage.getItem("warrantyAdminTheme") || "dark");
+
+/* ============================================================
+   CUSTOM COLORS — shared (not per-device like theme), applied as
+   inline CSS variable overrides so they win over either theme.
+   ============================================================ */
+const THEME_DEFAULT_COLORS = {
+  dark: { accent: "#F5B300", sidebarBg: "#1E1F24", success: "#2FA84F", danger: "#E5484D" },
+  light: { accent: "#C98A00", sidebarBg: "#FFFFFF", success: "#1F8A3D", danger: "#C22A2E" }
+};
+let customColors = { accent: "", sidebarBg: "", success: "", danger: "" };
+
+function getContrastTextColor(hex){
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#1A1300" : "#FFFFFF";
+}
+
+function applyCustomColors(){
+  const root = document.documentElement;
+  if (customColors.accent){
+    root.style.setProperty("--accent", customColors.accent);
+    root.style.setProperty("--accent-text", getContrastTextColor(customColors.accent));
+  } else {
+    root.style.removeProperty("--accent");
+    root.style.removeProperty("--accent-text");
+  }
+  if (customColors.sidebarBg) root.style.setProperty("--sidebar-bg", customColors.sidebarBg);
+  else root.style.removeProperty("--sidebar-bg");
+  if (customColors.success) root.style.setProperty("--success", customColors.success);
+  else root.style.removeProperty("--success");
+  if (customColors.danger) root.style.setProperty("--danger", customColors.danger);
+  else root.style.removeProperty("--danger");
+
+  if (dashChartInstances && dashChartInstances.length && lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function populateColorFields(){
+  const theme = document.body.classList.contains("light") ? "light" : "dark";
+  const d = THEME_DEFAULT_COLORS[theme];
+  document.getElementById("colorAccentField").value = customColors.accent || d.accent;
+  document.getElementById("colorSidebarField").value = customColors.sidebarBg || d.sidebarBg;
+  document.getElementById("colorSuccessField").value = customColors.success || d.success;
+  document.getElementById("colorDangerField").value = customColors.danger || d.danger;
+}
+
+async function saveCustomColors(){
+  const statusEl = document.getElementById("customColorsStatus");
+  customColors = {
+    accent: document.getElementById("colorAccentField").value,
+    sidebarBg: document.getElementById("colorSidebarField").value,
+    success: document.getElementById("colorSuccessField").value,
+    danger: document.getElementById("colorDangerField").value
+  };
+  applyCustomColors();
+  try {
+    await db.collection("config").doc("appSettings").set({ customColors: customColors }, { merge: true });
+    statusEl.textContent = "Saved \u2014 applies for everyone who opens this panel.";
+    statusEl.className = "status ok";
+    logAudit("Updated custom colors");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function resetCustomColors(){
+  customColors = { accent: "", sidebarBg: "", success: "", danger: "" };
+  applyCustomColors();
+  populateColorFields();
+  try {
+    await db.collection("config").doc("appSettings").set({ customColors: customColors }, { merge: true });
+    const statusEl = document.getElementById("customColorsStatus");
+    statusEl.textContent = "Reset to defaults.";
+    statusEl.className = "status ok";
+    logAudit("Reset custom colors to defaults");
+  } catch(err){
+    console.error(err);
+  }
+}
 
 /* ============================================================
    LOGIN GATE & PERMISSIONS — a light gate, not real auth. See the
@@ -2489,6 +2608,9 @@ async function loadAppSettingsAdmin(){
       manufacturer = data.manufacturer || "kia";
       pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
       vinEnquiryDays = appSettingsCache.vinEnquiryDays;
+      if (data.customColors && typeof data.customColors === "object"){
+        customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
+      }
     }
     appSettingsLoaded = true;
   } catch(err){
@@ -2501,6 +2623,7 @@ async function loadAppSettingsAdmin(){
   document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
   document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
   document.getElementById("vinEnquiryDaysField").value = appSettingsCache.vinEnquiryDays;
+  populateColorFields();
   document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
   document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
   renderEmailRecipientsList();
@@ -2687,11 +2810,15 @@ async function loadManufacturerSetting(){
       if (data.manufacturer) manufacturer = data.manufacturer;
       if (typeof data.pinTimeoutMinutes === "number") pinTimeoutMinutes = data.pinTimeoutMinutes;
       if (typeof data.vinEnquiryDays === "number") vinEnquiryDays = data.vinEnquiryDays;
+      if (data.customColors && typeof data.customColors === "object"){
+        customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
+      }
     }
   } catch(err){
     console.error("Couldn't load manufacturer setting", err);
   }
   applyTerminology();
+  applyCustomColors();
 }
 
 /* ============================================================
