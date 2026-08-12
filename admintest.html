@@ -188,14 +188,23 @@
   .job-card-actions button{margin:0;min-height:40px;flex:1;font-size:13px;}
 
   /* ---------- open jobs ---------- */
-  .jobs-toolbar{display:flex;gap:10px;align-items:flex-start;}
-  .jobs-toolbar > div{flex:1;}
+  .jobs-toolbar{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+  .jobs-toolbar > div{flex:1;min-width:180px;}
+  .jobs-toolbar select{width:auto;min-height:42px;background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:9px;padding:0 10px;font-size:13px;}
+  .jobs-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+  .filter-chip{background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:16px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+  .filter-chip.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
   .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
-    padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+    padding:12px 14px;margin-bottom:8px;}
+  .joc-top-row{display:flex;align-items:flex-start;gap:12px;}
   .job-open-card .joc-info{font-size:14px;flex:1;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+  .joc-vin-due{color:#F5C542;font-weight:700;}
+  .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
-  .joc-checkbox{width:19px;height:19px;flex-shrink:0;}
+  .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
   .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
     margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--border);}
   .bulk-bar .checkbox-label{margin:0;}
@@ -376,9 +385,22 @@
         <p class="panel-sub" id="openJobsDesc">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched.</p>
         <div class="jobs-toolbar">
           <div><input type="text" id="jobSearchField" placeholder="Search by WIP or reg…"></div>
+          <select id="jobSortSelect" onchange="renderOpenJobsList(document.getElementById('jobSearchField').value)">
+            <option value="recent">Most recently updated</option>
+            <option value="oldest">Oldest updated</option>
+            <option value="reg">Reg (A&ndash;Z)</option>
+            <option value="wip">WIP number</option>
+            <option value="vindue">VIN enquiry due soonest</option>
+          </select>
           <button class="btn btn-secondary btn-inline no-print" onclick="exportOpenJobsCSV()" style="margin-top:0;">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export CSV</button>
+        </div>
+        <div class="jobs-filter-row" id="jobsFilterRow">
+          <button class="filter-chip active" data-filter="all" onclick="setJobFilter('all')">All</button>
+          <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
+          <button class="filter-chip" data-filter="vindue" onclick="setJobFilter('vindue')">VIN enquiry due</button>
+          <button class="filter-chip" data-filter="stale" onclick="setJobFilter('stale')">Stale (7+ days)</button>
         </div>
         <div class="bulk-bar" id="bulkBar">
           <label class="checkbox-label">
@@ -615,6 +637,8 @@ function applyTerminology(){
   document.getElementById("checklistTitle").textContent = PWA_TERM + " requirement items";
   document.getElementById("checklistSub").innerHTML = "The checklist you pick from when flagging a specific job as needing " + PWA_TERM + ". Add whatever " + t.mfrName + " might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.";
   document.getElementById("openJobsDesc").textContent = '"Close job" permanently deletes that job\'s Firebase data (reg link, send history, note, ' + PWA_TERM + ' flag). SharePoint files are untouched.';
+  const filterPwaEl = document.getElementById("filterPwaTerm");
+  if (filterPwaEl) filterPwaEl.textContent = PWA_TERM;
 
   PAGE_INFO.notes = ["Notes & " + PWA_TERM + " flags", "Send a note or flag a job for a specific WIP"];
   PAGE_INFO.rules = [PWA_TERM + " rules", t.mfrName + "'s claim rules, read live by the mechanic app"];
@@ -1181,7 +1205,9 @@ const WIDGET_LIBRARY = {
   "chart-pwa": { title: "PWA flagged vs not", type: "chart-pwa" },
   "list-recent": { title: "Recent activity", type: "list-recent" },
   "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" },
-  "list-audit": { title: "Audit log", type: "list-audit" }
+  "list-audit": { title: "Audit log", type: "list-audit" },
+  "stat-vinDue": { title: "VIN enquiries due", type: "stat", render: ctx => ctx.vinDueCount },
+  "list-vindue": { title: "VIN enquiries due", type: "list-vindue" }
 };
 
 const DEFAULT_LAYOUT = ["stat-openJobs","stat-pwaFlagged","stat-activeNotes","stat-itemsSent",
@@ -1246,19 +1272,21 @@ async function loadDashboard(){
     const now = Date.now();
     const staleJobs = jobs.filter(j => j.updatedAt && j.updatedAt.toDate &&
       (now - j.updatedAt.toDate().getTime()) > 7 * 24 * 60 * 60 * 1000);
+    const vinDueJobs = jobs.filter(j => getVinEnquiryStatus(j).due);
 
     const mechanicsList = (mechDoc.exists && Array.isArray(mechDoc.data().names)) ? mechDoc.data().names : [];
     const jobTypesList = (rulesDoc.exists && Array.isArray(rulesDoc.data().jobTypes)) ? rulesDoc.data().jobTypes : [];
 
     const ctx = {
-      jobs, labelCounts, mechanicCounts, staleJobs,
+      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs,
       totalOpen: jobs.length,
       flaggedCount, completedFlagged,
       activeNotes: notesSnap.size,
       totalSent: jobs.reduce((s, j) => s + (Array.isArray(j.history) ? j.history.length : 0), 0),
       mechanicCount: mechanicsList.length,
       jobTypeCount: jobTypesList.length,
-      staleCount: staleJobs.length
+      staleCount: staleJobs.length,
+      vinDueCount: vinDueJobs.length
     };
     lastDashboardCtx = ctx;
 
@@ -1372,7 +1400,26 @@ function renderWidgetBody(type, body, ctx){
     ctx.staleJobs.slice(0, 10).forEach(job => body.appendChild(buildActivityRow(job)));
   } else if (type === "list-audit"){
     renderAuditLogWidget(body);
+  } else if (type === "list-vindue"){
+    if (!ctx.vinDueJobs.length){ body.innerHTML = '<p class="empty">Nothing due right now.</p>'; return; }
+    ctx.vinDueJobs.slice(0, 10).forEach(job => body.appendChild(buildVinDueRow(job)));
   }
+}
+
+function buildVinDueRow(job){
+  const vin = getVinEnquiryStatus(job);
+  const row = document.createElement("div");
+  row.className = "activity-row";
+  row.innerHTML =
+    '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="meta">' + (vin.lastPrinted ? vin.daysSince + " days since last logged" : "never logged") + '</div></div>';
+  const btn = document.createElement("button");
+  btn.className = "btn btn-secondary btn-inline";
+  btn.style.margin = "0";
+  btn.textContent = "Log now";
+  btn.onclick = () => logVinEnquiry(job.id);
+  row.appendChild(btn);
+  return row;
 }
 
 function buildActivityRow(job){
@@ -1486,13 +1533,16 @@ function exportDashboardCSV(){
 }
 
 function exportOpenJobsCSV(){
-  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated"]];
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due"]];
   currentlyFilteredJobs.forEach(job => {
     const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
+    const vin = getVinEnquiryStatus(job);
     rows.push([
       job.id, job.reg || "", job.lastMechanic || "",
       Array.isArray(job.history) ? job.history.length : 0,
-      job.pwaFlag ? "Yes" : "No", when
+      job.pwaFlag ? "Yes" : "No", when,
+      vin.daysSince === null ? "never logged" : vin.daysSince,
+      vin.due ? "Yes" : "No"
     ]);
   });
   downloadCSV(rows, "open-jobs-" + new Date().toISOString().slice(0,10) + ".csv");
@@ -2006,6 +2056,59 @@ let openJobsCache = [];
 let openJobsLoaded = false;
 let selectedJobs = new Set();
 let currentlyFilteredJobs = [];
+let currentJobFilter = "all";
+const VIN_ENQUIRY_DAYS = 10;
+
+function getVinEnquiryStatus(job){
+  const log = Array.isArray(job.vinEnquiryLog) ? job.vinEnquiryLog.slice().sort().reverse() : [];
+  if (!log.length) return { lastPrinted: null, daysSince: null, due: true };
+  const last = new Date(log[0]);
+  const daysSince = Math.floor((Date.now() - last.getTime()) / 86400000);
+  return { lastPrinted: last, daysSince: daysSince, due: daysSince >= VIN_ENQUIRY_DAYS };
+}
+
+async function logVinEnquiry(wip){
+  if (!db) return;
+  const nowIso = new Date().toISOString();
+  try {
+    await db.collection("jobs").doc(wip).set({
+      vinEnquiryLog: firebase.firestore.FieldValue.arrayUnion(nowIso)
+    }, { merge: true });
+    const job = openJobsCache.find(j => j.id === wip);
+    if (job){
+      job.vinEnquiryLog = Array.isArray(job.vinEnquiryLog) ? job.vinEnquiryLog.concat(nowIso) : [nowIso];
+    }
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    logAudit("Logged VIN enquiry printed for WIP " + wip);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't log — try again.");
+  }
+}
+
+function setJobFilter(filter){
+  currentJobFilter = filter;
+  document.querySelectorAll("#jobsFilterRow .filter-chip").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
+  renderOpenJobsList(document.getElementById("jobSearchField").value);
+}
+
+function tsMillis(ts){
+  return ts && ts.toDate ? ts.toDate().getTime() : 0;
+}
+
+function sortOpenJobs(jobs, mode){
+  const arr = jobs.slice();
+  if (mode === "oldest") arr.sort((a, b) => tsMillis(a.updatedAt) - tsMillis(b.updatedAt));
+  else if (mode === "reg") arr.sort((a, b) => (a.reg || "").localeCompare(b.reg || ""));
+  else if (mode === "wip") arr.sort((a, b) => a.id.localeCompare(b.id));
+  else if (mode === "vindue") arr.sort((a, b) => {
+    const da = getVinEnquiryStatus(a).daysSince;
+    const db_ = getVinEnquiryStatus(b).daysSince;
+    return (db_ === null ? 9999 : db_) - (da === null ? 9999 : da);
+  });
+  else arr.sort((a, b) => tsMillis(b.updatedAt) - tsMillis(a.updatedAt)); // "recent" default
+  return arr;
+}
 
 async function loadOpenJobs(){
   const listEl = document.getElementById("openJobsList");
@@ -2027,17 +2130,33 @@ document.getElementById("jobSearchField").addEventListener("input", (e) => {
 
 function renderOpenJobsList(filterText){
   const listEl = document.getElementById("openJobsList");
-  const filter = (filterText || "").trim().toLowerCase();
-  currentlyFilteredJobs = filter
-    ? openJobsCache.filter(j => j.id.toLowerCase().includes(filter) || (j.reg || "").toLowerCase().includes(filter))
-    : openJobsCache;
+  const search = (filterText || "").trim().toLowerCase();
+  let filtered = search
+    ? openJobsCache.filter(j => j.id.toLowerCase().includes(search) || (j.reg || "").toLowerCase().includes(search))
+    : openJobsCache.slice();
 
-  if (!currentlyFilteredJobs.length){
+  if (currentJobFilter === "pwa"){
+    filtered = filtered.filter(j => j.pwaFlag);
+  } else if (currentJobFilter === "vindue"){
+    filtered = filtered.filter(j => getVinEnquiryStatus(j).due);
+  } else if (currentJobFilter === "stale"){
+    filtered = filtered.filter(j => {
+      const t = tsMillis(j.updatedAt);
+      return t && (Date.now() - t) > 7 * 24 * 60 * 60 * 1000;
+    });
+  }
+
+  const sortSelect = document.getElementById("jobSortSelect");
+  filtered = sortOpenJobs(filtered, sortSelect ? sortSelect.value : "recent");
+
+  currentlyFilteredJobs = filtered;
+
+  if (!filtered.length){
     listEl.innerHTML = '<p class="empty">' +
-      (openJobsCache.length ? "No jobs match that search." : "No open jobs right now.") + '</p>';
+      (openJobsCache.length ? "No jobs match." : "No open jobs right now.") + '</p>';
   } else {
     listEl.innerHTML = "";
-    currentlyFilteredJobs.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
+    filtered.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
   }
   updateBulkControls();
 }
@@ -2045,6 +2164,9 @@ function renderOpenJobsList(filterText){
 function buildOpenJobCard(job){
   const card = document.createElement("div");
   card.className = "job-open-card";
+
+  const topRow = document.createElement("div");
+  topRow.className = "joc-top-row";
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
@@ -2055,7 +2177,7 @@ function buildOpenJobCard(job){
     else selectedJobs.delete(job.id);
     updateBulkControls();
   };
-  card.appendChild(checkbox);
+  topRow.appendChild(checkbox);
 
   const info = document.createElement("div");
   info.className = "joc-info";
@@ -2063,20 +2185,37 @@ function buildOpenJobCard(job){
     ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
     : "unknown";
   const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+  const vin = getVinEnquiryStatus(job);
+  const vinText = vin.lastPrinted
+    ? "VIN enquiry: " + vin.daysSince + "d ago" + (vin.due ? " \u26a0\ufe0f due" : "")
+    : "VIN enquiry: never logged \u26a0\ufe0f due";
   info.innerHTML =
     "<b>WIP " + escapeHtml(job.id) + "</b>" + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
     '<div class="joc-meta">' +
     (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
     historyCount + " sent" +
     (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
-    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>';
-  card.appendChild(info);
+    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>' +
+    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>';
+  topRow.appendChild(info);
+  card.appendChild(topRow);
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "joc-action-row";
+
+  const vinBtn = document.createElement("button");
+  vinBtn.className = "btn btn-secondary";
+  vinBtn.textContent = "Log VIN enquiry";
+  vinBtn.onclick = () => logVinEnquiry(job.id);
+  actionRow.appendChild(vinBtn);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
   closeBtn.onclick = () => closeJobs([job.id]);
-  card.appendChild(closeBtn);
+  actionRow.appendChild(closeBtn);
+
+  card.appendChild(actionRow);
 
   return card;
 }
