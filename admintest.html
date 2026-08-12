@@ -432,7 +432,7 @@
 
     <!-- ============ SETTINGS ============ -->
     <div class="page" id="page-settings">
-      <div class="panel">
+      <div class="panel" id="settingsPanel-manufacturer">
         <h2>Manufacturer</h2>
         <p class="panel-sub">Swaps terminology throughout the whole app &mdash; e.g. "PWA" only makes sense for Kia. Pick anything else and it switches to generic wording everywhere, no other changes needed.</p>
         <label class="checkbox-label" style="margin-top:0;">
@@ -446,7 +446,7 @@
         <div class="status" id="manufacturerStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-dealer">
         <h2>Dealer details</h2>
         <p class="panel-sub">Used for branding across the app and on exported reports.</p>
         <label for="dealerNameField">Business name</label>
@@ -457,7 +457,7 @@
         <div class="status" id="dealerStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-emails">
         <h2>Warranty email recipients</h2>
         <p class="panel-sub">Every address a job should go to. The <b>first</b> one must be the inbox your Power Automate flow watches &mdash; that's the one the folder-filing logic depends on. Anyone else just gets a copy for visibility. Mechanics still have to pick these in their Mail app, so keep them saved as contacts on each phone.</p>
         <div id="emailRecipientsList"><p class="empty">Loading…</p></div>
@@ -467,7 +467,7 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-currency">
         <h2>Currency</h2>
         <p class="panel-sub">Used throughout the PWA checker's value calculator.</p>
         <label for="currencyField">Currency symbol</label>
@@ -476,7 +476,7 @@
         <div class="status" id="currencyStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-appearance">
         <h2>Appearance</h2>
         <p class="panel-sub">Just for your device &mdash; each person who opens this admin panel can pick their own.</p>
         <label class="checkbox-label" style="margin-top:0;">
@@ -489,7 +489,7 @@
         </label>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-sessionTimeout">
         <h2>Session timeout</h2>
         <p class="panel-sub">Re-locks the panel after this many minutes of inactivity, even if the tab stays open. It'll always also re-lock when the tab is closed, regardless of this setting.</p>
         <label for="pinTimeoutField">Minutes (0 = only when the tab closes)</label>
@@ -498,7 +498,7 @@
         <div class="status" id="pinTimeoutStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-vinEnquiry">
         <h2>VIN enquiry reminder</h2>
         <p class="panel-sub">A VIN enquiry is assumed printed automatically the day a job is first created. After this many days without a new one being logged, it shows as due again.</p>
         <label for="vinEnquiryDaysField">Days</label>
@@ -507,13 +507,13 @@
         <div class="status" id="vinEnquiryDaysStatus"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-users">
         <h2>Users &amp; permissions</h2>
         <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
         <div id="usersList"><p class="empty">Loading…</p></div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="settingsPanel-users2">
         <h3>Add a user</h3>
         <label for="newUserName">Name</label>
         <input type="text" id="newUserName" placeholder="Name">
@@ -521,6 +521,8 @@
         <input type="text" id="newUserPin" inputmode="numeric" maxlength="6" placeholder="e.g. 4821">
         <label>Pages this person can access</label>
         <div id="newUserPagesChecklist"></div>
+        <label>Settings access <span style="font-weight:400;text-transform:none;">(only matters if they can see the Settings page above)</span></label>
+        <div id="newUserSettingsChecklist"></div>
         <button class="btn" onclick="createUser()">Create user</button>
         <div class="status" id="newUserStatus"></div>
       </div>
@@ -552,6 +554,8 @@
     <input type="text" id="editUserPin" inputmode="numeric" maxlength="6" placeholder="Leave blank to keep existing PIN">
     <label>Pages this person can access</label>
     <div id="editUserPagesChecklist"></div>
+    <label>Settings access <span style="font-weight:400;text-transform:none;">(only matters if they can see the Settings page above)</span></label>
+    <div id="editUserSettingsChecklist"></div>
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button class="btn" style="margin:0;" onclick="saveEditedUser()">Save changes</button>
       <button class="btn btn-secondary" style="margin:0;" onclick="closeEditUserOverlay()">Cancel</button>
@@ -863,6 +867,34 @@ function getPagePermission(pageId){
 function canSeePage(pageId){ return getPagePermission(pageId) !== "none"; }
 function canEditPage(pageId){ return getPagePermission(pageId) === "edit"; }
 
+const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "users"];
+const SETTINGS_SECTION_LABELS = {
+  manufacturer: "Manufacturer", dealer: "Dealer details", emails: "Warranty email recipients",
+  currency: "Currency", appearance: "Appearance", sessionTimeout: "Session timeout",
+  vinEnquiry: "VIN enquiry reminder", users: "Users & permissions"
+};
+
+function getSettingsSectionPermission(sectionId){
+  if (!currentAdminUser) return "edit";
+  const ss = currentAdminUser.settingsSections;
+  if (ss && typeof ss === "object") return ss[sectionId] || "none";
+  return getPagePermission("settings"); // no granular data saved yet — fall back to their overall Settings access
+}
+
+function applySettingsSectionPermissions(){
+  const settingsPageLevel = getPagePermission("settings");
+  SETTINGS_SECTIONS.forEach(sectionId => {
+    const ids = sectionId === "users" ? ["settingsPanel-users", "settingsPanel-users2"] : ["settingsPanel-" + sectionId];
+    const level = settingsPageLevel === "none" ? "none" : getSettingsSectionPermission(sectionId);
+    ids.forEach(id => {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      panel.style.display = level === "none" ? "none" : "";
+      panel.classList.toggle("read-only", level === "view");
+    });
+  });
+}
+
 function applyPermissions(){
   document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
     btn.style.display = canSeePage(btn.dataset.page) ? "" : "none";
@@ -872,6 +904,8 @@ function applyPermissions(){
     const pageId = pageEl.id.replace("page-", "");
     pageEl.classList.toggle("read-only", canSeePage(pageId) && !canEditPage(pageId));
   });
+
+  applySettingsSectionPermissions();
 
   const userBtn = document.getElementById("currentUserBtn");
   if (currentAdminUser){
@@ -925,7 +959,12 @@ function renderUsersList(){
     const row = document.createElement("div");
     row.className = "checklist-row";
     const summary = summarizePermissions(user.allowedPages);
-    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + summary + "</span>";
+    const settingsPageLevel = Array.isArray(user.allowedPages)
+      ? (user.allowedPages.includes("settings") ? "edit" : "none")
+      : ((user.allowedPages && user.allowedPages.settings) || "none");
+    const settingsDetail = settingsPageLevel !== "none"
+      ? " \u2014 " + describeSettingsSectionsForUser(user.settingsSections, settingsPageLevel) : "";
+    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + summary + settingsDetail + "</span>";
 
     const editBtn = document.createElement("button");
     editBtn.className = "rm-item";
@@ -952,6 +991,7 @@ function openEditUserOverlay(userId){
   document.getElementById("editUserPin").value = "";
   document.getElementById("editUserStatus").textContent = "";
   renderPermissionSelectors("editUserPagesChecklist", user.allowedPages);
+  renderSettingsSectionSelectors("editUserSettingsChecklist", user.settingsSections);
   document.getElementById("editUserOverlay").classList.add("show");
 }
 
@@ -985,18 +1025,7 @@ function renderPermissionSelectors(containerId, currentAllowedPages){
       else currentLevel = currentAllowedPages[pageId] || "none";
     }
     select.value = currentLevel;
-
-    if (pageId === "settings"){
-      select.value = "edit";
-      select.disabled = true;
-      const note = document.createElement("span");
-      note.className = "permission-locked-note";
-      note.textContent = "(always full access)";
-      row.appendChild(select);
-      row.appendChild(note);
-    } else {
-      row.appendChild(select);
-    }
+    row.appendChild(select);
     el.appendChild(row);
   });
 }
@@ -1027,9 +1056,14 @@ async function saveEditedUser(){
   document.querySelectorAll("#editUserPagesChecklist select").forEach(sel => {
     allowedPages[sel.dataset.page] = sel.value;
   });
-  allowedPages.settings = "edit";
+  const settingsSections = readSettingsSectionSelectors("editUserSettingsChecklist");
 
-  const updates = { name: name, allowedPages: allowedPages };
+  if (wouldLockOutUserManagement(editingUserId, allowedPages, settingsSections)){
+    const proceed = confirm("Heads up: after this change, nobody would have Full access to both Settings and Users & Permissions \u2014 meaning nobody could manage users or fix a permissions mistake without going into Firebase directly. Save anyway?");
+    if (!proceed) return;
+  }
+
+  const updates = { name: name, allowedPages: allowedPages, settingsSections: settingsSections };
   let pinChanged = false;
 
   if (newPin){
@@ -1089,6 +1123,80 @@ function summarizePermissions(allowedPages){
 
 function renderNewUserPagesChecklist(){
   renderPermissionSelectors("newUserPagesChecklist", null); // null = default everything to full access
+  renderSettingsSectionSelectors("newUserSettingsChecklist", null);
+}
+
+function renderSettingsSectionSelectors(containerId, currentSettingsSections){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  SETTINGS_SECTIONS.forEach(sectionId => {
+    const row = document.createElement("div");
+    row.className = "permission-row";
+    const name = document.createElement("span");
+    name.textContent = SETTINGS_SECTION_LABELS[sectionId];
+    row.appendChild(name);
+
+    const select = document.createElement("select");
+    select.dataset.section = sectionId;
+    ["none", "view", "edit"].forEach(level => {
+      const opt = document.createElement("option");
+      opt.value = level;
+      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
+      select.appendChild(opt);
+    });
+
+    let currentLevel = "edit";
+    if (currentSettingsSections && typeof currentSettingsSections === "object"){
+      currentLevel = currentSettingsSections[sectionId] || "none";
+    }
+    select.value = currentLevel;
+    row.appendChild(select);
+    el.appendChild(row);
+  });
+}
+
+function readSettingsSectionSelectors(containerId){
+  const result = {};
+  document.querySelectorAll("#" + containerId + " select").forEach(sel => {
+    result[sel.dataset.section] = sel.value;
+  });
+  return result;
+}
+
+function describeSettingsSectionsForUser(sectionsObj, pageLevel){
+  if (pageLevel === "none") return "no Settings access";
+  let edit = 0, view = 0;
+  SETTINGS_SECTIONS.forEach(id => {
+    const lvl = (sectionsObj && sectionsObj[id]) || "none";
+    if (lvl === "edit") edit++;
+    else if (lvl === "view") view++;
+  });
+  const parts = [];
+  if (edit) parts.push(edit + " edit");
+  if (view) parts.push(view + " view");
+  return parts.length ? parts.join(", ") + " within Settings" : "Settings visible, nothing enabled inside it";
+}
+
+// Warns (rather than blocks) if a save would leave nobody able to manage
+// Users & Permissions — a deliberate speed bump, not a hard rule, since
+// removing the old hard lock was explicitly requested.
+function wouldLockOutUserManagement(candidateUserId, candidateAllowedPages, candidateSettingsSections){
+  const hasFullUserAccess = (allowedPages, settingsSections) => {
+    let settingsLevel;
+    if (Array.isArray(allowedPages)) settingsLevel = allowedPages.includes("settings") ? "edit" : "none";
+    else settingsLevel = (allowedPages && allowedPages.settings) || "none";
+    if (settingsLevel !== "edit") return false;
+    const usersLevel = (settingsSections && settingsSections.users) || "none";
+    return usersLevel === "edit";
+  };
+
+  const othersOk = allUsersCache
+    .filter(u => u.id !== candidateUserId)
+    .some(u => hasFullUserAccess(u.allowedPages, u.settingsSections));
+
+  const candidateOk = hasFullUserAccess(candidateAllowedPages, candidateSettingsSections);
+
+  return !(othersOk || candidateOk);
 }
 
 async function createUser(){
@@ -1125,11 +1233,16 @@ async function createUser(){
   document.querySelectorAll("#newUserPagesChecklist select").forEach(sel => {
     allowedPages[sel.dataset.page] = sel.value;
   });
-  allowedPages.settings = "edit"; // never create a user who can't get back into Settings
+  const settingsSections = readSettingsSectionSelectors("newUserSettingsChecklist");
+
+  if (wouldLockOutUserManagement(null, allowedPages, settingsSections)){
+    const proceed = confirm("Heads up: after this, nobody would have Full access to both Settings and Users & Permissions \u2014 meaning nobody could manage users or fix a permissions mistake without going into Firebase directly. Create this user anyway?");
+    if (!proceed) return;
+  }
 
   try {
-    const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages });
-    allUsersCache.push({ id: docRef.id, name: name, pinHash: pinHash, allowedPages: allowedPages });
+    const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages, settingsSections: settingsSections });
+    allUsersCache.push({ id: docRef.id, name: name, pinHash: pinHash, allowedPages: allowedPages, settingsSections: settingsSections });
     nameEl.value = "";
     pinEl.value = "";
     renderUsersList();
