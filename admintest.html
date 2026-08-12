@@ -499,6 +499,15 @@
       </div>
 
       <div class="panel">
+        <h2>VIN enquiry reminder</h2>
+        <p class="panel-sub">A VIN enquiry is assumed printed automatically the day a job is first created. After this many days without a new one being logged, it shows as due again.</p>
+        <label for="vinEnquiryDaysField">Days</label>
+        <input type="text" id="vinEnquiryDaysField" inputmode="numeric" placeholder="10" style="max-width:120px;">
+        <button class="btn" onclick="saveVinEnquiryDays()">Save interval</button>
+        <div class="status" id="vinEnquiryDaysStatus"></div>
+      </div>
+
+      <div class="panel">
         <h2>Users &amp; permissions</h2>
         <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
         <div id="usersList"><p class="empty">Loading…</p></div>
@@ -2057,14 +2066,14 @@ let openJobsLoaded = false;
 let selectedJobs = new Set();
 let currentlyFilteredJobs = [];
 let currentJobFilter = "all";
-const VIN_ENQUIRY_DAYS = 10;
+let vinEnquiryDays = 10; // default — real value loaded from Settings, see loadManufacturerSetting()
 
 function getVinEnquiryStatus(job){
   const log = Array.isArray(job.vinEnquiryLog) ? job.vinEnquiryLog.slice().sort().reverse() : [];
   if (!log.length) return { lastPrinted: null, daysSince: null, due: true };
   const last = new Date(log[0]);
   const daysSince = Math.floor((Date.now() - last.getTime()) / 86400000);
-  return { lastPrinted: last, daysSince: daysSince, due: daysSince >= VIN_ENQUIRY_DAYS };
+  return { lastPrinted: last, daysSince: daysSince, due: daysSince >= vinEnquiryDays };
 }
 
 async function logVinEnquiry(wip){
@@ -2350,7 +2359,7 @@ async function removeMechanicAdmin(index){
 /* ============================================================
    SETTINGS
    ============================================================ */
-let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60 };
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10 };
 let appSettingsLoaded = false;
 
 async function loadAppSettingsAdmin(){
@@ -2363,8 +2372,10 @@ async function loadAppSettingsAdmin(){
       appSettingsCache.currencySymbol = data.currencySymbol || "\u20ac";
       appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
       appSettingsCache.pinTimeoutMinutes = typeof data.pinTimeoutMinutes === "number" ? data.pinTimeoutMinutes : 60;
+      appSettingsCache.vinEnquiryDays = typeof data.vinEnquiryDays === "number" ? data.vinEnquiryDays : 10;
       manufacturer = data.manufacturer || "kia";
       pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
+      vinEnquiryDays = appSettingsCache.vinEnquiryDays;
     }
     appSettingsLoaded = true;
   } catch(err){
@@ -2376,6 +2387,7 @@ async function loadAppSettingsAdmin(){
   document.getElementById("dealerAddressField").value = appSettingsCache.dealerAddress;
   document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
   document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
+  document.getElementById("vinEnquiryDaysField").value = appSettingsCache.vinEnquiryDays;
   document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
   document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
   renderEmailRecipientsList();
@@ -2397,6 +2409,29 @@ async function savePinTimeout(){
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
     logAudit("Changed session timeout " + oldVal + "m \u2192 " + val + "m");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function saveVinEnquiryDays(){
+  const val = Number(document.getElementById("vinEnquiryDaysField").value);
+  const statusEl = document.getElementById("vinEnquiryDaysStatus");
+  if (!val || val <= 0){
+    statusEl.textContent = "Enter a positive number of days.";
+    statusEl.className = "status err";
+    return;
+  }
+  const oldVal = appSettingsCache.vinEnquiryDays || 10;
+  appSettingsCache.vinEnquiryDays = val;
+  vinEnquiryDays = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed VIN enquiry interval " + oldVal + "d \u2192 " + val + "d");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -2538,6 +2573,7 @@ async function loadManufacturerSetting(){
       const data = doc.data();
       if (data.manufacturer) manufacturer = data.manufacturer;
       if (typeof data.pinTimeoutMinutes === "number") pinTimeoutMinutes = data.pinTimeoutMinutes;
+      if (typeof data.vinEnquiryDays === "number") vinEnquiryDays = data.vinEnquiryDays;
     }
   } catch(err){
     console.error("Couldn't load manufacturer setting", err);
