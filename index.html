@@ -1215,15 +1215,30 @@ function requestLocation(){
   );
 }
 
-function linkRegToJob(){
+async function linkRegToJob(){
   if (!db) return;
   // Fire-and-forget — saved as soon as the reg is confirmed, not just on
   // submit, so the link exists even if this particular visit never sends.
-  db.collection("jobs").doc(state.wip).set({
-    reg: state.reg,
-    lastMechanic: state.mechanic,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true }).catch(err => console.error("Couldn't link reg to WIP", err));
+  try {
+    const docSnap = await db.collection("jobs").doc(state.wip).get();
+    const alreadyHasVinLog = docSnap.exists && Array.isArray(docSnap.data().vinEnquiryLog) && docSnap.data().vinEnquiryLog.length > 0;
+
+    const updates = {
+      reg: state.reg,
+      lastMechanic: state.mechanic,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    // A VIN enquiry is always printed the day a job is first created — no
+    // need to make the mechanic log it manually, only the office's later
+    // re-prints (every N days, tracked in admin) need an explicit log.
+    if (!alreadyHasVinLog){
+      updates.vinEnquiryLog = firebase.firestore.FieldValue.arrayUnion(new Date().toISOString());
+    }
+
+    await db.collection("jobs").doc(state.wip).set(updates, { merge: true });
+  } catch(err){
+    console.error("Couldn't link reg to WIP", err);
+  }
 }
 
 /* ============================================================
