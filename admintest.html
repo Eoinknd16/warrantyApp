@@ -39,6 +39,7 @@
   .nav-item:hover{background:var(--surface-2);color:var(--text);}
   .nav-item.active{background:var(--accent);color:var(--accent-text);}
   .nav-link{border-top:1px solid var(--border);padding-top:16px;}
+  .nav-bottom-group{margin-top:auto;display:flex;flex-direction:column;}
 
   #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
   #topbar{margin-bottom:26px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
@@ -54,7 +55,7 @@
     .brand{display:none;}
     .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
     .nav-link{margin-top:0;border-top:none;padding-top:0;}
-    #themeToggleBtn{margin-top:0;}
+    .nav-bottom-group{margin-top:0;display:flex;flex-direction:row;}
     #mainArea{padding:18px;}
   }
 
@@ -223,10 +224,15 @@
     <button class="nav-item" data-page="settings" onclick="showPage('settings')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
       Settings</button>
-    <button class="nav-item" id="themeToggleBtn" onclick="toggleTheme()" style="margin-top:auto;">
-      <svg class="icon" id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      <svg class="icon" id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <span id="themeToggleLabel">Light mode</span></button>
+    <div class="nav-bottom-group">
+      <button class="nav-item" id="currentUserBtn" onclick="logoutUser()" style="display:none;">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span id="currentUserLabel">Someone</span></button>
+      <button class="nav-item" id="themeToggleBtn" onclick="toggleTheme()">
+        <svg class="icon" id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon" id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="themeToggleLabel">Light mode</span></button>
+    </div>
     <a href="training-guide.html" target="_blank" class="nav-item nav-link">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Training guide</a>
@@ -445,9 +451,38 @@
           Light
         </label>
       </div>
+
+      <div class="panel">
+        <h2>Users &amp; permissions</h2>
+        <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
+        <div id="usersList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div class="panel">
+        <h3>Add a user</h3>
+        <label for="newUserName">Name</label>
+        <input type="text" id="newUserName" placeholder="Name">
+        <label for="newUserPin">PIN (4&ndash;6 digits)</label>
+        <input type="text" id="newUserPin" inputmode="numeric" maxlength="6" placeholder="e.g. 4821">
+        <label>Pages this person can access</label>
+        <div id="newUserPagesChecklist"></div>
+        <button class="btn" onclick="createUser()">Create user</button>
+        <div class="status" id="newUserStatus"></div>
+      </div>
     </div>
 
   </main>
+</div>
+
+<div class="modal-overlay" id="loginGateOverlay" style="z-index:300;">
+  <div class="modal-box" style="text-align:center;">
+    <h2>Enter your PIN</h2>
+    <p class="panel-sub" id="loginSub">Set up by whoever manages this panel.</p>
+    <input type="password" id="loginPinInput" inputmode="numeric" maxlength="6"
+      style="text-align:center;font-size:26px;letter-spacing:10px;" placeholder="PIN">
+    <div class="status err" id="loginError"></div>
+    <button class="btn" onclick="attemptLogin()">Unlock</button>
+  </div>
 </div>
 
 <div class="modal-overlay" id="customizeOverlay">
@@ -482,6 +517,12 @@ const db = firebase.firestore();
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function hashPin(pin){
+  const enc = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function downloadCSV(rows, filename){
@@ -552,6 +593,7 @@ async function saveManufacturer(value){
     await db.collection("config").doc("appSettings").set({ manufacturer: value }, { merge: true });
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
+    logAudit("Changed manufacturer to " + value);
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -579,7 +621,10 @@ function showPage(id){
   if (id === "dashboard") loadDashboard();
   else if (id === "jobs" && !openJobsLoaded) loadOpenJobs();
   else if (id === "mechanics" && !mechanicsAdminLoaded) loadMechanicsAdmin();
-  else if (id === "settings" && !appSettingsLoaded) loadAppSettingsAdmin();
+  else if (id === "settings"){
+    if (!appSettingsLoaded) loadAppSettingsAdmin();
+    loadUsersForSettings();
+  }
 }
 
 function toggleCollapsible(id){
@@ -615,6 +660,269 @@ function toggleTheme(){
 applyTheme(localStorage.getItem("warrantyAdminTheme") || "dark");
 
 /* ============================================================
+   LOGIN GATE & PERMISSIONS — a light gate, not real auth. See the
+   note on the Users & permissions panel for exactly what this
+   does and doesn't protect against.
+   ============================================================ */
+let currentAdminUser = null; // {id, name, allowedPages} or null = unrestricted (no users configured yet)
+let allUsersCache = [];
+let usersLoaded = false;
+
+const ALL_PAGE_IDS = ["dashboard", "notes", "rules", "checklist", "jobs", "mechanics", "settings"];
+
+async function checkLoginGate(){
+  try {
+    const snapshot = await db.collection("users").get();
+    allUsersCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    usersLoaded = true;
+  } catch(err){
+    console.error("Couldn't load users", err);
+    allUsersCache = [];
+  }
+
+  if (!allUsersCache.length){
+    // No users set up yet — stays open, exactly like before this feature existed.
+    currentAdminUser = null;
+    applyPermissions();
+    return;
+  }
+
+  const stored = sessionStorage.getItem("warrantyAdminUserId");
+  if (stored){
+    const match = allUsersCache.find(u => u.id === stored);
+    if (match){
+      currentAdminUser = match;
+      applyPermissions();
+      return;
+    }
+  }
+
+  showLoginGate();
+}
+
+function showLoginGate(){
+  document.getElementById("loginPinInput").value = "";
+  document.getElementById("loginError").textContent = "";
+  document.getElementById("loginGateOverlay").classList.add("show");
+}
+
+async function attemptLogin(){
+  const pin = document.getElementById("loginPinInput").value.trim();
+  const errEl = document.getElementById("loginError");
+  if (!pin){ return; }
+
+  const hash = await hashPin(pin);
+  const match = allUsersCache.find(u => u.pinHash === hash);
+  if (match){
+    currentAdminUser = match;
+    sessionStorage.setItem("warrantyAdminUserId", match.id);
+    document.getElementById("loginGateOverlay").classList.remove("show");
+    applyPermissions();
+  } else {
+    errEl.textContent = "Incorrect PIN.";
+    document.getElementById("loginPinInput").value = "";
+  }
+}
+
+document.getElementById("loginPinInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") attemptLogin();
+});
+
+function logoutUser(){
+  sessionStorage.removeItem("warrantyAdminUserId");
+  currentAdminUser = null;
+  applyPermissions();
+  showLoginGate();
+}
+
+function applyPermissions(){
+  const allowed = currentAdminUser ? currentAdminUser.allowedPages : null; // null = everything
+
+  document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
+    const canSee = !allowed || allowed.includes(btn.dataset.page);
+    btn.style.display = canSee ? "" : "none";
+  });
+
+  const userBtn = document.getElementById("currentUserBtn");
+  if (currentAdminUser){
+    userBtn.style.display = "flex";
+    document.getElementById("currentUserLabel").textContent = currentAdminUser.name;
+  } else {
+    userBtn.style.display = "none";
+  }
+
+  // If whatever page is currently showing isn't allowed for this user, bump
+  // them to the first page they're actually allowed to see.
+  const activeBtn = document.querySelector(".nav-item.active[data-page]");
+  const activeAllowed = !allowed || (activeBtn && allowed.includes(activeBtn.dataset.page));
+  if (!activeAllowed){
+    const firstAllowed = ALL_PAGE_IDS.find(id => allowed.includes(id)) || "dashboard";
+    showPage(firstAllowed);
+  }
+}
+
+function currentUserName(){
+  return currentAdminUser ? currentAdminUser.name : "Unknown";
+}
+
+/* ============================================================
+   USERS MANAGEMENT
+   ============================================================ */
+async function loadUsersForSettings(){
+  if (!usersLoaded){
+    try {
+      const snapshot = await db.collection("users").get();
+      allUsersCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      usersLoaded = true;
+    } catch(err){
+      console.error(err);
+      document.getElementById("usersList").innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+      return;
+    }
+  }
+  renderUsersList();
+  renderNewUserPagesChecklist();
+}
+
+function renderUsersList(){
+  const listEl = document.getElementById("usersList");
+  if (!allUsersCache.length){
+    listEl.innerHTML = '<p class="empty">No users yet — this panel is open to anyone until you add one.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  allUsersCache.forEach(user => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    const pageCount = Array.isArray(user.allowedPages) ? user.allowedPages.length : 0;
+    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + pageCount + " of " + ALL_PAGE_IDS.length + " pages</span>";
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeUser(user.id, user.name);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+function renderNewUserPagesChecklist(){
+  const el = document.getElementById("newUserPagesChecklist");
+  el.innerHTML = "";
+  ALL_PAGE_IDS.forEach(pageId => {
+    const label = document.createElement("label");
+    label.className = "checkbox-label";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = pageId;
+    cb.checked = true; // default to full access, admin can untick
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId));
+    el.appendChild(label);
+  });
+}
+
+async function createUser(){
+  const nameEl = document.getElementById("newUserName");
+  const pinEl = document.getElementById("newUserPin");
+  const statusEl = document.getElementById("newUserStatus");
+  const name = nameEl.value.trim();
+  const pin = pinEl.value.trim();
+
+  if (!name){
+    statusEl.textContent = "Give this user a name first.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (!/^\d{4,6}$/.test(pin)){
+    statusEl.textContent = "PIN needs to be 4\u20136 digits.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (allUsersCache.some(u => u.name.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "Someone with that name already exists.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const pinHash = await hashPin(pin);
+  if (allUsersCache.some(u => u.pinHash === pinHash)){
+    statusEl.textContent = "That PIN is already in use \u2014 PINs can't be shared between users.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const allowedPages = Array.from(document.querySelectorAll("#newUserPagesChecklist input:checked")).map(cb => cb.value);
+
+  try {
+    const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages });
+    allUsersCache.push({ id: docRef.id, name: name, pinHash: pinHash, allowedPages: allowedPages });
+    nameEl.value = "";
+    pinEl.value = "";
+    renderUsersList();
+    renderNewUserPagesChecklist();
+    statusEl.textContent = "Created.";
+    statusEl.className = "status ok";
+    logAudit("Created user \"" + name + "\"");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function removeUser(id, name){
+  if (!confirm('Remove "' + name + '"? They\'ll need a new PIN set up to get back in.')) return;
+  try {
+    await db.collection("users").doc(id).delete();
+    allUsersCache = allUsersCache.filter(u => u.id !== id);
+    renderUsersList();
+    logAudit("Removed user \"" + name + "\"");
+    if (currentAdminUser && currentAdminUser.id === id){
+      logoutUser();
+    }
+  } catch(err){
+    console.error(err);
+    alert("Couldn't remove — try again.");
+  }
+}
+
+/* ============================================================
+   AUDIT LOG
+   ============================================================ */
+function logAudit(action){
+  if (!db) return;
+  db.collection("auditLog").add({
+    user: currentUserName(),
+    action: action,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(err => console.error("Couldn't log audit entry", err));
+}
+
+async function renderAuditLogWidget(container){
+  container.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("auditLog").orderBy("timestamp", "desc").limit(15).get();
+    if (snapshot.empty){
+      container.innerHTML = '<p class="empty">No activity logged yet.</p>';
+      return;
+    }
+    container.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const when = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate().toLocaleString() : "";
+      const row = document.createElement("div");
+      row.className = "activity-row";
+      row.innerHTML = "<div><b>" + escapeHtml(data.user || "Unknown") + "</b> " + escapeHtml(data.action || "") +
+        "</div><div class=\"meta\">" + escapeHtml(when) + "</div>";
+      container.appendChild(row);
+    });
+  } catch(err){
+    console.error(err);
+    container.innerHTML = '<p class="empty">Couldn\'t load \u2014 check your Firebase config.</p>';
+  }
+}
+
+/* ============================================================
    DASHBOARD — customizable widget system
    ============================================================ */
 const WIDGET_LIBRARY = {
@@ -631,7 +939,8 @@ const WIDGET_LIBRARY = {
   "chart-mechanics": { title: "Jobs by mechanic", type: "chart-mechanics" },
   "chart-pwa": { title: "PWA flagged vs not", type: "chart-pwa" },
   "list-recent": { title: "Recent activity", type: "list-recent" },
-  "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" }
+  "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" },
+  "list-audit": { title: "Audit log", type: "list-audit" }
 };
 
 const DEFAULT_LAYOUT = ["stat-openJobs","stat-pwaFlagged","stat-activeNotes","stat-itemsSent",
@@ -820,6 +1129,8 @@ function renderWidgetBody(type, body, ctx){
   } else if (type === "list-stale"){
     if (!ctx.staleJobs.length){ body.innerHTML = '<p class="empty">Nothing stale \u2014 everything\'s been touched in the last week.</p>'; return; }
     ctx.staleJobs.slice(0, 10).forEach(job => body.appendChild(buildActivityRow(job)));
+  } else if (type === "list-audit"){
+    renderAuditLogWidget(body);
   }
 }
 
@@ -1107,6 +1418,7 @@ async function savePwaFlagForWip(){
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
+    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM);
   } catch(err){
     console.error(err);
     alert("Couldn't save — check your Firebase config.");
@@ -1118,6 +1430,7 @@ async function clearPwaFlagForWip(){
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: false, pwaRequiredItems: [] }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
+    logAudit("Cleared " + PWA_TERM + " flag on WIP " + currentWipForFlag);
   } catch(err){
     console.error(err);
     alert("Couldn't clear the flag — check your Firebase config.");
@@ -1154,6 +1467,7 @@ async function sendNote(){
     statusEl.className = "status ok";
     document.getElementById("msgField").value = "";
     loadNotes();
+    logAudit("Sent a note to WIP " + wip);
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't send — check your Firebase config is filled in correctly.";
@@ -1194,6 +1508,7 @@ async function clearNote(wip){
   try {
     await db.collection("wipNotes").doc(wip).delete();
     loadNotes();
+    logAudit("Cleared note on WIP " + wip);
   } catch(err){
     console.error(err);
     alert("Couldn't clear that note — try again.");
@@ -1249,6 +1564,7 @@ async function saveClaimSettings(){
     await savePwaRulesToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
+    logAudit("Updated claim settings");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1334,6 +1650,7 @@ function buildJobTypeCard(jt, index){
     try {
       await savePwaRulesToFirestore();
       renderJobTypesList();
+      logAudit("Edited job type \"" + name + "\"");
     } catch(err){
       console.error(err);
       alert("Couldn't save — try again.");
@@ -1349,6 +1666,7 @@ function buildJobTypeCard(jt, index){
     try {
       await savePwaRulesToFirestore();
       renderJobTypesList();
+      logAudit("Deleted job type \"" + jt.name + "\"");
     } catch(err){
       console.error(err);
       alert("Couldn't delete — try again.");
@@ -1411,6 +1729,7 @@ async function createJobType(){
     statusEl.textContent = "Added.";
     statusEl.className = "status ok";
     renderJobTypesList();
+    logAudit("Created job type \"" + name + "\"");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1537,6 +1856,7 @@ async function closeJobs(wipList){
     }
     openJobsCache = openJobsCache.filter(j => !wipList.includes(j.id));
     renderOpenJobsList(document.getElementById("jobSearchField").value);
+    logAudit("Closed " + (plural ? wipList.length + " jobs (" + wipList.join(", ") + ")" : "job " + wipList[0]));
   } catch(err){
     console.error(err);
     alert("Couldn't close " + (plural ? "all of the selected jobs" : "the job") + " — try again.");
@@ -1604,6 +1924,7 @@ async function addMechanicAdmin(){
     renderMechanicsAdminList();
     statusEl.textContent = "Added.";
     statusEl.className = "status ok";
+    logAudit("Added mechanic \"" + name + "\"");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — try again.";
@@ -1618,6 +1939,7 @@ async function removeMechanicAdmin(index){
   try {
     await saveMechanicsAdminToFirestore();
     renderMechanicsAdminList();
+    logAudit("Removed mechanic \"" + name + "\"");
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -1667,6 +1989,7 @@ async function saveDealerDetails(){
     await saveAppSettingsToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
+    logAudit("Updated dealer details");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1687,6 +2010,7 @@ async function saveCurrency(){
     await saveAppSettingsToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
+    logAudit("Changed currency symbol to " + val);
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1739,6 +2063,7 @@ async function addEmailRecipient(){
   try {
     await saveAppSettingsToFirestore();
     renderEmailRecipientsList();
+    logAudit("Added email recipient " + val);
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -1746,10 +2071,12 @@ async function addEmailRecipient(){
 }
 
 async function removeEmailRecipient(index){
+  const removed = appSettingsCache.emailRecipients[index];
   appSettingsCache.emailRecipients.splice(index, 1);
   try {
     await saveAppSettingsToFirestore();
     renderEmailRecipientsList();
+    logAudit("Removed email recipient " + removed);
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -1786,6 +2113,7 @@ async function loadManufacturerSetting(){
 /* ============================================================
    INIT
    ============================================================ */
+checkLoginGate();
 loadManufacturerSetting();
 loadDashboard();
 loadNotes();
