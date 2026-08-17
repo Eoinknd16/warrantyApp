@@ -265,6 +265,7 @@
   .job-open-card .joc-info{font-size:14px;flex:1;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
   .joc-vin-due{color:#F5C542;font-weight:700;}
+  .joc-parts-waiting{color:#8FCBEE;font-weight:700;}
   .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
   .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
@@ -494,6 +495,7 @@
           <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
           <button class="filter-chip" data-filter="vindue" onclick="setJobFilter('vindue')">VIN enquiry due</button>
           <button class="filter-chip" data-filter="stale" onclick="setJobFilter('stale')">Stale (7+ days)</button>
+          <button class="filter-chip" data-filter="parts" onclick="setJobFilter('parts')">Waiting on parts</button>
         </div>
         <div class="bulk-bar" id="bulkBar">
           <label class="checkbox-label">
@@ -659,6 +661,24 @@
       <div class="status err" id="loginError"></div>
       <button class="btn" onclick="attemptLogin()">Unlock</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="partsOverlay">
+  <div class="modal-box">
+    <h2>Parts status</h2>
+    <p class="panel-sub" id="partsOverlayWip"></p>
+    <label class="checkbox-label" style="margin-top:0;">
+      <input type="checkbox" id="partsWaitingCheckbox">
+      Waiting on parts
+    </label>
+    <label for="partsNoteField">Note</label>
+    <textarea id="partsNoteField" placeholder="e.g. Front bumper ordered from Kia, ETA Friday"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="savePartsStatus()">Save</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closePartsOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="partsStatusMsg"></div>
   </div>
 </div>
 
@@ -1533,6 +1553,8 @@ const WIDGET_LIBRARY = {
   "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" },
   "list-audit": { title: "Audit log", type: "list-audit" },
   "list-tasks": { title: "Open tasks", type: "list-tasks" },
+  "stat-partsWaiting": { title: "Waiting on parts", type: "stat", render: ctx => ctx.partsWaitingCount },
+  "list-partsWaiting": { title: "Waiting on parts", type: "list-partsWaiting" },
   "stat-vinDue": { title: "VIN enquiries due", type: "stat", render: ctx => ctx.vinDueCount },
   "list-vindue": { title: "VIN enquiries due", type: "list-vindue" }
 };
@@ -1600,12 +1622,13 @@ async function loadDashboard(){
     const staleJobs = jobs.filter(j => j.updatedAt && j.updatedAt.toDate &&
       (now - j.updatedAt.toDate().getTime()) > 7 * 24 * 60 * 60 * 1000);
     const vinDueJobs = jobs.filter(j => getVinEnquiryStatus(j).due);
+    const partsWaitingJobs = jobs.filter(j => j.partsWaiting);
 
     const mechanicsList = (mechDoc.exists && Array.isArray(mechDoc.data().names)) ? mechDoc.data().names : [];
     const jobTypesList = (rulesDoc.exists && Array.isArray(rulesDoc.data().jobTypes)) ? rulesDoc.data().jobTypes : [];
 
     const ctx = {
-      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs,
+      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs, partsWaitingJobs,
       totalOpen: jobs.length,
       flaggedCount, completedFlagged,
       activeNotes: notesSnap.size,
@@ -1613,7 +1636,8 @@ async function loadDashboard(){
       mechanicCount: mechanicsList.length,
       jobTypeCount: jobTypesList.length,
       staleCount: staleJobs.length,
-      vinDueCount: vinDueJobs.length
+      vinDueCount: vinDueJobs.length,
+      partsWaitingCount: partsWaitingJobs.length
     };
     lastDashboardCtx = ctx;
 
@@ -1732,7 +1756,25 @@ function renderWidgetBody(type, body, ctx){
     ctx.vinDueJobs.slice(0, 10).forEach(job => body.appendChild(buildVinDueRow(job)));
   } else if (type === "list-tasks"){
     renderTasksWidget(body);
+  } else if (type === "list-partsWaiting"){
+    if (!ctx.partsWaitingJobs.length){ body.innerHTML = '<p class="empty">Nothing waiting on parts right now.</p>'; return; }
+    ctx.partsWaitingJobs.slice(0, 10).forEach(job => body.appendChild(buildPartsWaitingRow(job)));
   }
+}
+
+function buildPartsWaitingRow(job){
+  const row = document.createElement("div");
+  row.className = "activity-row";
+  row.innerHTML =
+    '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="meta">' + (job.partsNote ? escapeHtml(job.partsNote) : "No note") + '</div></div>';
+  const btn = document.createElement("button");
+  btn.className = "btn btn-secondary btn-inline";
+  btn.style.margin = "0";
+  btn.textContent = "Update";
+  btn.onclick = () => { showPage("jobs"); openPartsOverlay(job.id); };
+  row.appendChild(btn);
+  return row;
 }
 
 function buildVinDueRow(job){
@@ -1862,7 +1904,7 @@ function exportDashboardCSV(){
 }
 
 function exportOpenJobsCSV(){
-  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due"]];
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due", "Waiting on Parts", "Parts Note"]];
   currentlyFilteredJobs.forEach(job => {
     const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
     const vin = getVinEnquiryStatus(job);
@@ -1871,7 +1913,9 @@ function exportOpenJobsCSV(){
       Array.isArray(job.history) ? job.history.length : 0,
       job.pwaFlag ? "Yes" : "No", when,
       vin.daysSince === null ? "never logged" : vin.daysSince,
-      vin.due ? "Yes" : "No"
+      vin.due ? "Yes" : "No",
+      job.partsWaiting ? "Yes" : "No",
+      job.partsNote || ""
     ]);
   });
   downloadCSV(rows, "open-jobs-" + new Date().toISOString().slice(0,10) + ".csv");
@@ -2678,6 +2722,53 @@ async function logVinEnquiry(wip){
   }
 }
 
+let currentPartsWip = null;
+
+function openPartsOverlay(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  currentPartsWip = wip;
+  document.getElementById("partsOverlayWip").textContent = "WIP " + wip + (job && job.reg ? " \u00b7 " + job.reg : "");
+  document.getElementById("partsWaitingCheckbox").checked = !!(job && job.partsWaiting);
+  document.getElementById("partsNoteField").value = (job && job.partsNote) || "";
+  document.getElementById("partsStatusMsg").textContent = "";
+  document.getElementById("partsOverlay").classList.add("show");
+}
+
+function closePartsOverlay(){
+  document.getElementById("partsOverlay").classList.remove("show");
+  currentPartsWip = null;
+}
+
+async function savePartsStatus(){
+  if (!currentPartsWip) return;
+  const waiting = document.getElementById("partsWaitingCheckbox").checked;
+  const note = document.getElementById("partsNoteField").value.trim();
+  const statusEl = document.getElementById("partsStatusMsg");
+  try {
+    await db.collection("jobs").doc(currentPartsWip).set({
+      partsWaiting: waiting,
+      partsNote: note,
+      partsUpdatedBy: currentUserName(),
+      partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    const job = openJobsCache.find(j => j.id === currentPartsWip);
+    if (job){
+      job.partsWaiting = waiting;
+      job.partsNote = note;
+      job.partsUpdatedBy = currentUserName();
+      job.partsUpdatedAt = { toDate: () => new Date() };
+    }
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit((waiting ? "Marked" : "Cleared") + " parts waiting on WIP " + currentPartsWip + (note ? " \u2014 " + note : ""));
+    closePartsOverlay();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — try again.";
+    statusEl.className = "status err";
+  }
+}
+
 function setJobFilter(filter){
   currentJobFilter = filter;
   document.querySelectorAll("#jobsFilterRow .filter-chip").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
@@ -2736,6 +2827,8 @@ function renderOpenJobsList(filterText){
       const t = tsMillis(j.updatedAt);
       return t && (Date.now() - t) > 7 * 24 * 60 * 60 * 1000;
     });
+  } else if (currentJobFilter === "parts"){
+    filtered = filtered.filter(j => j.partsWaiting);
   }
 
   const sortSelect = document.getElementById("jobSortSelect");
@@ -2788,7 +2881,9 @@ function buildOpenJobCard(job){
     historyCount + " sent" +
     (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
     '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>' +
-    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>';
+    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>' +
+    (job.partsWaiting ? '<div class="joc-meta joc-parts-waiting">\ud83d\udd27 Waiting on parts' +
+      (job.partsNote ? ": " + escapeHtml(job.partsNote) : "") + '</div>' : '');
   topRow.appendChild(info);
   card.appendChild(topRow);
 
@@ -2800,6 +2895,12 @@ function buildOpenJobCard(job){
   vinBtn.textContent = "Log VIN enquiry";
   vinBtn.onclick = () => logVinEnquiry(job.id);
   actionRow.appendChild(vinBtn);
+
+  const partsBtn = document.createElement("button");
+  partsBtn.className = "btn btn-secondary";
+  partsBtn.textContent = job.partsWaiting ? "Update parts" : "Log parts";
+  partsBtn.onclick = () => openPartsOverlay(job.id);
+  actionRow.appendChild(partsBtn);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
