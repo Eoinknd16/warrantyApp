@@ -136,24 +136,48 @@
   .priority-btn.priority-medium.active{background:#3A2E00;color:#F5D77A;border-color:#F5D77A;}
   .priority-btn.priority-high.active{background:#2B0705;color:#FF9C9C;border-color:#FF9C9C;}
 
-  .task-card{background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--border);
-    border-radius:10px;padding:12px 14px;margin-bottom:8px;}
-  .task-card.priority-high{border-left-color:#E5484D;}
-  .task-card.priority-medium{border-left-color:#F5C542;}
-  .task-card.priority-low{border-left-color:#3E7FA6;}
-  .task-card.task-done{opacity:.6;}
-  .task-card.task-done .task-title{text-decoration:line-through;}
-  .task-top{display:flex;align-items:flex-start;gap:10px;}
-  .task-checkbox{width:20px;height:20px;flex-shrink:0;margin-top:2px;}
-  .task-info{flex:1;min-width:0;}
-  .task-title{font-size:14px;font-weight:700;}
-  .task-desc{font-size:13px;color:var(--text-dim);margin-top:2px;white-space:pre-wrap;}
-  .task-meta{font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.6;}
-  .priority-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;flex-shrink:0;white-space:nowrap;}
-  .priority-badge-high{background:#2B0705;color:#FF9C9C;}
-  .priority-badge-medium{background:#3A2E00;color:#F5D77A;}
-  .priority-badge-low{background:#0D2A3D;color:#8FCBEE;}
-  .task-card .btn-delete{margin-top:10px;min-height:34px;font-size:12px;}
+  .task-table-header{display:grid;grid-template-columns:130px 1fr 110px 170px 32px;gap:10px;
+    padding:0 14px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);}
+  .task-board{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .task-group{border-bottom:1px solid var(--border);}
+  .task-group:last-child{border-bottom:none;}
+  .task-group-header{width:100%;display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;
+    font-weight:700;font-size:13px;border:none;border-left:4px solid transparent;background:var(--surface-2);color:var(--text);}
+  .task-group-header .chevron{margin-left:auto;font-size:11px;color:var(--text-dim);transition:transform .15s ease;}
+  .task-group.collapsed .chevron{transform:rotate(-90deg);}
+  .task-group.collapsed .task-group-body{display:none;}
+  .task-group-header.group-todo{border-left-color:#8A8F98;}
+  .task-group-header.group-in_progress{border-left-color:#F5C542;}
+  .task-group-header.group-done{border-left-color:#2FA84F;}
+
+  .task-row{display:grid;grid-template-columns:130px 1fr 110px 170px 32px;gap:10px;align-items:center;
+    padding:10px 14px;border-top:1px solid var(--border);font-size:13px;background:var(--surface);}
+  .task-group-body .task-row:first-child{border-top:none;}
+  .task-row.compact{grid-template-columns:120px 1fr 100px 32px;}
+  .task-row-title .title{font-size:14px;font-weight:600;}
+  .task-row-title .title.done-text{text-decoration:line-through;color:var(--text-dim);}
+  .task-row-title .desc{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .task-row-meta{font-size:11px;color:var(--text-dim);line-height:1.5;}
+  .task-row-delete{background:none;border:none;color:var(--text-dim);width:26px;height:26px;
+    border-radius:6px;cursor:pointer;font-size:16px;justify-self:center;}
+  .task-row-delete:hover{background:var(--surface-2);color:var(--danger);}
+
+  .pill-select{border:none;border-radius:14px;padding:5px 8px;font-size:11px;font-weight:700;
+    cursor:pointer;width:100%;text-align:center;text-align-last:center;}
+  .status-todo{background:#3A3C41;color:#C7C9CE;}
+  .status-in_progress{background:#4A3A0D;color:#F5C542;}
+  .status-done{background:#123A1E;color:#5FCB82;}
+  .priority-low{background:#0D2A3D;color:#8FCBEE;}
+  .priority-medium{background:#3A2E00;color:#F5D77A;}
+  .priority-high{background:#2B0705;color:#FF9C9C;}
+
+  .task-widget-list .task-row:first-child{border-top:none;}
+  @media (max-width:700px){
+    .task-table-header{display:none;}
+    .task-row{grid-template-columns:1fr;gap:6px;padding:12px 14px;}
+    .task-row.compact{grid-template-columns:1fr;}
+    .task-row-delete{justify-self:end;}
+  }
 
   .permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:9px 0;border-bottom:1px solid var(--border);}
@@ -347,19 +371,11 @@
       </div>
 
       <div class="panel">
-        <h2>Open tasks</h2>
-        <div id="openTasksList"><p class="empty">Loading…</p></div>
-      </div>
-
-      <div class="panel">
-        <div class="collapsible" id="completedTasksCollapsible">
-          <button class="collapsible-header" onclick="toggleCollapsible('completedTasksCollapsible')">
-            <span>Completed tasks</span><span class="chevron">&#9656;</span>
-          </button>
-          <div class="collapsible-body">
-            <div id="completedTasksList"><p class="empty">Loading…</p></div>
-          </div>
+        <h2>Tasks</h2>
+        <div class="task-table-header">
+          <span>Status</span><span>Task</span><span>Priority</span><span>Details</span><span></span>
         </div>
+        <div id="tasksBoard"><p class="empty">Loading…</p></div>
       </div>
     </div>
 
@@ -802,7 +818,10 @@ function showPage(id){
   document.getElementById("pageSub").textContent = PAGE_INFO[id][1];
 
   if (id === "dashboard") loadDashboard();
-  else if (id === "tasks" && !tasksLoaded) loadTasks();
+  else if (id === "tasks"){
+    if (!tasksLoaded) loadTasks(); // fetches, then renders
+    else renderTasks(); // already fetched (e.g. by the Dashboard widget) — just paint it
+  }
   else if (id === "jobs"){
     if (!openJobsLoaded) loadOpenJobs(); // fetches, then renders
     else renderOpenJobsList(document.getElementById("jobSearchField").value); // already fetched (e.g. by Dashboard) — just paint it
@@ -1859,13 +1878,24 @@ function exportOpenJobsCSV(){
 }
 
 /* ============================================================
-   TASKS — shared task list, visible to every admin
+   TASKS — shared task list, visible to every admin. Status is a
+   real workflow field (todo / in_progress / done), not just a
+   checkbox — legacy docs saved as status "open" are treated as
+   "todo" so nothing old breaks.
    ============================================================ */
 let tasksCache = [];
 let tasksLoaded = false;
 let newTaskPriority = "medium";
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+const TASK_STATUSES = ["todo", "in_progress", "done"];
+const TASK_STATUS_LABELS = { todo: "To Do", in_progress: "In Progress", done: "Done" };
+
+function normalizeTaskStatus(status){
+  if (status === "done") return "done";
+  if (status === "in_progress") return "in_progress";
+  return "todo"; // covers legacy "open", "todo", and anything unset
+}
 
 function selectNewTaskPriority(p){
   newTaskPriority = p;
@@ -1873,8 +1903,8 @@ function selectNewTaskPriority(p){
 }
 
 async function loadTasks(){
-  const openEl = document.getElementById("openTasksList");
-  openEl.innerHTML = '<p class="empty">Loading…</p>';
+  const boardEl = document.getElementById("tasksBoard");
+  boardEl.innerHTML = '<p class="empty">Loading…</p>';
   try {
     const snapshot = await db.collection("tasks").orderBy("createdAt", "desc").get();
     tasksCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -1882,75 +1912,108 @@ async function loadTasks(){
     renderTasks();
   } catch(err){
     console.error(err);
-    openEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    boardEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
   }
 }
 
 function renderTasks(){
-  const openEl = document.getElementById("openTasksList");
-  const doneEl = document.getElementById("completedTasksList");
-
-  const open = tasksCache.filter(t => t.status !== "done").sort((a, b) =>
-    (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1) || tsMillis(b.createdAt) - tsMillis(a.createdAt));
-  const done = tasksCache.filter(t => t.status === "done").sort((a, b) => tsMillis(b.completedAt) - tsMillis(a.completedAt));
-
-  if (!open.length){
-    openEl.innerHTML = '<p class="empty">No open tasks \u2014 all caught up.</p>';
-  } else {
-    openEl.innerHTML = "";
-    open.forEach(t => openEl.appendChild(buildTaskCard(t, false)));
+  const boardEl = document.getElementById("tasksBoard");
+  if (!boardEl) return;
+  if (!tasksCache.length){
+    boardEl.innerHTML = '<p class="empty">No tasks yet — add one above.</p>';
+    return;
   }
+  boardEl.innerHTML = "";
+  TASK_STATUSES.forEach(status => {
+    const group = tasksCache.filter(t => normalizeTaskStatus(t.status) === status).sort((a, b) =>
+      (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1) || tsMillis(b.createdAt) - tsMillis(a.createdAt));
 
-  if (!done.length){
-    doneEl.innerHTML = '<p class="empty">Nothing completed yet.</p>';
-  } else {
-    doneEl.innerHTML = "";
-    done.slice(0, 50).forEach(t => doneEl.appendChild(buildTaskCard(t, true)));
-  }
+    const groupEl = document.createElement("div");
+    groupEl.className = "task-group" + (status === "done" ? " collapsed" : "");
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "task-group-header group-" + status;
+    header.innerHTML = "<span>" + TASK_STATUS_LABELS[status] + " (" + group.length + ")</span><span class=\"chevron\">\u25be</span>";
+    header.onclick = () => groupEl.classList.toggle("collapsed");
+    groupEl.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "task-group-body";
+    if (!group.length){
+      body.innerHTML = '<p class="empty" style="padding:12px 14px;margin:0;">Nothing here.</p>';
+    } else {
+      group.forEach(t => body.appendChild(buildTaskRow(t, false)));
+    }
+    groupEl.appendChild(body);
+    boardEl.appendChild(groupEl);
+  });
 }
 
-function buildTaskCard(task, isDone){
-  const card = document.createElement("div");
-  card.className = "task-card priority-" + (task.priority || "medium") + (isDone ? " task-done" : "");
+function buildTaskRow(task, compact){
+  const status = normalizeTaskStatus(task.status);
+  const priority = task.priority || "medium";
 
-  const top = document.createElement("div");
-  top.className = "task-top";
+  const row = document.createElement("div");
+  row.className = "task-row" + (compact ? " compact" : "");
 
-  const cb = document.createElement("input");
-  cb.type = "checkbox";
-  cb.className = "task-checkbox";
-  cb.checked = isDone;
-  cb.onchange = () => { cb.checked ? completeTask(task.id) : reopenTask(task.id); };
-  top.appendChild(cb);
+  const statusSelect = document.createElement("select");
+  statusSelect.className = "pill-select status-" + status;
+  TASK_STATUSES.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = TASK_STATUS_LABELS[s];
+    if (s === status) opt.selected = true;
+    statusSelect.appendChild(opt);
+  });
+  statusSelect.onchange = () => changeTaskStatus(task.id, statusSelect.value);
+  row.appendChild(statusSelect);
 
-  const info = document.createElement("div");
-  info.className = "task-info";
-  const createdWhen = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleString() : "";
-  let meta = "Added by " + escapeHtml(task.createdBy || "Unknown") + (createdWhen ? " \u00b7 " + escapeHtml(createdWhen) : "");
-  if (isDone && task.completedBy){
-    const doneWhen = task.completedAt && task.completedAt.toDate ? task.completedAt.toDate().toLocaleString() : "";
-    meta += "<br>Completed by " + escapeHtml(task.completedBy) + (doneWhen ? " \u00b7 " + escapeHtml(doneWhen) : "");
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "task-row-title";
+  const titleEl = document.createElement("div");
+  titleEl.className = "title" + (status === "done" ? " done-text" : "");
+  titleEl.textContent = task.title;
+  titleWrap.appendChild(titleEl);
+  if (task.description && !compact){
+    const descEl = document.createElement("div");
+    descEl.className = "desc";
+    descEl.textContent = task.description;
+    titleWrap.appendChild(descEl);
   }
-  info.innerHTML =
-    '<div class="task-title">' + escapeHtml(task.title) + '</div>' +
-    (task.description ? '<div class="task-desc">' + escapeHtml(task.description) + '</div>' : '') +
-    '<div class="task-meta">' + meta + '</div>';
-  top.appendChild(info);
+  row.appendChild(titleWrap);
 
-  const badge = document.createElement("span");
-  badge.className = "priority-badge priority-badge-" + (task.priority || "medium");
-  badge.textContent = PRIORITY_LABELS[task.priority] || "Medium";
-  top.appendChild(badge);
+  const prioritySelect = document.createElement("select");
+  prioritySelect.className = "pill-select priority-" + priority;
+  ["low", "medium", "high"].forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = PRIORITY_LABELS[p];
+    if (p === priority) opt.selected = true;
+    prioritySelect.appendChild(opt);
+  });
+  prioritySelect.onchange = () => changeTaskPriority(task.id, prioritySelect.value);
+  row.appendChild(prioritySelect);
 
-  card.appendChild(top);
+  if (!compact){
+    const meta = document.createElement("div");
+    meta.className = "task-row-meta";
+    const when = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleDateString() : "";
+    let metaHtml = escapeHtml(task.createdBy || "Unknown") + (when ? " \u00b7 " + escapeHtml(when) : "");
+    if (status === "done" && task.completedBy) metaHtml += "<br>Done by " + escapeHtml(task.completedBy);
+    meta.innerHTML = metaHtml;
+    row.appendChild(meta);
+  }
 
   const delBtn = document.createElement("button");
-  delBtn.className = "btn btn-delete btn-inline";
-  delBtn.textContent = "Delete";
+  delBtn.type = "button";
+  delBtn.className = "task-row-delete";
+  delBtn.title = "Delete";
+  delBtn.textContent = "\u00d7";
   delBtn.onclick = () => deleteTask(task.id, task.title);
-  card.appendChild(delBtn);
+  row.appendChild(delBtn);
 
-  return card;
+  return row;
 }
 
 async function createTask(){
@@ -1968,17 +2031,12 @@ async function createTask(){
 
   try {
     const docRef = await db.collection("tasks").add({
-      title: title,
-      description: description,
-      priority: newTaskPriority,
-      status: "open",
-      createdBy: currentUserName(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      completedBy: null,
-      completedAt: null
+      title: title, description: description, priority: newTaskPriority, status: "todo",
+      createdBy: currentUserName(), createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedBy: null, completedAt: null
     });
     tasksCache.unshift({
-      id: docRef.id, title: title, description: description, priority: newTaskPriority, status: "open",
+      id: docRef.id, title: title, description: description, priority: newTaskPriority, status: "todo",
       createdBy: currentUserName(), createdAt: { toDate: () => new Date() }, completedBy: null, completedAt: null
     });
     titleEl.value = "";
@@ -1987,6 +2045,7 @@ async function createTask(){
     statusEl.textContent = "Added.";
     statusEl.className = "status ok";
     logAudit("Added task \"" + title + "\" (" + PRIORITY_LABELS[newTaskPriority] + " priority)");
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -1994,36 +2053,40 @@ async function createTask(){
   }
 }
 
-async function completeTask(taskId){
+async function changeTaskStatus(taskId, newStatus){
   const task = tasksCache.find(t => t.id === taskId);
   if (!task) return;
+  const updates = { status: newStatus };
+  if (newStatus === "done"){
+    updates.completedBy = currentUserName();
+    updates.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+  } else {
+    updates.completedBy = null;
+    updates.completedAt = null;
+  }
   try {
-    await db.collection("tasks").doc(taskId).set({
-      status: "done",
-      completedBy: currentUserName(),
-      completedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    task.status = "done";
-    task.completedBy = currentUserName();
-    task.completedAt = { toDate: () => new Date() };
+    await db.collection("tasks").doc(taskId).set(updates, { merge: true });
+    task.status = newStatus;
+    task.completedBy = newStatus === "done" ? currentUserName() : null;
+    task.completedAt = newStatus === "done" ? { toDate: () => new Date() } : null;
     renderTasks();
-    logAudit("Completed task \"" + task.title + "\"");
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit("Moved task \"" + task.title + "\" to " + TASK_STATUS_LABELS[newStatus]);
   } catch(err){
     console.error(err);
     alert("Couldn't update — try again.");
   }
 }
 
-async function reopenTask(taskId){
+async function changeTaskPriority(taskId, newPriority){
   const task = tasksCache.find(t => t.id === taskId);
   if (!task) return;
   try {
-    await db.collection("tasks").doc(taskId).set({ status: "open", completedBy: null, completedAt: null }, { merge: true });
-    task.status = "open";
-    task.completedBy = null;
-    task.completedAt = null;
+    await db.collection("tasks").doc(taskId).set({ priority: newPriority }, { merge: true });
+    task.priority = newPriority;
     renderTasks();
-    logAudit("Reopened task \"" + task.title + "\"");
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit("Changed priority of task \"" + task.title + "\" to " + PRIORITY_LABELS[newPriority]);
   } catch(err){
     console.error(err);
     alert("Couldn't update — try again.");
@@ -2036,6 +2099,7 @@ async function deleteTask(taskId, title){
     await db.collection("tasks").doc(taskId).delete();
     tasksCache = tasksCache.filter(t => t.id !== taskId);
     renderTasks();
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
     logAudit("Deleted task \"" + title + "\"");
   } catch(err){
     console.error(err);
@@ -2046,19 +2110,30 @@ async function deleteTask(taskId, title){
 async function renderTasksWidget(container){
   container.innerHTML = '<p class="empty">Loading…</p>';
   try {
-    const snapshot = await db.collection("tasks").where("status", "==", "open").get();
-    const open = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()))
+    if (!tasksLoaded){
+      const snapshot = await db.collection("tasks").orderBy("createdAt", "desc").get();
+      tasksCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      tasksLoaded = true;
+    }
+    const active = tasksCache.filter(t => normalizeTaskStatus(t.status) !== "done")
       .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1));
-    if (!open.length){ container.innerHTML = '<p class="empty">No open tasks.</p>'; return; }
+
+    if (!active.length){
+      container.innerHTML = '<p class="empty">No open tasks \u2014 all caught up.</p>';
+      return;
+    }
     container.innerHTML = "";
-    open.slice(0, 8).forEach(t => {
-      const row = document.createElement("div");
-      row.className = "activity-row";
-      row.innerHTML =
-        '<div><b>' + escapeHtml(t.title) + '</b><div class="meta">Added by ' + escapeHtml(t.createdBy || "Unknown") + '</div></div>' +
-        '<span class="priority-badge priority-badge-' + (t.priority || "medium") + '">' + (PRIORITY_LABELS[t.priority] || "Medium") + '</span>';
-      container.appendChild(row);
-    });
+    const list = document.createElement("div");
+    list.className = "task-widget-list";
+    active.slice(0, 8).forEach(t => list.appendChild(buildTaskRow(t, true)));
+    container.appendChild(list);
+
+    const viewAllBtn = document.createElement("button");
+    viewAllBtn.className = "btn btn-secondary btn-inline";
+    viewAllBtn.style.marginTop = "10px";
+    viewAllBtn.textContent = "View all tasks";
+    viewAllBtn.onclick = () => showPage("tasks");
+    container.appendChild(viewAllBtn);
   } catch(err){
     console.error(err);
     container.innerHTML = '<p class="empty">Couldn\'t load.</p>';
