@@ -4,50 +4,200 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warranty app — admin</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#17181A; --surface:#212226; --surface-2:#2B2D31; --border:#3A3C41;
-    --text:#F4F2EC; --text-dim:#A9A69D; --accent:#F5B300; --accent-text:#1A1300;
-    --danger:#E5484D; --success:#2FA84F;
+    --bg:#15161A; --surface:#1E1F24; --surface-2:#282A31; --border:#34363F;
+    --text:#F4F2EC; --text-dim:#9C9AA5; --accent:#F5B300; --accent-text:#1A1300;
+    --danger:#E5484D; --success:#2FA84F; --info:#3E7FA6;
+    --radius:12px;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
-  #app{max-width:640px;margin:0 auto;padding:24px 20px 60px;}
-  .training-link{display:inline-flex;align-items:center;font-size:13px;font-weight:600;
-    color:var(--text-dim);text-decoration:none;border:1px solid var(--border);border-radius:20px;
-    padding:6px 14px;margin-bottom:16px;background:var(--surface);}
-  .training-link:active{background:var(--surface-2);}
-  h1{font-size:22px;margin:0 0 4px;}
-  .sub{color:var(--text-dim);font-size:14px;margin:0 0 24px;}
-  label{display:block;font-size:13px;color:var(--text-dim);font-weight:600;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px;}
-  input[type=text], textarea{width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);
-    border-radius:10px;padding:12px 14px;font-size:16px;font-family:inherit;}
+  body.light{
+    --bg:#F3F3EF; --surface:#FFFFFF; --surface-2:#EDEDE7; --border:#DBDBD3;
+    --text:#1B1C1F; --text-dim:#6B6A66; --accent:#C98A00; --accent-text:#FFFFFF;
+    --danger:#C22A2E; --success:#1F8A3D; --info:#2C6E93;
+  }
+  body.light .pwa-flag-row.flagged{background:#FBEAEA;}
+  body.light .pwa-flag-row.flagged span{color:#B3272B;}
+  body.light .activity-row .meta, body.light .joc-meta, body.light .note-card .when{color:var(--text-dim);}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+  button, input, textarea{font-family:inherit;}
+  svg.icon{display:block;flex-shrink:0;}
+
+  /* ---------- shell layout ---------- */
+  #shell{display:flex;min-height:100vh;}
+  #sidebar{width:230px;flex-shrink:0;background:var(--sidebar-bg, var(--surface));border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .brand{font-size:15px;font-weight:800;padding:10px 12px 22px;letter-spacing:.2px;}
+  .brand span{display:block;font-size:11px;font-weight:600;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.6px;margin-top:2px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:8px;border:none;
+    background:none;color:var(--text-dim);font-size:14px;font-weight:600;text-align:left;
+    text-decoration:none;margin-bottom:2px;cursor:pointer;width:100%;}
+  .nav-item:hover{background:var(--surface-2);color:var(--text);}
+  .nav-item.active{background:var(--accent);color:var(--accent-text);}
+  .nav-link{border-top:1px solid var(--border);padding-top:16px;}
+  .nav-bottom-group{margin-top:auto;display:flex;flex-direction:column;}
+
+  #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
+  #topbar{margin-bottom:26px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
+  #pageTitle{font-size:25px;font-weight:800;margin:0;}
+  #pageSub{color:var(--text-dim);font-size:14px;margin:4px 0 0;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  @media (max-width:880px){
+    #shell{flex-direction:column;}
+    #sidebar{width:100%;height:auto;position:static;flex-direction:row;overflow-x:auto;
+      padding:10px 12px;border-right:none;border-bottom:1px solid var(--border);align-items:center;}
+    .brand{display:none;}
+    .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
+    .nav-link{margin-top:0;border-top:none;padding-top:0;}
+    .nav-bottom-group{margin-top:0;display:flex;flex-direction:row;}
+    #mainArea{padding:18px;}
+  }
+
+  /* ---------- shared building blocks ---------- */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:20px;}
+  .panel h2{margin:0 0 4px;font-size:17px;font-weight:700;}
+  .panel h3{margin:0 0 16px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);}
+  .panel .panel-sub{color:var(--text-dim);font-size:13px;margin:0 0 18px;}
+
+  label{display:block;font-size:12px;color:var(--text-dim);font-weight:700;margin:16px 0 6px;
+    text-transform:uppercase;letter-spacing:.4px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], textarea{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    border-radius:9px;padding:11px 13px;font-size:15px;}
   textarea{min-height:90px;resize:vertical;}
-  input[type=text]:focus, textarea:focus{outline:2px solid var(--accent);}
-  button{font-family:inherit;cursor:pointer;}
-  .btn{width:100%;margin-top:16px;min-height:50px;border-radius:10px;border:1px solid var(--accent);
-    background:var(--accent);color:var(--accent-text);font-size:16px;font-weight:700;}
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;margin-top:14px;
+    min-height:42px;border-radius:9px;border:1px solid var(--accent);
+    background:var(--accent);color:var(--accent-text);font-size:14px;font-weight:700;padding:0 18px;
+    cursor:pointer;width:100%;}
   .btn:disabled{opacity:.5;pointer-events:none;}
-  .status{font-size:14px;margin-top:10px;min-height:20px;}
+  .btn-secondary{background:none;color:var(--text);border:1px solid var(--border);}
+  .btn-delete{background:none;color:var(--danger);border:1px solid var(--danger);}
+  .btn-block{width:100%;}
+  .btn-inline{width:auto;margin:0;padding:0 14px;min-height:38px;font-size:13px;}
+
+  .status{font-size:13px;margin-top:8px;min-height:18px;}
   .status.ok{color:var(--success);}
   .status.err{color:var(--danger);}
-
-  .list{margin-top:36px;}
-  .list h2{font-size:16px;margin:0 0 12px;}
-  .note-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-    padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
-  .note-card .wip{font-weight:700;font-size:15px;margin-bottom:4px;}
-  .note-card .msg{font-size:14px;color:var(--text-dim);white-space:pre-wrap;}
-  .note-card .when{font-size:11px;color:var(--text-dim);margin-top:6px;}
-  .note-card button{flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);
-    border-radius:8px;padding:8px 12px;font-size:13px;}
-  .note-card button:active{background:var(--surface-2);}
   .empty{color:var(--text-dim);font-size:14px;}
 
-  .section-divider{border:none;border-top:1px solid var(--border);margin:40px 0 0;}
-  .job-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-    padding:16px;margin-bottom:12px;}
-  .job-card input[type=text]{margin-bottom:10px;}
+  /* ---------- dashboard ---------- */
+  .dash-toolbar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+  .dash-toolbar .btn{margin:0;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .stat-card .stat-value{font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;}
+  .stat-card .stat-label{font-size:12px;color:var(--text-dim);margin-top:6px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.3px;}
+  .chart-wrap{position:relative;height:220px;}
+  .activity-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+    padding:12px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .activity-row:last-child{border-bottom:none;padding-bottom:0;}
+  .activity-row .meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+
+  /* ---------- modal (customize dashboard) ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;
+    align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  #loginGateOverlay{background:var(--bg);}
+
+  .page.read-only{position:relative;}
+  .page.read-only::before{content:"View only \2014 you don't have edit access to this page";
+    display:block;background:#3A2E00;color:#F5D77A;border:1px solid var(--accent);
+    border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:700;}
+  .page.read-only button, .page.read-only input, .page.read-only textarea,
+  .page.read-only select{pointer-events:none;opacity:.55;}
+
+  .panel.read-only{position:relative;}
+  .panel.read-only::before{content:"View only \2014 you don't have edit access to this section";
+    display:block;background:#3A2E00;color:#F5D77A;border:1px solid var(--accent);
+    border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:12px;font-weight:700;}
+  .panel.read-only button, .panel.read-only input, .panel.read-only textarea,
+  .panel.read-only select{pointer-events:none;opacity:.55;}
+
+  .color-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px;margin-top:18px;}
+  .color-field{display:flex;flex-direction:column;gap:6px;}
+  .color-field label{margin:0;font-size:11px;}
+  input[type=color]{width:100%;height:44px;padding:3px;border-radius:9px;border:1px solid var(--border);
+    background:var(--surface-2);cursor:pointer;}
+
+  .priority-select-row{display:flex;gap:8px;margin-top:6px;}
+  .priority-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);
+    color:var(--text-dim);font-size:13px;font-weight:700;cursor:pointer;}
+  .priority-btn.priority-low.active{background:#0D2A3D;color:#8FCBEE;border-color:#8FCBEE;}
+  .priority-btn.priority-medium.active{background:#3A2E00;color:#F5D77A;border-color:#F5D77A;}
+  .priority-btn.priority-high.active{background:#2B0705;color:#FF9C9C;border-color:#FF9C9C;}
+
+  .task-card{background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--border);
+    border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+  .task-card.priority-high{border-left-color:#E5484D;}
+  .task-card.priority-medium{border-left-color:#F5C542;}
+  .task-card.priority-low{border-left-color:#3E7FA6;}
+  .task-card.task-done{opacity:.6;}
+  .task-card.task-done .task-title{text-decoration:line-through;}
+  .task-top{display:flex;align-items:flex-start;gap:10px;}
+  .task-checkbox{width:20px;height:20px;flex-shrink:0;margin-top:2px;}
+  .task-info{flex:1;min-width:0;}
+  .task-title{font-size:14px;font-weight:700;}
+  .task-desc{font-size:13px;color:var(--text-dim);margin-top:2px;white-space:pre-wrap;}
+  .task-meta{font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.6;}
+  .priority-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;flex-shrink:0;white-space:nowrap;}
+  .priority-badge-high{background:#2B0705;color:#FF9C9C;}
+  .priority-badge-medium{background:#3A2E00;color:#F5D77A;}
+  .priority-badge-low{background:#0D2A3D;color:#8FCBEE;}
+  .task-card .btn-delete{margin-top:10px;min-height:34px;font-size:12px;}
+
+  .permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 0;border-bottom:1px solid var(--border);}
+  .permission-row:last-child{border-bottom:none;}
+  .permission-row span{font-size:14px;}
+  .permission-row select{width:auto;padding:6px 10px;font-size:13px;}
+  .permission-locked-note{font-size:11px;color:var(--text-dim);}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
+  .modal-box h2{margin:0 0 4px;font-size:18px;}
+  .customize-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .customize-row:last-child{border-bottom:none;}
+  .customize-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
+  .customize-row span{flex:1;font-size:14px;}
+  .customize-row.is-off span{color:var(--text-dim);}
+  .order-btn{background:none;border:1px solid var(--border);color:var(--text-dim);
+    width:28px;height:28px;border-radius:6px;font-size:13px;flex-shrink:0;cursor:pointer;}
+  .order-btn:hover{background:var(--surface-2);color:var(--text);}
+  .order-btn:disabled{opacity:.3;pointer-events:none;}
+
+  /* ---------- notes / flags ---------- */
+  .note-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+  .note-card .wip{font-weight:700;font-size:14px;margin-bottom:4px;}
+  .note-card .msg{font-size:14px;color:var(--text-dim);white-space:pre-wrap;}
+  .note-card .when{font-size:11px;color:var(--text-dim);margin-top:6px;}
+  .note-card button{flex-shrink:0;}
+
+  .pwa-flag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;margin-top:12px;}
+  .pwa-flag-row span{font-size:13px;font-weight:700;}
+  .pwa-flag-row.flagged{border-color:var(--danger);background:#2B0705;}
+  .pwa-flag-row.flagged span{color:#FF9C9C;}
+
+  .collapsible{margin-top:12px;border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+  .collapsible-header{width:100%;background:var(--surface-2);border:none;color:var(--text);
+    padding:14px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;
+    align-items:center;text-align:left;cursor:pointer;}
+  .collapsible-header .chevron{transition:transform .15s ease;font-size:13px;color:var(--text-dim);}
+  .collapsible.open .collapsible-header .chevron{transform:rotate(90deg);}
+  .collapsible-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+  .collapsible.open .collapsible-body{display:block;padding-top:14px;}
+
+  /* ---------- checklists / chips ---------- */
   .checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;
     color:var(--text);text-transform:none;letter-spacing:normal;margin:10px 0;cursor:pointer;}
   .checkbox-label input{width:18px;height:18px;flex-shrink:0;}
@@ -55,172 +205,472 @@
   .chip{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
     padding:6px 8px 6px 12px;font-size:13px;display:flex;align-items:center;gap:6px;}
   .chip button{background:none;border:none;color:var(--text-dim);font-size:15px;
-    width:20px;height:20px;border-radius:50%;padding:0;line-height:1;}
-  .chip button:active{background:var(--surface);}
+    width:20px;height:20px;border-radius:50%;padding:0;line-height:1;cursor:pointer;}
+  .chip button:hover{background:var(--surface);}
   .add-row{display:flex;gap:8px;}
   .add-row input{flex:1;}
-  .add-row button{flex-shrink:0;width:auto;margin:0;padding:0 16px;min-height:44px;}
-  .job-card-actions{display:flex;gap:8px;margin-top:12px;}
-  .job-card-actions button{margin:0;min-height:44px;flex:1;}
-  .btn-secondary{background:none;color:var(--text);border:1px solid var(--border);}
-  .btn-delete{background:none;color:var(--danger);border:1px solid var(--danger);}
+  .add-row button{flex-shrink:0;}
 
-  .pwa-flag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
-    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;}
-  .pwa-flag-row span{font-size:14px;font-weight:600;}
-  .pwa-flag-row.flagged{border-color:var(--danger);background:#2B0705;}
-  .pwa-flag-row.flagged span{color:#FF9C9C;}
-
-  .collapsible{margin-top:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-  .collapsible-header{width:100%;background:var(--surface);border:none;color:var(--text);
-    padding:16px;font-size:16px;font-weight:700;display:flex;justify-content:space-between;
-    align-items:center;text-align:left;cursor:pointer;}
-  .collapsible-header .chevron{transition:transform .15s ease;font-size:14px;color:var(--text-dim);}
-  .collapsible.open .collapsible-header .chevron{transform:rotate(90deg);}
-  .collapsible-body{display:none;padding:0 16px 16px;border-top:1px solid var(--border);}
-  .collapsible.open .collapsible-body{display:block;padding-top:16px;}
-
-  .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
-    padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
-
-  .checklist-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .checklist-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
   .checklist-row:last-child{border-bottom:none;}
   .checklist-row input{width:20px;height:20px;flex-shrink:0;}
-  .checklist-row span{font-size:14px;}
+  .checklist-row span{font-size:14px;flex:1;}
   .checklist-row .rm-item{margin-left:auto;background:none;border:none;color:var(--text-dim);
-    font-size:16px;width:24px;height:24px;border-radius:50%;flex-shrink:0;}
-  .checklist-row .rm-item:active{background:var(--surface);}
-  .job-open-card .joc-info{font-size:14px;}
-  .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:4px;}
-  .job-open-card button{margin:0;min-height:40px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
-  .job-open-card{align-items:center;}
-  .joc-checkbox{width:20px;height:20px;flex-shrink:0;}
+    font-size:16px;width:26px;height:26px;border-radius:50%;flex-shrink:0;cursor:pointer;}
+  .checklist-row .rm-item:hover{background:var(--surface);}
 
+  /* ---------- job type cards ---------- */
+  .job-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:16px;margin-bottom:12px;}
+  .job-card input[type=text]{margin-bottom:10px;}
+  .job-card-actions{display:flex;gap:8px;margin-top:12px;}
+  .job-card-actions button{margin:0;min-height:40px;flex:1;font-size:13px;}
+
+  /* ---------- open jobs ---------- */
+  .jobs-toolbar{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+  .jobs-toolbar > div{flex:1;min-width:180px;}
+  .jobs-toolbar select{width:auto;min-height:42px;background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:9px;padding:0 10px;font-size:13px;}
+  .jobs-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+  .filter-chip{background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:16px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+  .filter-chip.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
+  .job-open-card{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;}
+  .joc-top-row{display:flex;align-items:flex-start;gap:12px;}
+  .job-open-card .joc-info{font-size:14px;flex:1;}
+  .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+  .joc-vin-due{color:#F5C542;font-weight:700;}
+  .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
+  .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
   .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
-    margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
-  .bulk-bar .checkbox-label{margin:0;text-transform:none;font-size:14px;}
-  .bulk-bar button{margin:0;min-height:40px;width:auto;padding:0 16px;font-size:13px;}
+    margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .bulk-bar .checkbox-label{margin:0;}
+  .bulk-bar button{margin:0;min-height:38px;width:auto;padding:0 16px;font-size:13px;}
+
+  /* ---------- print ---------- */
+  @media print{
+    .no-print{display:none !important;}
+    #sidebar{display:none !important;}
+    #mainArea{padding:0;max-width:none;}
+    body{background:#fff;color:#111;}
+    .panel, .stat-card{background:#fff;border:1px solid #ccc;color:#111;break-inside:avoid;}
+    .stat-card .stat-value{color:#111;}
+    .panel h3, .stat-card .stat-label{color:#555;}
+  }
 </style>
 </head>
 <body>
-<div id="app">
-  <a href="training-guide.html" target="_blank" class="training-link">&#128218;&nbsp; Training guide</a>
-  <h1>Send a note to a WIP</h1>
-  <p class="sub">The mechanic sees this the moment they type in that WIP number in the app.</p>
+<div id="shell">
 
-  <label for="wipField">WIP number</label>
-  <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
-  <div class="status" id="wipStatus"></div>
-
-  <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
-    <div class="pwa-flag-row" id="pwaFlagRow">
-      <span id="pwaFlagStatus"></span>
+  <nav id="sidebar">
+    <div class="brand">Warranty Admin<span>Hinchys Kia</span></div>
+    <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+      Dashboard</button>
+    <button class="nav-item" data-page="tasks" onclick="showPage('tasks')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+      Tasks</button>
+    <button class="nav-item" data-page="notes" onclick="showPage('notes')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="navLabelNotes">Notes &amp; PWA flags</span></button>
+    <button class="nav-item" data-page="rules" onclick="showPage('rules')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span id="navLabelRules">PWA rules</span></button>
+    <button class="nav-item" data-page="checklist" onclick="showPage('checklist')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Checklist items</button>
+    <button class="nav-item" data-page="jobs" onclick="showPage('jobs')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Open jobs</button>
+    <button class="nav-item" data-page="mechanics" onclick="showPage('mechanics')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Mechanics</button>
+    <button class="nav-item" data-page="settings" onclick="showPage('settings')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Settings</button>
+    <div class="nav-bottom-group">
+      <button class="nav-item" id="currentUserBtn" onclick="logoutUser()" style="display:none;">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span id="currentUserLabel">Someone</span></button>
+      <button class="nav-item" id="themeToggleBtn" onclick="toggleTheme()">
+        <svg class="icon" id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon" id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="themeToggleLabel">Light mode</span></button>
     </div>
-    <div class="collapsible" id="pwaFlagChecklistCollapsible">
-      <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
-        <span>Set required items</span><span class="chevron">&#9656;</span>
-      </button>
-      <div class="collapsible-body">
-        <p class="sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
-        <div id="pwaWipChecklist"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button class="btn" style="margin:0;min-height:44px;" onclick="savePwaFlagForWip()">Save PWA requirement</button>
-          <button class="btn btn-secondary" style="margin:0;min-height:44px;" onclick="clearPwaFlagForWip()">Clear flag</button>
+    <a href="training-guide.html" target="_blank" class="nav-item nav-link">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Training guide</a>
+  </nav>
+
+  <main id="mainArea">
+    <div id="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSub"></p>
+      </div>
+    </div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <div class="page active" id="page-dashboard">
+      <div class="dash-toolbar no-print">
+        <button class="btn btn-secondary btn-inline" onclick="openCustomizeOverlay()">
+          <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          Customize</button>
+        <button class="btn btn-secondary btn-inline" onclick="exportDashboardCSV()">
+          <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV</button>
+        <button class="btn btn-secondary btn-inline" onclick="window.print()">
+          <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print / PDF</button>
+      </div>
+      <div id="dashboardWidgets"><p class="empty">Loading…</p></div>
+    </div>
+
+    <!-- ============ TASKS ============ -->
+    <div class="page" id="page-tasks">
+      <div class="panel">
+        <h2>Add a task</h2>
+        <label for="newTaskTitle">Task</label>
+        <input type="text" id="newTaskTitle" placeholder="e.g. Chase up VIN enquiry for WIP 12345">
+        <label for="newTaskDesc">Details (optional)</label>
+        <textarea id="newTaskDesc" placeholder="Any extra context"></textarea>
+        <label>Priority</label>
+        <div class="priority-select-row">
+          <button type="button" class="priority-btn priority-low" data-priority="low" onclick="selectNewTaskPriority('low')">Low</button>
+          <button type="button" class="priority-btn priority-medium active" data-priority="medium" onclick="selectNewTaskPriority('medium')">Medium</button>
+          <button type="button" class="priority-btn priority-high" data-priority="high" onclick="selectNewTaskPriority('high')">High</button>
+        </div>
+        <button class="btn" onclick="createTask()">Add task</button>
+        <div class="status" id="newTaskStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Open tasks</h2>
+        <div id="openTasksList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="collapsible" id="completedTasksCollapsible">
+          <button class="collapsible-header" onclick="toggleCollapsible('completedTasksCollapsible')">
+            <span>Completed tasks</span><span class="chevron">&#9656;</span>
+          </button>
+          <div class="collapsible-body">
+            <div id="completedTasksList"><p class="empty">Loading…</p></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <label for="msgField">Message</label>
-  <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
+    <!-- ============ NOTES & PWA FLAGS ============ -->
+    <div class="page" id="page-notes">
+      <div class="panel">
+        <h2>Send a note / flag a job</h2>
+        <p class="panel-sub">The mechanic sees the note the moment they type in that WIP number in the app.</p>
 
-  <button class="btn" id="sendBtn" onclick="sendNote()">Send note</button>
-  <div class="status" id="sendStatus"></div>
+        <label for="wipField">WIP number</label>
+        <input type="text" id="wipField" inputmode="numeric" maxlength="5" placeholder="e.g. 12345">
+        <div class="status" id="wipStatus"></div>
 
-  <div class="list">
-    <h2>Active notes</h2>
-    <div id="notesList"><p class="empty">Loading…</p></div>
-  </div>
+        <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
+          <div class="pwa-flag-row" id="pwaFlagRow"><span id="pwaFlagStatus"></span></div>
+          <div class="collapsible" id="pwaFlagChecklistCollapsible">
+            <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
+              <span>Set required items</span><span class="chevron">&#9656;</span>
+            </button>
+            <div class="collapsible-body">
+              <p class="panel-sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+              <div id="pwaWipChecklist"></div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn btn-inline" onclick="savePwaFlagForWip()">Save PWA requirement</button>
+                <button class="btn btn-secondary btn-inline" onclick="clearPwaFlagForWip()">Clear flag</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-  <hr class="section-divider">
+        <label for="msgField">Message</label>
+        <textarea id="msgField" placeholder="e.g. Need a close-up of the fault before you close this one out"></textarea>
+        <button class="btn" onclick="sendNote()" id="sendBtn">Send note</button>
+        <div class="status" id="sendStatus"></div>
+      </div>
 
-  <h1 style="margin-top:32px;">PWA rules</h1>
-  <p class="sub">What Kia needs for each job type — read live by the mechanic app, so changes here show up immediately without touching any code.</p>
-
-  <label for="thresholdField">Claim value threshold (&euro;) — over this, PWA is always needed</label>
-  <input type="text" id="thresholdField" inputmode="numeric" placeholder="1250">
-
-  <label for="labourRateField" style="margin-top:16px;">Hourly labour rate (&euro;) — set once, rarely changes</label>
-  <input type="text" id="labourRateField" inputmode="decimal" placeholder="91.72">
-
-  <label for="bufferField" style="margin-top:16px;">Warn "check with the office" when estimated total is within this much of the threshold (&euro;)</label>
-  <input type="text" id="bufferField" inputmode="numeric" placeholder="200">
-
-  <button class="btn" onclick="saveClaimSettings()">Save settings</button>
-  <div class="status" id="thresholdStatus"></div>
-
-  <div class="collapsible" id="jobTypesSection">
-    <button class="collapsible-header" onclick="toggleCollapsible('jobTypesSection')">
-      <span>Job types</span><span class="chevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body">
-      <div id="jobTypesList"><p class="empty">Loading…</p></div>
-    </div>
-  </div>
-
-  <div class="collapsible" id="pwaItemsSection">
-    <button class="collapsible-header" onclick="toggleCollapsible('pwaItemsSection')">
-      <span>PWA requirement items</span><span class="chevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body">
-      <p class="sub" style="margin:0 0 12px;">The checklist you pick from when flagging a specific job as needing PWA (above, in the WIP field). Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
-      <div id="pwaItemsList"><p class="empty">Loading…</p></div>
-      <div class="add-row" style="margin-top:10px;">
-        <input type="text" id="newPwaItemInput" placeholder="e.g. Fault video">
-        <button class="btn btn-secondary" onclick="addPwaChecklistItem()">Add</button>
+      <div class="panel">
+        <h3>Active notes</h3>
+        <div id="notesList"><p class="empty">Loading…</p></div>
       </div>
     </div>
-  </div>
 
-  <div class="list">
-    <h2>Add a new job type</h2>
-    <label for="newJobName">Job type name</label>
-    <input type="text" id="newJobName" placeholder="e.g. Transmission">
+    <!-- ============ PWA RULES ============ -->
+    <div class="page" id="page-rules">
+      <div class="panel">
+        <h2>Claim settings</h2>
+        <p class="panel-sub" id="claimSettingsSub">Used by the mechanic app's PWA checker.</p>
+        <label for="thresholdField" id="thresholdLabel">Claim value threshold (&euro;) &mdash; over this, PWA is always needed</label>
+        <input type="text" id="thresholdField" inputmode="numeric" placeholder="1250">
+        <label for="labourRateField">Hourly labour rate (&euro;) &mdash; set once, rarely changes</label>
+        <input type="text" id="labourRateField" inputmode="decimal" placeholder="91.72">
+        <label for="bufferField">"Check with the office" buffer (&euro;) &mdash; how close to the threshold counts as borderline</label>
+        <input type="text" id="bufferField" inputmode="numeric" placeholder="200">
+        <button class="btn" onclick="saveClaimSettings()">Save settings</button>
+        <div class="status" id="thresholdStatus"></div>
+      </div>
 
-    <label class="checkbox-label" for="newJobAlwaysPWA" style="margin-top:16px;">
-      <input type="checkbox" id="newJobAlwaysPWA">
-      Always needs PWA, regardless of claim value
-    </label>
+      <div class="panel">
+        <h2>Job types</h2>
+        <p class="panel-sub" id="jobTypesSub">What Kia needs for each job type &mdash; read live by the mechanic app.</p>
+        <div id="jobTypesList"><p class="empty">Loading…</p></div>
+      </div>
 
-    <label for="newJobMediaInput">Required photos/videos</label>
-    <div class="add-row">
-      <input type="text" id="newJobMediaInput" placeholder="e.g. VIN">
-      <button class="btn btn-secondary" onclick="addNewJobMediaItem()">Add</button>
-    </div>
-    <div class="chip-row" id="newJobMediaChips"></div>
-
-    <button class="btn" onclick="createJobType()">Create job type</button>
-    <div class="status" id="newJobStatus"></div>
-  </div>
-
-  <hr class="section-divider">
-
-  <div class="collapsible" id="openJobsSection">
-    <button class="collapsible-header" onclick="toggleCollapsible('openJobsSection')">
-      <span>Open jobs</span><span class="chevron">&#9656;</span>
-    </button>
-    <div class="collapsible-body">
-      <p class="sub" style="margin:0 0 12px;">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched — this is purely for clearing data that no longer needs to be kept here.</p>
-      <input type="text" id="jobSearchField" placeholder="Search by WIP or reg…">
-      <div class="bulk-bar" id="bulkBar" style="margin-top:12px;">
-        <label class="checkbox-label" style="margin:0;">
-          <input type="checkbox" id="selectAllJobs" onclick="toggleSelectAllJobs(this.checked)">
-          Select all
+      <div class="panel">
+        <h3>Add a new job type</h3>
+        <label for="newJobName">Job type name</label>
+        <input type="text" id="newJobName" placeholder="e.g. Transmission">
+        <label class="checkbox-label" for="newJobAlwaysPWA" style="margin-top:16px;">
+          <input type="checkbox" id="newJobAlwaysPWA">
+          <span id="alwaysPwaLabel">Always needs PWA, regardless of claim value</span>
         </label>
-        <button class="btn btn-delete" id="closeSelectedBtn" onclick="closeSelectedJobs()" disabled>Close selected (0)</button>
+        <label for="newJobMediaInput">Required photos/videos</label>
+        <div class="add-row">
+          <input type="text" id="newJobMediaInput" placeholder="e.g. VIN">
+          <button class="btn btn-secondary btn-inline" onclick="addNewJobMediaItem()">Add</button>
+        </div>
+        <div class="chip-row" id="newJobMediaChips"></div>
+        <button class="btn" onclick="createJobType()">Create job type</button>
+        <div class="status" id="newJobStatus"></div>
       </div>
-      <div id="openJobsList" style="margin-top:12px;"><p class="empty">Loading…</p></div>
     </div>
+
+    <!-- ============ CHECKLIST ITEMS ============ -->
+    <div class="page" id="page-checklist">
+      <div class="panel">
+        <h2 id="checklistTitle">PWA requirement items</h2>
+        <p class="panel-sub" id="checklistSub">The checklist you pick from when flagging a specific job as needing PWA. Add whatever Kia might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.</p>
+        <div id="pwaItemsList"><p class="empty">Loading…</p></div>
+        <div class="add-row" style="margin-top:10px;">
+          <input type="text" id="newPwaItemInput" placeholder="e.g. Fault video">
+          <button class="btn btn-secondary btn-inline" onclick="addPwaChecklistItem()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OPEN JOBS ============ -->
+    <div class="page" id="page-jobs">
+      <div class="panel">
+        <h2>Open jobs</h2>
+        <p class="panel-sub" id="openJobsDesc">"Close job" permanently deletes that job's Firebase data (reg link, send history, note, PWA flag). SharePoint files are untouched.</p>
+        <div class="jobs-toolbar">
+          <div><input type="text" id="jobSearchField" placeholder="Search by WIP or reg…"></div>
+          <select id="jobSortSelect" onchange="renderOpenJobsList(document.getElementById('jobSearchField').value)">
+            <option value="recent">Most recently updated</option>
+            <option value="oldest">Oldest updated</option>
+            <option value="reg">Reg (A&ndash;Z)</option>
+            <option value="wip">WIP number</option>
+            <option value="vindue">VIN enquiry due soonest</option>
+          </select>
+          <button class="btn btn-secondary btn-inline no-print" onclick="exportOpenJobsCSV()" style="margin-top:0;">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV</button>
+        </div>
+        <div class="jobs-filter-row" id="jobsFilterRow">
+          <button class="filter-chip active" data-filter="all" onclick="setJobFilter('all')">All</button>
+          <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
+          <button class="filter-chip" data-filter="vindue" onclick="setJobFilter('vindue')">VIN enquiry due</button>
+          <button class="filter-chip" data-filter="stale" onclick="setJobFilter('stale')">Stale (7+ days)</button>
+        </div>
+        <div class="bulk-bar" id="bulkBar">
+          <label class="checkbox-label">
+            <input type="checkbox" id="selectAllJobs" onclick="toggleSelectAllJobs(this.checked)">
+            Select all
+          </label>
+          <button class="btn btn-delete" id="closeSelectedBtn" onclick="closeSelectedJobs()" disabled>Close selected (0)</button>
+        </div>
+        <div id="openJobsList"><p class="empty">Loading…</p></div>
+      </div>
+    </div>
+
+    <!-- ============ MECHANICS ============ -->
+    <div class="page" id="page-mechanics">
+      <div class="panel">
+        <h2>Current mechanics</h2>
+        <p class="panel-sub">Same list mechanics see on the app's first screen &mdash; changes here show up there immediately, and vice versa.</p>
+        <div id="mechanicsAdminList"><p class="empty">Loading…</p></div>
+      </div>
+      <div class="panel">
+        <h3>Add a mechanic</h3>
+        <div class="add-row">
+          <input type="text" id="newMechanicAdminInput" placeholder="Name">
+          <button class="btn btn-secondary btn-inline" onclick="addMechanicAdmin()">Add</button>
+        </div>
+        <div class="status" id="mechanicAdminStatus"></div>
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div class="page" id="page-settings">
+      <div class="panel" id="settingsPanel-manufacturer">
+        <h2>Manufacturer</h2>
+        <p class="panel-sub">Swaps terminology throughout the whole app &mdash; e.g. "PWA" only makes sense for Kia. Pick anything else and it switches to generic wording everywhere, no other changes needed.</p>
+        <label class="checkbox-label" style="margin-top:0;">
+          <input type="radio" name="manufacturerChoice" value="kia" id="mfrRadioKia" onchange="saveManufacturer('kia')">
+          Kia
+        </label>
+        <label class="checkbox-label">
+          <input type="radio" name="manufacturerChoice" value="generic" id="mfrRadioGeneric" onchange="saveManufacturer('generic')">
+          Other / generic
+        </label>
+        <div class="status" id="manufacturerStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-dealer">
+        <h2>Dealer details</h2>
+        <p class="panel-sub">Used for branding across the app and on exported reports.</p>
+        <label for="dealerNameField">Business name</label>
+        <input type="text" id="dealerNameField" placeholder="e.g. Hinchys Kia">
+        <label for="dealerAddressField">Address</label>
+        <input type="text" id="dealerAddressField" placeholder="e.g. Dock Road, Limerick">
+        <button class="btn" onclick="saveDealerDetails()">Save dealer details</button>
+        <div class="status" id="dealerStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-emails">
+        <h2>Warranty email recipients</h2>
+        <p class="panel-sub">Every address a job should go to. The <b>first</b> one must be the inbox your Power Automate flow watches &mdash; that's the one the folder-filing logic depends on. Anyone else just gets a copy for visibility. Mechanics still have to pick these in their Mail app, so keep them saved as contacts on each phone.</p>
+        <div id="emailRecipientsList"><p class="empty">Loading…</p></div>
+        <div class="add-row" style="margin-top:10px;">
+          <input type="text" id="newEmailInput" placeholder="e.g. warranty@yourdealer.ie">
+          <button class="btn btn-secondary btn-inline" onclick="addEmailRecipient()">Add</button>
+        </div>
+      </div>
+
+      <div class="panel" id="settingsPanel-currency">
+        <h2>Currency</h2>
+        <p class="panel-sub">Used throughout the PWA checker's value calculator.</p>
+        <label for="currencyField">Currency symbol</label>
+        <input type="text" id="currencyField" placeholder="€" maxlength="3" style="max-width:120px;">
+        <button class="btn" onclick="saveCurrency()">Save currency</button>
+        <div class="status" id="currencyStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-appearance">
+        <h2>Appearance</h2>
+        <p class="panel-sub">Theme below is just for your device. Colors are shared &mdash; whatever you pick applies for everyone who opens this panel.</p>
+        <label class="checkbox-label" style="margin-top:0;">
+          <input type="radio" name="themeChoice" value="dark" id="themeRadioDark" onchange="setTheme('dark')">
+          Dark
+        </label>
+        <label class="checkbox-label">
+          <input type="radio" name="themeChoice" value="light" id="themeRadioLight" onchange="setTheme('light')">
+          Light
+        </label>
+
+        <div class="color-grid">
+          <div class="color-field">
+            <label for="colorAccentField">Accent</label>
+            <input type="color" id="colorAccentField">
+          </div>
+          <div class="color-field">
+            <label for="colorSidebarField">Sidebar</label>
+            <input type="color" id="colorSidebarField">
+          </div>
+          <div class="color-field">
+            <label for="colorSuccessField">Success</label>
+            <input type="color" id="colorSuccessField">
+          </div>
+          <div class="color-field">
+            <label for="colorDangerField">Danger</label>
+            <input type="color" id="colorDangerField">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn" style="margin:0;" onclick="saveCustomColors()">Save colors</button>
+          <button class="btn btn-secondary" style="margin:0;" onclick="resetCustomColors()">Reset to defaults</button>
+        </div>
+        <div class="status" id="customColorsStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-sessionTimeout">
+        <h2>Session timeout</h2>
+        <p class="panel-sub">Re-locks the panel after this many minutes of inactivity, even if the tab stays open. It'll always also re-lock when the tab is closed, regardless of this setting.</p>
+        <label for="pinTimeoutField">Minutes (0 = only when the tab closes)</label>
+        <input type="text" id="pinTimeoutField" inputmode="numeric" placeholder="60" style="max-width:120px;">
+        <button class="btn" onclick="savePinTimeout()">Save timeout</button>
+        <div class="status" id="pinTimeoutStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-vinEnquiry">
+        <h2>VIN enquiry reminder</h2>
+        <p class="panel-sub">A VIN enquiry is assumed printed automatically the day a job is first created. After this many days without a new one being logged, it shows as due again.</p>
+        <label for="vinEnquiryDaysField">Days</label>
+        <input type="text" id="vinEnquiryDaysField" inputmode="numeric" placeholder="10" style="max-width:120px;">
+        <button class="btn" onclick="saveVinEnquiryDays()">Save interval</button>
+        <div class="status" id="vinEnquiryDaysStatus"></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-users">
+        <h2>Users &amp; permissions</h2>
+        <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
+        <div id="usersList"><p class="empty">Loading…</p></div>
+      </div>
+
+      <div class="panel" id="settingsPanel-users2">
+        <h3>Add a user</h3>
+        <label for="newUserName">Name</label>
+        <input type="text" id="newUserName" placeholder="Name">
+        <label for="newUserPin">PIN (4&ndash;6 digits)</label>
+        <input type="text" id="newUserPin" inputmode="numeric" maxlength="6" placeholder="e.g. 4821">
+        <label>Pages this person can access</label>
+        <div id="newUserPagesChecklist"></div>
+        <label>Settings access <span style="font-weight:400;text-transform:none;">(only matters if they can see the Settings page above)</span></label>
+        <div id="newUserSettingsChecklist"></div>
+        <button class="btn" onclick="createUser()">Create user</button>
+        <div class="status" id="newUserStatus"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="modal-overlay show" id="loginGateOverlay" style="z-index:300;">
+  <div class="modal-box" style="text-align:center;">
+    <p class="panel-sub" id="loginGateLoadingMsg">Loading…</p>
+    <div id="loginGateForm" style="display:none;">
+      <h2>Enter your PIN</h2>
+      <p class="panel-sub" id="loginSub">Set up by whoever manages this panel.</p>
+      <input type="password" id="loginPinInput" inputmode="numeric" maxlength="6"
+        style="text-align:center;font-size:26px;letter-spacing:10px;" placeholder="PIN">
+      <div class="status err" id="loginError"></div>
+      <button class="btn" onclick="attemptLogin()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editUserOverlay">
+  <div class="modal-box">
+    <h2>Edit user</h2>
+    <label for="editUserName">Name</label>
+    <input type="text" id="editUserName" placeholder="Name">
+    <label for="editUserPin">New PIN (leave blank to keep their current one)</label>
+    <input type="text" id="editUserPin" inputmode="numeric" maxlength="6" placeholder="Leave blank to keep existing PIN">
+    <label>Pages this person can access</label>
+    <div id="editUserPagesChecklist"></div>
+    <label>Settings access <span style="font-weight:400;text-transform:none;">(only matters if they can see the Settings page above)</span></label>
+    <div id="editUserSettingsChecklist"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="saveEditedUser()">Save changes</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closeEditUserOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="editUserStatus"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="customizeOverlay">
+  <div class="modal-box">
+    <h2>Customize dashboard</h2>
+    <p class="panel-sub">Tick what shows, use the arrows to reorder. Saved automatically.</p>
+    <div id="customizeList"></div>
+    <button class="btn" onclick="closeCustomizeOverlay()">Done</button>
   </div>
 </div>
 
@@ -245,6 +695,1379 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function hashPin(pin){
+  const enc = new TextEncoder().encode(pin);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function downloadCSV(rows, filename){
+  const csv = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val){
+  const s = String(val === undefined || val === null ? "" : val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+/* ============================================================
+   TERMINOLOGY — "PWA" is Kia-specific language. Any other
+   manufacturer setting swaps it for generic wording everywhere
+   this shows up, without touching any of the underlying logic.
+   ============================================================ */
+const TERMINOLOGY = {
+  kia: { short: "PWA", full: "Prior Work Approval", mfrName: "Kia" },
+  generic: { short: "Approval", full: "Prior Approval", mfrName: "the manufacturer" }
+};
+let manufacturer = "kia";
+let PWA_TERM = TERMINOLOGY.kia.short;
+let PWA_TERM_FULL = TERMINOLOGY.kia.full;
+
+function applyTerminology(){
+  const t = TERMINOLOGY[manufacturer] || TERMINOLOGY.kia;
+  PWA_TERM = t.short;
+  PWA_TERM_FULL = t.full;
+
+  document.getElementById("navLabelNotes").innerHTML = "Notes &amp; " + PWA_TERM + " flags";
+  document.getElementById("navLabelRules").textContent = PWA_TERM + " rules";
+  document.getElementById("thresholdLabel").innerHTML = "Claim value threshold (&euro;) &mdash; over this, " + PWA_TERM + " is always needed";
+  document.getElementById("claimSettingsSub").textContent = "Used by the mechanic app's " + PWA_TERM + " checker.";
+  document.getElementById("jobTypesSub").textContent = "What " + t.mfrName + " needs for each job type \u2014 read live by the mechanic app.";
+  document.getElementById("alwaysPwaLabel").textContent = "Always needs " + PWA_TERM + ", regardless of claim value";
+  document.getElementById("checklistTitle").textContent = PWA_TERM + " requirement items";
+  document.getElementById("checklistSub").innerHTML = "The checklist you pick from when flagging a specific job as needing " + PWA_TERM + ". Add whatever " + t.mfrName + " might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.";
+  document.getElementById("openJobsDesc").textContent = '"Close job" permanently deletes that job\'s Firebase data (reg link, send history, note, ' + PWA_TERM + ' flag). SharePoint files are untouched.';
+  const filterPwaEl = document.getElementById("filterPwaTerm");
+  if (filterPwaEl) filterPwaEl.textContent = PWA_TERM;
+
+  PAGE_INFO.notes = ["Notes & " + PWA_TERM + " flags", "Send a note or flag a job for a specific WIP"];
+  PAGE_INFO.rules = [PWA_TERM + " rules", t.mfrName + "'s claim rules, read live by the mechanic app"];
+  PAGE_INFO.checklist = [PWA_TERM + " requirement items", "The library you pick from when flagging a job"];
+
+  if (WIDGET_LIBRARY["stat-pwaFlagged"]) WIDGET_LIBRARY["stat-pwaFlagged"].title = PWA_TERM + " flagged";
+  if (WIDGET_LIBRARY["chart-pwa"]) WIDGET_LIBRARY["chart-pwa"].title = PWA_TERM + " flagged vs not";
+
+  // Refresh whatever's currently on screen so the change is visible immediately,
+  // not just after navigating away and back.
+  const activeBtn = document.querySelector(".nav-item.active[data-page]");
+  if (activeBtn) showPage(activeBtn.dataset.page);
+}
+
+async function saveManufacturer(value){
+  manufacturer = value;
+  applyTerminology();
+  const statusEl = document.getElementById("manufacturerStatus");
+  try {
+    await db.collection("config").doc("appSettings").set({ manufacturer: value }, { merge: true });
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed manufacturer to " + value);
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+const PAGE_INFO = {
+  dashboard: ["Dashboard", "A quick read on what's currently going on"],
+  tasks: ["Tasks", "Shared task list for admin staff \u2014 everyone sees the same list"],
+  notes: ["Notes & PWA flags", "Send a note or flag a job for a specific WIP"],
+  rules: ["PWA rules", "Kia's claim rules, read live by the mechanic app"],
+  checklist: ["Checklist items", "The library you pick from when flagging a job"],
+  jobs: ["Open jobs", "Everything currently tracked in Firebase"],
+  mechanics: ["Mechanics", "Who shows up on the app's first screen"],
+  settings: ["Settings", "Dealer details, email routing, currency"]
+};
+
+function showPage(id){
+  document.querySelectorAll(".nav-item[data-page]").forEach(b => b.classList.toggle("active", b.dataset.page === id));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-" + id).classList.add("active");
+  document.getElementById("pageTitle").textContent = PAGE_INFO[id][0];
+  document.getElementById("pageSub").textContent = PAGE_INFO[id][1];
+
+  if (id === "dashboard") loadDashboard();
+  else if (id === "tasks" && !tasksLoaded) loadTasks();
+  else if (id === "jobs"){
+    if (!openJobsLoaded) loadOpenJobs(); // fetches, then renders
+    else renderOpenJobsList(document.getElementById("jobSearchField").value); // already fetched (e.g. by Dashboard) — just paint it
+  }
+  else if (id === "mechanics" && !mechanicsAdminLoaded) loadMechanicsAdmin();
+  else if (id === "settings"){
+    if (!appSettingsLoaded) loadAppSettingsAdmin();
+    loadUsersForSettings();
+  }
+}
+
+function toggleCollapsible(id){
+  document.getElementById(id).classList.toggle("open");
+}
+
+/* ============================================================
+   THEME — per-device preference, stored locally, not shared via Firestore
+   ============================================================ */
+function applyTheme(theme){
+  document.body.classList.toggle("light", theme === "light");
+  document.getElementById("iconSun").style.display = theme === "light" ? "none" : "block";
+  document.getElementById("iconMoon").style.display = theme === "light" ? "block" : "none";
+  document.getElementById("themeToggleLabel").textContent = theme === "light" ? "Dark mode" : "Light mode";
+  const darkRadio = document.getElementById("themeRadioDark");
+  const lightRadio = document.getElementById("themeRadioLight");
+  if (darkRadio && lightRadio){
+    darkRadio.checked = theme !== "light";
+    lightRadio.checked = theme === "light";
+  }
+}
+
+function setTheme(theme){
+  localStorage.setItem("warrantyAdminTheme", theme);
+  applyTheme(theme);
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+  if (document.getElementById("colorAccentField")) populateColorFields();
+}
+
+function toggleTheme(){
+  setTheme(document.body.classList.contains("light") ? "dark" : "light");
+}
+
+applyTheme(localStorage.getItem("warrantyAdminTheme") || "dark");
+
+/* ============================================================
+   CUSTOM COLORS — shared (not per-device like theme), applied as
+   inline CSS variable overrides so they win over either theme.
+   ============================================================ */
+const THEME_DEFAULT_COLORS = {
+  dark: { accent: "#F5B300", sidebarBg: "#1E1F24", success: "#2FA84F", danger: "#E5484D" },
+  light: { accent: "#C98A00", sidebarBg: "#FFFFFF", success: "#1F8A3D", danger: "#C22A2E" }
+};
+let customColors = { accent: "", sidebarBg: "", success: "", danger: "" };
+
+function getContrastTextColor(hex){
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#1A1300" : "#FFFFFF";
+}
+
+function applyCustomColors(){
+  const root = document.documentElement;
+  if (customColors.accent){
+    root.style.setProperty("--accent", customColors.accent);
+    root.style.setProperty("--accent-text", getContrastTextColor(customColors.accent));
+  } else {
+    root.style.removeProperty("--accent");
+    root.style.removeProperty("--accent-text");
+  }
+  if (customColors.sidebarBg) root.style.setProperty("--sidebar-bg", customColors.sidebarBg);
+  else root.style.removeProperty("--sidebar-bg");
+  if (customColors.success) root.style.setProperty("--success", customColors.success);
+  else root.style.removeProperty("--success");
+  if (customColors.danger) root.style.setProperty("--danger", customColors.danger);
+  else root.style.removeProperty("--danger");
+
+  if (dashChartInstances && dashChartInstances.length && lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function populateColorFields(){
+  const theme = document.body.classList.contains("light") ? "light" : "dark";
+  const d = THEME_DEFAULT_COLORS[theme];
+  document.getElementById("colorAccentField").value = customColors.accent || d.accent;
+  document.getElementById("colorSidebarField").value = customColors.sidebarBg || d.sidebarBg;
+  document.getElementById("colorSuccessField").value = customColors.success || d.success;
+  document.getElementById("colorDangerField").value = customColors.danger || d.danger;
+}
+
+async function saveCustomColors(){
+  const statusEl = document.getElementById("customColorsStatus");
+  customColors = {
+    accent: document.getElementById("colorAccentField").value,
+    sidebarBg: document.getElementById("colorSidebarField").value,
+    success: document.getElementById("colorSuccessField").value,
+    danger: document.getElementById("colorDangerField").value
+  };
+  applyCustomColors();
+  try {
+    await db.collection("config").doc("appSettings").set({ customColors: customColors }, { merge: true });
+    statusEl.textContent = "Saved \u2014 applies for everyone who opens this panel.";
+    statusEl.className = "status ok";
+    logAudit("Updated custom colors");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function resetCustomColors(){
+  customColors = { accent: "", sidebarBg: "", success: "", danger: "" };
+  applyCustomColors();
+  populateColorFields();
+  try {
+    await db.collection("config").doc("appSettings").set({ customColors: customColors }, { merge: true });
+    const statusEl = document.getElementById("customColorsStatus");
+    statusEl.textContent = "Reset to defaults.";
+    statusEl.className = "status ok";
+    logAudit("Reset custom colors to defaults");
+  } catch(err){
+    console.error(err);
+  }
+}
+
+/* ============================================================
+   LOGIN GATE & PERMISSIONS — a light gate, not real auth. See the
+   note on the Users & permissions panel for exactly what this
+   does and doesn't protect against.
+   ============================================================ */
+let currentAdminUser = null; // {id, name, allowedPages} or null = unrestricted (no users configured yet)
+let pinTimeoutMinutes = 60; // 0 = only re-lock when the tab closes; set from Settings
+
+function recordActivity(){
+  if (currentAdminUser) sessionStorage.setItem("warrantyAdminLastActive", String(Date.now()));
+}
+document.addEventListener("click", recordActivity);
+document.addEventListener("keydown", recordActivity);
+
+function checkIdleTimeout(){
+  if (!currentAdminUser || !pinTimeoutMinutes || pinTimeoutMinutes <= 0) return;
+  const last = Number(sessionStorage.getItem("warrantyAdminLastActive") || 0);
+  const elapsedMin = (Date.now() - last) / 60000;
+  if (elapsedMin >= pinTimeoutMinutes){
+    sessionStorage.removeItem("warrantyAdminUserId");
+    currentAdminUser = null;
+    applyPermissions();
+    showLoginGate();
+  }
+}
+setInterval(checkIdleTimeout, 30000);
+
+
+let allUsersCache = [];
+let usersLoaded = false;
+let editingUserId = null;
+
+const ALL_PAGE_IDS = ["dashboard", "tasks", "notes", "rules", "checklist", "jobs", "mechanics", "settings"];
+
+async function checkLoginGate(){
+  try {
+    const snapshot = await db.collection("users").get();
+    allUsersCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    usersLoaded = true;
+  } catch(err){
+    console.error("Couldn't load users", err);
+    allUsersCache = [];
+  }
+
+  if (!allUsersCache.length){
+    // No users set up yet — stays open, exactly like before this feature existed.
+    currentAdminUser = null;
+    applyPermissions();
+    hideLoginGate();
+    return;
+  }
+
+  const stored = sessionStorage.getItem("warrantyAdminUserId");
+  if (stored){
+    const match = allUsersCache.find(u => u.id === stored);
+    const lastActive = Number(sessionStorage.getItem("warrantyAdminLastActive") || 0);
+    const idleMin = (Date.now() - lastActive) / 60000;
+    const timedOut = pinTimeoutMinutes > 0 && idleMin >= pinTimeoutMinutes;
+    if (match && !timedOut){
+      currentAdminUser = match;
+      recordActivity();
+      applyPermissions();
+      hideLoginGate();
+      return;
+    }
+    if (timedOut) sessionStorage.removeItem("warrantyAdminUserId");
+  }
+
+  showLoginGate();
+}
+
+function showLoginGate(){
+  document.getElementById("loginGateOverlay").classList.add("show");
+  document.getElementById("loginGateLoadingMsg").style.display = "none";
+  document.getElementById("loginGateForm").style.display = "block";
+  document.getElementById("loginPinInput").value = "";
+  document.getElementById("loginError").textContent = "";
+  document.getElementById("loginPinInput").focus();
+}
+
+function hideLoginGate(){
+  document.getElementById("loginGateOverlay").classList.remove("show");
+}
+
+async function attemptLogin(){
+  const pin = document.getElementById("loginPinInput").value.trim();
+  const errEl = document.getElementById("loginError");
+  if (!pin){ return; }
+
+  const hash = await hashPin(pin);
+  const match = allUsersCache.find(u => u.pinHash === hash);
+  if (match){
+    currentAdminUser = match;
+    sessionStorage.setItem("warrantyAdminUserId", match.id);
+    recordActivity();
+    hideLoginGate();
+    applyPermissions();
+  } else {
+    errEl.textContent = "Incorrect PIN.";
+    document.getElementById("loginPinInput").value = "";
+  }
+}
+
+document.getElementById("loginPinInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") attemptLogin();
+});
+
+function logoutUser(){
+  sessionStorage.removeItem("warrantyAdminUserId");
+  currentAdminUser = null;
+  applyPermissions();
+  showLoginGate();
+}
+
+function getPagePermission(pageId){
+  if (!currentAdminUser) return "edit"; // no users configured — unrestricted, as always
+  const ap = currentAdminUser.allowedPages;
+  if (Array.isArray(ap)) return ap.includes(pageId) ? "edit" : "none"; // legacy accounts created before view/edit existed
+  return (ap && ap[pageId]) || "none";
+}
+
+function canSeePage(pageId){ return getPagePermission(pageId) !== "none"; }
+function canEditPage(pageId){ return getPagePermission(pageId) === "edit"; }
+
+const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "users"];
+const SETTINGS_SECTION_LABELS = {
+  manufacturer: "Manufacturer", dealer: "Dealer details", emails: "Warranty email recipients",
+  currency: "Currency", appearance: "Appearance", sessionTimeout: "Session timeout",
+  vinEnquiry: "VIN enquiry reminder", users: "Users & permissions"
+};
+
+function getSettingsSectionPermission(sectionId){
+  if (!currentAdminUser) return "edit";
+  const ss = currentAdminUser.settingsSections;
+  if (ss && typeof ss === "object") return ss[sectionId] || "none";
+  return getPagePermission("settings"); // no granular data saved yet — fall back to their overall Settings access
+}
+
+function applySettingsSectionPermissions(){
+  const settingsPageLevel = getPagePermission("settings");
+  SETTINGS_SECTIONS.forEach(sectionId => {
+    const ids = sectionId === "users" ? ["settingsPanel-users", "settingsPanel-users2"] : ["settingsPanel-" + sectionId];
+    const level = settingsPageLevel === "none" ? "none" : getSettingsSectionPermission(sectionId);
+    ids.forEach(id => {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      panel.style.display = level === "none" ? "none" : "";
+      panel.classList.toggle("read-only", level === "view");
+    });
+  });
+}
+
+function applyPermissions(){
+  document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
+    btn.style.display = canSeePage(btn.dataset.page) ? "" : "none";
+  });
+
+  document.querySelectorAll(".page[id^='page-']").forEach(pageEl => {
+    const pageId = pageEl.id.replace("page-", "");
+    pageEl.classList.toggle("read-only", canSeePage(pageId) && !canEditPage(pageId));
+  });
+
+  applySettingsSectionPermissions();
+
+  const userBtn = document.getElementById("currentUserBtn");
+  if (currentAdminUser){
+    userBtn.style.display = "flex";
+    document.getElementById("currentUserLabel").textContent = currentAdminUser.name;
+  } else {
+    userBtn.style.display = "none";
+  }
+
+  // If whatever page is currently showing isn't allowed for this user, bump
+  // them to the first page they're actually allowed to see.
+  const activeBtn = document.querySelector(".nav-item.active[data-page]");
+  const activeAllowed = !activeBtn || canSeePage(activeBtn.dataset.page);
+  if (!activeAllowed){
+    const firstAllowed = ALL_PAGE_IDS.find(id => canSeePage(id)) || "dashboard";
+    showPage(firstAllowed);
+  }
+}
+
+function currentUserName(){
+  return currentAdminUser ? currentAdminUser.name : "Unknown";
+}
+
+/* ============================================================
+   USERS MANAGEMENT
+   ============================================================ */
+async function loadUsersForSettings(){
+  if (!usersLoaded){
+    try {
+      const snapshot = await db.collection("users").get();
+      allUsersCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      usersLoaded = true;
+    } catch(err){
+      console.error(err);
+      document.getElementById("usersList").innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+      return;
+    }
+  }
+  renderUsersList();
+  renderNewUserPagesChecklist();
+}
+
+function renderUsersList(){
+  const listEl = document.getElementById("usersList");
+  if (!allUsersCache.length){
+    listEl.innerHTML = '<p class="empty">No users yet — this panel is open to anyone until you add one.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  allUsersCache.forEach(user => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    const summary = summarizePermissions(user.allowedPages);
+    const settingsPageLevel = Array.isArray(user.allowedPages)
+      ? (user.allowedPages.includes("settings") ? "edit" : "none")
+      : ((user.allowedPages && user.allowedPages.settings) || "none");
+    const settingsDetail = settingsPageLevel !== "none"
+      ? " \u2014 " + describeSettingsSectionsForUser(user.settingsSections, settingsPageLevel) : "";
+    row.innerHTML = "<span><b>" + escapeHtml(user.name) + "</b> \u2014 " + summary + settingsDetail + "</span>";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "rm-item";
+    editBtn.style.fontSize = "13px";
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => openEditUserOverlay(user.id);
+    row.appendChild(editBtn);
+
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeUser(user.id, user.name);
+    row.appendChild(rm);
+
+    listEl.appendChild(row);
+  });
+}
+
+function openEditUserOverlay(userId){
+  const user = allUsersCache.find(u => u.id === userId);
+  if (!user) return;
+  editingUserId = userId;
+  document.getElementById("editUserName").value = user.name;
+  document.getElementById("editUserPin").value = "";
+  document.getElementById("editUserStatus").textContent = "";
+  renderPermissionSelectors("editUserPagesChecklist", user.allowedPages);
+  renderSettingsSectionSelectors("editUserSettingsChecklist", user.settingsSections);
+  document.getElementById("editUserOverlay").classList.add("show");
+}
+
+function closeEditUserOverlay(){
+  document.getElementById("editUserOverlay").classList.remove("show");
+  editingUserId = null;
+}
+
+function renderPermissionSelectors(containerId, currentAllowedPages){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  ALL_PAGE_IDS.forEach(pageId => {
+    const row = document.createElement("div");
+    row.className = "permission-row";
+    const name = document.createElement("span");
+    name.textContent = PAGE_INFO[pageId] ? PAGE_INFO[pageId][0] : pageId;
+    row.appendChild(name);
+
+    const select = document.createElement("select");
+    select.dataset.page = pageId;
+    ["none", "view", "edit"].forEach(level => {
+      const opt = document.createElement("option");
+      opt.value = level;
+      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
+      select.appendChild(opt);
+    });
+
+    let currentLevel = "edit";
+    if (currentAllowedPages){
+      if (Array.isArray(currentAllowedPages)) currentLevel = currentAllowedPages.includes(pageId) ? "edit" : "none";
+      else currentLevel = currentAllowedPages[pageId] || "none";
+    }
+    select.value = currentLevel;
+    row.appendChild(select);
+    el.appendChild(row);
+  });
+}
+
+async function saveEditedUser(){
+  if (!editingUserId) return;
+  const user = allUsersCache.find(u => u.id === editingUserId);
+  if (!user) return;
+
+  const nameEl = document.getElementById("editUserName");
+  const pinEl = document.getElementById("editUserPin");
+  const statusEl = document.getElementById("editUserStatus");
+  const name = nameEl.value.trim();
+  const newPin = pinEl.value.trim();
+
+  if (!name){
+    statusEl.textContent = "Name can't be empty.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (allUsersCache.some(u => u.id !== editingUserId && u.name.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "Someone else already has that name.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const allowedPages = {};
+  document.querySelectorAll("#editUserPagesChecklist select").forEach(sel => {
+    allowedPages[sel.dataset.page] = sel.value;
+  });
+  const settingsSections = readSettingsSectionSelectors("editUserSettingsChecklist");
+
+  if (wouldLockOutUserManagement(editingUserId, allowedPages, settingsSections)){
+    const proceed = confirm("Heads up: after this change, nobody would have Full access to both Settings and Users & Permissions \u2014 meaning nobody could manage users or fix a permissions mistake without going into Firebase directly. Save anyway?");
+    if (!proceed) return;
+  }
+
+  const updates = { name: name, allowedPages: allowedPages, settingsSections: settingsSections };
+  let pinChanged = false;
+
+  if (newPin){
+    if (!/^\d{4,6}$/.test(newPin)){
+      statusEl.textContent = "PIN needs to be 4\u20136 digits.";
+      statusEl.className = "status err";
+      return;
+    }
+    const newHash = await hashPin(newPin);
+    if (allUsersCache.some(u => u.id !== editingUserId && u.pinHash === newHash)){
+      statusEl.textContent = "That PIN is already in use by someone else.";
+      statusEl.className = "status err";
+      return;
+    }
+    updates.pinHash = newHash;
+    pinChanged = true;
+  }
+
+  const oldName = user.name;
+  const oldSummary = summarizePermissions(user.allowedPages);
+
+  try {
+    await db.collection("users").doc(editingUserId).update(updates);
+    Object.assign(user, updates); // same object instance as currentAdminUser if editing yourself — updates in place
+    renderUsersList();
+    closeEditUserOverlay();
+
+    const changes = [];
+    if (oldName !== name) changes.push('name "' + oldName + '" \u2192 "' + name + '"');
+    const newSummary = summarizePermissions(allowedPages);
+    if (oldSummary !== newSummary) changes.push("permissions: " + newSummary);
+    if (pinChanged) changes.push("PIN reset");
+    logAudit("Edited user \"" + name + "\"" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
+
+    if (currentAdminUser && currentAdminUser.id === editingUserId) applyPermissions();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function summarizePermissions(allowedPages){
+  let edit = 0, view = 0;
+  ALL_PAGE_IDS.forEach(pageId => {
+    let level;
+    if (Array.isArray(allowedPages)) level = allowedPages.includes(pageId) ? "edit" : "none";
+    else level = (allowedPages && allowedPages[pageId]) || "none";
+    if (level === "edit") edit++;
+    else if (level === "view") view++;
+  });
+  const parts = [];
+  if (edit) parts.push(edit + " edit");
+  if (view) parts.push(view + " view");
+  return parts.length ? parts.join(", ") : "no access";
+}
+
+function renderNewUserPagesChecklist(){
+  renderPermissionSelectors("newUserPagesChecklist", null); // null = default everything to full access
+  renderSettingsSectionSelectors("newUserSettingsChecklist", null);
+}
+
+function renderSettingsSectionSelectors(containerId, currentSettingsSections){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  SETTINGS_SECTIONS.forEach(sectionId => {
+    const row = document.createElement("div");
+    row.className = "permission-row";
+    const name = document.createElement("span");
+    name.textContent = SETTINGS_SECTION_LABELS[sectionId];
+    row.appendChild(name);
+
+    const select = document.createElement("select");
+    select.dataset.section = sectionId;
+    ["none", "view", "edit"].forEach(level => {
+      const opt = document.createElement("option");
+      opt.value = level;
+      opt.textContent = level === "none" ? "No access" : level === "view" ? "View only" : "Full access";
+      select.appendChild(opt);
+    });
+
+    let currentLevel = "edit";
+    if (currentSettingsSections && typeof currentSettingsSections === "object"){
+      currentLevel = currentSettingsSections[sectionId] || "none";
+    }
+    select.value = currentLevel;
+    row.appendChild(select);
+    el.appendChild(row);
+  });
+}
+
+function readSettingsSectionSelectors(containerId){
+  const result = {};
+  document.querySelectorAll("#" + containerId + " select").forEach(sel => {
+    result[sel.dataset.section] = sel.value;
+  });
+  return result;
+}
+
+function describeSettingsSectionsForUser(sectionsObj, pageLevel){
+  if (pageLevel === "none") return "no Settings access";
+  let edit = 0, view = 0;
+  SETTINGS_SECTIONS.forEach(id => {
+    const lvl = (sectionsObj && sectionsObj[id]) || "none";
+    if (lvl === "edit") edit++;
+    else if (lvl === "view") view++;
+  });
+  const parts = [];
+  if (edit) parts.push(edit + " edit");
+  if (view) parts.push(view + " view");
+  return parts.length ? parts.join(", ") + " within Settings" : "Settings visible, nothing enabled inside it";
+}
+
+// Warns (rather than blocks) if a save would leave nobody able to manage
+// Users & Permissions — a deliberate speed bump, not a hard rule, since
+// removing the old hard lock was explicitly requested.
+function wouldLockOutUserManagement(candidateUserId, candidateAllowedPages, candidateSettingsSections){
+  const hasFullUserAccess = (allowedPages, settingsSections) => {
+    let settingsLevel;
+    if (Array.isArray(allowedPages)) settingsLevel = allowedPages.includes("settings") ? "edit" : "none";
+    else settingsLevel = (allowedPages && allowedPages.settings) || "none";
+    if (settingsLevel !== "edit") return false;
+    const usersLevel = (settingsSections && settingsSections.users) || "none";
+    return usersLevel === "edit";
+  };
+
+  const othersOk = allUsersCache
+    .filter(u => u.id !== candidateUserId)
+    .some(u => hasFullUserAccess(u.allowedPages, u.settingsSections));
+
+  const candidateOk = hasFullUserAccess(candidateAllowedPages, candidateSettingsSections);
+
+  return !(othersOk || candidateOk);
+}
+
+async function createUser(){
+  const nameEl = document.getElementById("newUserName");
+  const pinEl = document.getElementById("newUserPin");
+  const statusEl = document.getElementById("newUserStatus");
+  const name = nameEl.value.trim();
+  const pin = pinEl.value.trim();
+
+  if (!name){
+    statusEl.textContent = "Give this user a name first.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (!/^\d{4,6}$/.test(pin)){
+    statusEl.textContent = "PIN needs to be 4\u20136 digits.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (allUsersCache.some(u => u.name.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "Someone with that name already exists.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const pinHash = await hashPin(pin);
+  if (allUsersCache.some(u => u.pinHash === pinHash)){
+    statusEl.textContent = "That PIN is already in use \u2014 PINs can't be shared between users.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const allowedPages = {};
+  document.querySelectorAll("#newUserPagesChecklist select").forEach(sel => {
+    allowedPages[sel.dataset.page] = sel.value;
+  });
+  const settingsSections = readSettingsSectionSelectors("newUserSettingsChecklist");
+
+  if (wouldLockOutUserManagement(null, allowedPages, settingsSections)){
+    const proceed = confirm("Heads up: after this, nobody would have Full access to both Settings and Users & Permissions \u2014 meaning nobody could manage users or fix a permissions mistake without going into Firebase directly. Create this user anyway?");
+    if (!proceed) return;
+  }
+
+  try {
+    const docRef = await db.collection("users").add({ name: name, pinHash: pinHash, allowedPages: allowedPages, settingsSections: settingsSections });
+    allUsersCache.push({ id: docRef.id, name: name, pinHash: pinHash, allowedPages: allowedPages, settingsSections: settingsSections });
+    nameEl.value = "";
+    pinEl.value = "";
+    renderUsersList();
+    renderNewUserPagesChecklist();
+    statusEl.textContent = "Created.";
+    statusEl.className = "status ok";
+    logAudit("Created user \"" + name + "\" (" + summarizePermissions(allowedPages) + ")");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function removeUser(id, name){
+  if (!confirm('Remove "' + name + '"? They\'ll need a new PIN set up to get back in.')) return;
+  try {
+    await db.collection("users").doc(id).delete();
+    allUsersCache = allUsersCache.filter(u => u.id !== id);
+    renderUsersList();
+    logAudit("Removed user \"" + name + "\"");
+    if (currentAdminUser && currentAdminUser.id === id){
+      logoutUser();
+    }
+  } catch(err){
+    console.error(err);
+    alert("Couldn't remove — try again.");
+  }
+}
+
+/* ============================================================
+   AUDIT LOG
+   ============================================================ */
+function logAudit(action){
+  if (!db) return;
+  db.collection("auditLog").add({
+    user: currentUserName(),
+    action: action,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(err => console.error("Couldn't log audit entry", err));
+}
+
+async function renderAuditLogWidget(container){
+  container.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("auditLog").orderBy("timestamp", "desc").limit(15).get();
+    if (snapshot.empty){
+      container.innerHTML = '<p class="empty">No activity logged yet.</p>';
+      return;
+    }
+    container.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const when = data.timestamp && data.timestamp.toDate ? data.timestamp.toDate().toLocaleString() : "";
+      const row = document.createElement("div");
+      row.className = "activity-row";
+      row.innerHTML = "<div><b>" + escapeHtml(data.user || "Unknown") + "</b> " + escapeHtml(data.action || "") +
+        "</div><div class=\"meta\">" + escapeHtml(when) + "</div>";
+      container.appendChild(row);
+    });
+  } catch(err){
+    console.error(err);
+    container.innerHTML = '<p class="empty">Couldn\'t load \u2014 check your Firebase config.</p>';
+  }
+}
+
+/* ============================================================
+   DASHBOARD — customizable widget system
+   ============================================================ */
+const WIDGET_LIBRARY = {
+  "stat-openJobs": { title: "Open jobs", type: "stat", render: ctx => ctx.totalOpen },
+  "stat-pwaFlagged": { title: "PWA flagged", type: "stat", render: ctx => ctx.flaggedCount },
+  "stat-activeNotes": { title: "Active notes", type: "stat", render: ctx => ctx.activeNotes },
+  "stat-itemsSent": { title: "Items sent", type: "stat", render: ctx => ctx.totalSent },
+  "stat-checklistCompletion": { title: "Checklists complete", type: "stat",
+    render: ctx => ctx.flaggedCount ? (ctx.completedFlagged + " / " + ctx.flaggedCount) : "\u2014" },
+  "stat-mechanics": { title: "Mechanics", type: "stat", render: ctx => ctx.mechanicCount },
+  "stat-jobTypes": { title: "Job types", type: "stat", render: ctx => ctx.jobTypeCount },
+  "stat-staleJobs": { title: "Stale (7+ days)", type: "stat", render: ctx => ctx.staleCount },
+  "chart-labels": { title: "Sent items by type", type: "chart-labels" },
+  "chart-mechanics": { title: "Jobs by mechanic", type: "chart-mechanics" },
+  "chart-pwa": { title: "PWA flagged vs not", type: "chart-pwa" },
+  "list-recent": { title: "Recent activity", type: "list-recent" },
+  "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" },
+  "list-audit": { title: "Audit log", type: "list-audit" },
+  "list-tasks": { title: "Open tasks", type: "list-tasks" },
+  "stat-vinDue": { title: "VIN enquiries due", type: "stat", render: ctx => ctx.vinDueCount },
+  "list-vindue": { title: "VIN enquiries due", type: "list-vindue" }
+};
+
+const DEFAULT_LAYOUT = ["stat-openJobs","stat-pwaFlagged","stat-activeNotes","stat-itemsSent",
+  "stat-checklistCompletion","chart-labels","chart-mechanics","list-recent"];
+
+let dashboardLayout = DEFAULT_LAYOUT.slice();
+let dashboardLayoutLoaded = false;
+let lastDashboardCtx = null;
+let dashChartInstances = [];
+
+async function loadDashboardLayout(){
+  try {
+    const doc = await db.collection("config").doc("dashboardLayout").get();
+    if (doc.exists && Array.isArray(doc.data().widgets) && doc.data().widgets.length){
+      dashboardLayout = doc.data().widgets.filter(id => WIDGET_LIBRARY[id]);
+    }
+  } catch(err){
+    console.error(err);
+  }
+  dashboardLayoutLoaded = true;
+}
+
+function saveDashboardLayout(){
+  if (!db) return;
+  db.collection("config").doc("dashboardLayout").set({ widgets: dashboardLayout })
+    .catch(err => console.error("Couldn't save dashboard layout", err));
+}
+
+async function loadDashboard(){
+  const container = document.getElementById("dashboardWidgets");
+  if (!dashboardLayoutLoaded) await loadDashboardLayout();
+  container.innerHTML = '<p class="empty">Loading…</p>';
+
+  try {
+    const [jobsSnap, notesSnap, mechDoc, rulesDoc] = await Promise.all([
+      db.collection("jobs").orderBy("updatedAt", "desc").get(),
+      db.collection("wipNotes").get(),
+      db.collection("config").doc("mechanics").get(),
+      db.collection("config").doc("pwaRules").get()
+    ]);
+
+    const jobs = jobsSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    openJobsCache = jobs; openJobsLoaded = true; // share the fetch with the Open Jobs page
+
+    const labelCounts = {};
+    jobs.forEach(j => { if (Array.isArray(j.history)) j.history.forEach(h => {
+      const k = h.label || "Other"; labelCounts[k] = (labelCounts[k] || 0) + 1;
+    }); });
+
+    const mechanicCounts = {};
+    jobs.forEach(j => { const k = j.lastMechanic || "Unknown"; mechanicCounts[k] = (mechanicCounts[k] || 0) + 1; });
+
+    const flaggedCount = jobs.filter(j => j.pwaFlag).length;
+    let completedFlagged = 0;
+    jobs.forEach(j => {
+      if (j.pwaFlag && Array.isArray(j.pwaRequiredItems) && j.pwaRequiredItems.length){
+        const checked = Array.isArray(j.pwaCheckedItems) ? j.pwaCheckedItems.length : 0;
+        if (checked >= j.pwaRequiredItems.length) completedFlagged++;
+      }
+    });
+
+    const now = Date.now();
+    const staleJobs = jobs.filter(j => j.updatedAt && j.updatedAt.toDate &&
+      (now - j.updatedAt.toDate().getTime()) > 7 * 24 * 60 * 60 * 1000);
+    const vinDueJobs = jobs.filter(j => getVinEnquiryStatus(j).due);
+
+    const mechanicsList = (mechDoc.exists && Array.isArray(mechDoc.data().names)) ? mechDoc.data().names : [];
+    const jobTypesList = (rulesDoc.exists && Array.isArray(rulesDoc.data().jobTypes)) ? rulesDoc.data().jobTypes : [];
+
+    const ctx = {
+      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs,
+      totalOpen: jobs.length,
+      flaggedCount, completedFlagged,
+      activeNotes: notesSnap.size,
+      totalSent: jobs.reduce((s, j) => s + (Array.isArray(j.history) ? j.history.length : 0), 0),
+      mechanicCount: mechanicsList.length,
+      jobTypeCount: jobTypesList.length,
+      staleCount: staleJobs.length,
+      vinDueCount: vinDueJobs.length
+    };
+    lastDashboardCtx = ctx;
+
+    renderDashboardWidgets(ctx);
+  } catch(err){
+    console.error(err);
+    container.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+function renderDashboardWidgets(ctx){
+  const container = document.getElementById("dashboardWidgets");
+  container.innerHTML = "";
+  dashChartInstances.forEach(c => c.destroy());
+  dashChartInstances = [];
+
+  if (!dashboardLayout.length){
+    container.innerHTML = '<p class="empty">Nothing on the dashboard yet — tap Customize to add some widgets.</p>';
+    return;
+  }
+
+  let statBuffer = [];
+  function flushStats(){
+    if (!statBuffer.length) return;
+    const grid = document.createElement("div");
+    grid.className = "stat-grid";
+    statBuffer.forEach(id => {
+      const w = WIDGET_LIBRARY[id];
+      const card = document.createElement("div");
+      card.className = "stat-card";
+      card.innerHTML = '<div class="stat-value">' + w.render(ctx) + '</div><div class="stat-label">' + escapeHtml(w.title) + '</div>';
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
+    statBuffer = [];
+  }
+
+  dashboardLayout.forEach(id => {
+    const w = WIDGET_LIBRARY[id];
+    if (!w) return;
+    if (w.type === "stat"){
+      statBuffer.push(id);
+      return;
+    }
+    flushStats();
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    const h3 = document.createElement("h3");
+    h3.textContent = w.title;
+    panel.appendChild(h3);
+    const body = document.createElement("div");
+    panel.appendChild(body);
+    container.appendChild(panel);
+    renderWidgetBody(w.type, body, ctx);
+  });
+  flushStats();
+}
+
+function chartAxisOptions(){
+  const isLight = document.body.classList.contains("light");
+  const tickColor = isLight ? "#6B6A66" : "#9C9AA5";
+  const gridColor = isLight ? "#DBDBD3" : "#34363F";
+  return {
+    x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
+    y: { ticks: { color: tickColor, font: { size: 11 }, precision: 0 }, grid: { color: gridColor }, beginAtZero: true }
+  };
+}
+
+function renderWidgetBody(type, body, ctx){
+  if (type === "chart-labels" || type === "chart-mechanics"){
+    const wrap = document.createElement("div");
+    wrap.className = "chart-wrap";
+    const canvas = document.createElement("canvas");
+    wrap.appendChild(canvas);
+    body.appendChild(wrap);
+
+    const counts = type === "chart-labels" ? ctx.labelCounts : ctx.mechanicCounts;
+    const labels = Object.keys(counts);
+    if (!labels.length){ body.innerHTML = '<p class="empty">Nothing to show yet.</p>'; return; }
+    const color = type === "chart-labels" ? "#F5B300" : "#3E7FA6";
+    const chart = new Chart(canvas.getContext("2d"), {
+      type: "bar",
+      data: { labels: labels, datasets: [{ data: labels.map(l => counts[l]), backgroundColor: color, borderRadius: 4 }] },
+      options: { plugins: { legend: { display: false } }, scales: chartAxisOptions(), maintainAspectRatio: false }
+    });
+    dashChartInstances.push(chart);
+
+  } else if (type === "chart-pwa"){
+    const wrap = document.createElement("div");
+    wrap.className = "chart-wrap";
+    const canvas = document.createElement("canvas");
+    wrap.appendChild(canvas);
+    body.appendChild(wrap);
+
+    const notFlagged = Math.max(ctx.totalOpen - ctx.flaggedCount, 0);
+    const isLight = document.body.classList.contains("light");
+    const chart = new Chart(canvas.getContext("2d"), {
+      type: "doughnut",
+      data: { labels: ["Flagged", "Not flagged"], datasets: [{ data: [ctx.flaggedCount, notFlagged],
+        backgroundColor: ["#E5484D", isLight ? "#DBDBD3" : "#34363F"], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: "bottom", labels: { color: isLight ? "#6B6A66" : "#9C9AA5" } } }, maintainAspectRatio: false }
+    });
+    dashChartInstances.push(chart);
+
+  } else if (type === "list-recent"){
+    if (!ctx.jobs.length){ body.innerHTML = '<p class="empty">No activity yet.</p>'; return; }
+    ctx.jobs.slice(0, 8).forEach(job => body.appendChild(buildActivityRow(job)));
+
+  } else if (type === "list-stale"){
+    if (!ctx.staleJobs.length){ body.innerHTML = '<p class="empty">Nothing stale \u2014 everything\'s been touched in the last week.</p>'; return; }
+    ctx.staleJobs.slice(0, 10).forEach(job => body.appendChild(buildActivityRow(job)));
+  } else if (type === "list-audit"){
+    renderAuditLogWidget(body);
+  } else if (type === "list-vindue"){
+    if (!ctx.vinDueJobs.length){ body.innerHTML = '<p class="empty">Nothing due right now.</p>'; return; }
+    ctx.vinDueJobs.slice(0, 10).forEach(job => body.appendChild(buildVinDueRow(job)));
+  } else if (type === "list-tasks"){
+    renderTasksWidget(body);
+  }
+}
+
+function buildVinDueRow(job){
+  const vin = getVinEnquiryStatus(job);
+  const row = document.createElement("div");
+  row.className = "activity-row";
+  row.innerHTML =
+    '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="meta">' + (vin.lastPrinted ? vin.daysSince + " days since last logged" : "never logged") + '</div></div>';
+  const btn = document.createElement("button");
+  btn.className = "btn btn-secondary btn-inline";
+  btn.style.margin = "0";
+  btn.textContent = "Log now";
+  btn.onclick = () => logVinEnquiry(job.id);
+  row.appendChild(btn);
+  return row;
+}
+
+function buildActivityRow(job){
+  const when = job.updatedAt && job.updatedAt.toDate
+    ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
+    : "unknown";
+  const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+  const row = document.createElement("div");
+  row.className = "activity-row";
+  row.innerHTML =
+    '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="meta">' + (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
+    historyCount + " sent" + (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM : "") + '</div></div>' +
+    '<div class="meta">' + escapeHtml(when) + '</div>';
+  return row;
+}
+
+/* ---- customize modal ---- */
+function openCustomizeOverlay(){
+  renderCustomizeList();
+  document.getElementById("customizeOverlay").classList.add("show");
+}
+
+function closeCustomizeOverlay(){
+  document.getElementById("customizeOverlay").classList.remove("show");
+}
+
+function renderCustomizeList(){
+  const listEl = document.getElementById("customizeList");
+  listEl.innerHTML = "";
+  const disabledIds = Object.keys(WIDGET_LIBRARY).filter(id => !dashboardLayout.includes(id));
+  const ordered = dashboardLayout.concat(disabledIds);
+
+  ordered.forEach(id => {
+    const isEnabled = dashboardLayout.includes(id);
+    const idx = dashboardLayout.indexOf(id);
+    const row = document.createElement("div");
+    row.className = "customize-row" + (isEnabled ? "" : " is-off");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = isEnabled;
+    cb.onchange = () => toggleWidget(id, cb.checked);
+    row.appendChild(cb);
+
+    const span = document.createElement("span");
+    span.textContent = WIDGET_LIBRARY[id].title;
+    row.appendChild(span);
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "order-btn";
+    upBtn.textContent = "\u2191";
+    upBtn.disabled = !isEnabled || idx === 0;
+    upBtn.onclick = () => moveWidget(id, -1);
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "order-btn";
+    downBtn.textContent = "\u2193";
+    downBtn.disabled = !isEnabled || idx === dashboardLayout.length - 1;
+    downBtn.onclick = () => moveWidget(id, 1);
+
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    listEl.appendChild(row);
+  });
+}
+
+function toggleWidget(id, enabled){
+  if (enabled){
+    if (!dashboardLayout.includes(id)) dashboardLayout.push(id);
+  } else {
+    dashboardLayout = dashboardLayout.filter(w => w !== id);
+  }
+  saveDashboardLayout();
+  renderCustomizeList();
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function moveWidget(id, delta){
+  const idx = dashboardLayout.indexOf(id);
+  const newIdx = idx + delta;
+  if (idx === -1 || newIdx < 0 || newIdx >= dashboardLayout.length) return;
+  const tmp = dashboardLayout[idx];
+  dashboardLayout[idx] = dashboardLayout[newIdx];
+  dashboardLayout[newIdx] = tmp;
+  saveDashboardLayout();
+  renderCustomizeList();
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+/* ---- exports ---- */
+function exportDashboardCSV(){
+  if (!lastDashboardCtx) return;
+  const ctx = lastDashboardCtx;
+  const rows = [["Metric", "Value"]];
+  rows.push(["Open jobs", ctx.totalOpen]);
+  rows.push([PWA_TERM + " flagged", ctx.flaggedCount]);
+  rows.push(["Active notes", ctx.activeNotes]);
+  rows.push(["Items sent", ctx.totalSent]);
+  rows.push(["Checklists complete", ctx.flaggedCount ? (ctx.completedFlagged + " / " + ctx.flaggedCount) : ""]);
+  rows.push(["Mechanics", ctx.mechanicCount]);
+  rows.push(["Job types", ctx.jobTypeCount]);
+  rows.push(["Stale jobs (7+ days)", ctx.staleCount]);
+  rows.push([]);
+  rows.push(["Sent items by type", ""]);
+  Object.keys(ctx.labelCounts).forEach(l => rows.push([l, ctx.labelCounts[l]]));
+  rows.push([]);
+  rows.push(["Jobs by mechanic", ""]);
+  Object.keys(ctx.mechanicCounts).forEach(m => rows.push([m, ctx.mechanicCounts[m]]));
+  downloadCSV(rows, "dashboard-summary-" + new Date().toISOString().slice(0,10) + ".csv");
+}
+
+function exportOpenJobsCSV(){
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due"]];
+  currentlyFilteredJobs.forEach(job => {
+    const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
+    const vin = getVinEnquiryStatus(job);
+    rows.push([
+      job.id, job.reg || "", job.lastMechanic || "",
+      Array.isArray(job.history) ? job.history.length : 0,
+      job.pwaFlag ? "Yes" : "No", when,
+      vin.daysSince === null ? "never logged" : vin.daysSince,
+      vin.due ? "Yes" : "No"
+    ]);
+  });
+  downloadCSV(rows, "open-jobs-" + new Date().toISOString().slice(0,10) + ".csv");
+}
+
+/* ============================================================
+   TASKS — shared task list, visible to every admin
+   ============================================================ */
+let tasksCache = [];
+let tasksLoaded = false;
+let newTaskPriority = "medium";
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+
+function selectNewTaskPriority(p){
+  newTaskPriority = p;
+  document.querySelectorAll(".priority-select-row .priority-btn").forEach(b => b.classList.toggle("active", b.dataset.priority === p));
+}
+
+async function loadTasks(){
+  const openEl = document.getElementById("openTasksList");
+  openEl.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("tasks").orderBy("createdAt", "desc").get();
+    tasksCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    tasksLoaded = true;
+    renderTasks();
+  } catch(err){
+    console.error(err);
+    openEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+function renderTasks(){
+  const openEl = document.getElementById("openTasksList");
+  const doneEl = document.getElementById("completedTasksList");
+
+  const open = tasksCache.filter(t => t.status !== "done").sort((a, b) =>
+    (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1) || tsMillis(b.createdAt) - tsMillis(a.createdAt));
+  const done = tasksCache.filter(t => t.status === "done").sort((a, b) => tsMillis(b.completedAt) - tsMillis(a.completedAt));
+
+  if (!open.length){
+    openEl.innerHTML = '<p class="empty">No open tasks \u2014 all caught up.</p>';
+  } else {
+    openEl.innerHTML = "";
+    open.forEach(t => openEl.appendChild(buildTaskCard(t, false)));
+  }
+
+  if (!done.length){
+    doneEl.innerHTML = '<p class="empty">Nothing completed yet.</p>';
+  } else {
+    doneEl.innerHTML = "";
+    done.slice(0, 50).forEach(t => doneEl.appendChild(buildTaskCard(t, true)));
+  }
+}
+
+function buildTaskCard(task, isDone){
+  const card = document.createElement("div");
+  card.className = "task-card priority-" + (task.priority || "medium") + (isDone ? " task-done" : "");
+
+  const top = document.createElement("div");
+  top.className = "task-top";
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.className = "task-checkbox";
+  cb.checked = isDone;
+  cb.onchange = () => { cb.checked ? completeTask(task.id) : reopenTask(task.id); };
+  top.appendChild(cb);
+
+  const info = document.createElement("div");
+  info.className = "task-info";
+  const createdWhen = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleString() : "";
+  let meta = "Added by " + escapeHtml(task.createdBy || "Unknown") + (createdWhen ? " \u00b7 " + escapeHtml(createdWhen) : "");
+  if (isDone && task.completedBy){
+    const doneWhen = task.completedAt && task.completedAt.toDate ? task.completedAt.toDate().toLocaleString() : "";
+    meta += "<br>Completed by " + escapeHtml(task.completedBy) + (doneWhen ? " \u00b7 " + escapeHtml(doneWhen) : "");
+  }
+  info.innerHTML =
+    '<div class="task-title">' + escapeHtml(task.title) + '</div>' +
+    (task.description ? '<div class="task-desc">' + escapeHtml(task.description) + '</div>' : '') +
+    '<div class="task-meta">' + meta + '</div>';
+  top.appendChild(info);
+
+  const badge = document.createElement("span");
+  badge.className = "priority-badge priority-badge-" + (task.priority || "medium");
+  badge.textContent = PRIORITY_LABELS[task.priority] || "Medium";
+  top.appendChild(badge);
+
+  card.appendChild(top);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "btn btn-delete btn-inline";
+  delBtn.textContent = "Delete";
+  delBtn.onclick = () => deleteTask(task.id, task.title);
+  card.appendChild(delBtn);
+
+  return card;
+}
+
+async function createTask(){
+  const titleEl = document.getElementById("newTaskTitle");
+  const descEl = document.getElementById("newTaskDesc");
+  const statusEl = document.getElementById("newTaskStatus");
+  const title = titleEl.value.trim();
+  const description = descEl.value.trim();
+
+  if (!title){
+    statusEl.textContent = "Give the task a title first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  try {
+    const docRef = await db.collection("tasks").add({
+      title: title,
+      description: description,
+      priority: newTaskPriority,
+      status: "open",
+      createdBy: currentUserName(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedBy: null,
+      completedAt: null
+    });
+    tasksCache.unshift({
+      id: docRef.id, title: title, description: description, priority: newTaskPriority, status: "open",
+      createdBy: currentUserName(), createdAt: { toDate: () => new Date() }, completedBy: null, completedAt: null
+    });
+    titleEl.value = "";
+    descEl.value = "";
+    renderTasks();
+    statusEl.textContent = "Added.";
+    statusEl.className = "status ok";
+    logAudit("Added task \"" + title + "\" (" + PRIORITY_LABELS[newTaskPriority] + " priority)");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function completeTask(taskId){
+  const task = tasksCache.find(t => t.id === taskId);
+  if (!task) return;
+  try {
+    await db.collection("tasks").doc(taskId).set({
+      status: "done",
+      completedBy: currentUserName(),
+      completedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    task.status = "done";
+    task.completedBy = currentUserName();
+    task.completedAt = { toDate: () => new Date() };
+    renderTasks();
+    logAudit("Completed task \"" + task.title + "\"");
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+async function reopenTask(taskId){
+  const task = tasksCache.find(t => t.id === taskId);
+  if (!task) return;
+  try {
+    await db.collection("tasks").doc(taskId).set({ status: "open", completedBy: null, completedAt: null }, { merge: true });
+    task.status = "open";
+    task.completedBy = null;
+    task.completedAt = null;
+    renderTasks();
+    logAudit("Reopened task \"" + task.title + "\"");
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+async function deleteTask(taskId, title){
+  if (!confirm('Delete task "' + title + '"?')) return;
+  try {
+    await db.collection("tasks").doc(taskId).delete();
+    tasksCache = tasksCache.filter(t => t.id !== taskId);
+    renderTasks();
+    logAudit("Deleted task \"" + title + "\"");
+  } catch(err){
+    console.error(err);
+    alert("Couldn't delete — try again.");
+  }
+}
+
+async function renderTasksWidget(container){
+  container.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("tasks").where("status", "==", "open").get();
+    const open = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()))
+      .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1));
+    if (!open.length){ container.innerHTML = '<p class="empty">No open tasks.</p>'; return; }
+    container.innerHTML = "";
+    open.slice(0, 8).forEach(t => {
+      const row = document.createElement("div");
+      row.className = "activity-row";
+      row.innerHTML =
+        '<div><b>' + escapeHtml(t.title) + '</b><div class="meta">Added by ' + escapeHtml(t.createdBy || "Unknown") + '</div></div>' +
+        '<span class="priority-badge priority-badge-' + (t.priority || "medium") + '">' + (PRIORITY_LABELS[t.priority] || "Medium") + '</span>';
+      container.appendChild(row);
+    });
+  } catch(err){
+    console.error(err);
+    container.innerHTML = '<p class="empty">Couldn\'t load.</p>';
+  }
+}
+
+/* ============================================================
+   NOTES & PWA FLAGS
+   ============================================================ */
 document.getElementById("wipField").addEventListener("input", async (e) => {
   const wip = e.target.value.trim();
   const wipStatusEl = document.getElementById("wipStatus");
@@ -332,6 +2155,7 @@ async function addPwaChecklistItem(){
   try {
     await savePwaChecklistItemsToFirestore();
     renderPwaChecklistItemsList();
+    logAudit("Added " + PWA_TERM + " checklist item \"" + val + "\"");
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -339,10 +2163,12 @@ async function addPwaChecklistItem(){
 }
 
 async function removePwaChecklistItem(index){
+  const removed = pwaChecklistItemsCache[index];
   pwaChecklistItemsCache.splice(index, 1);
   try {
     await savePwaChecklistItemsToFirestore();
     renderPwaChecklistItemsList();
+    logAudit("Removed " + PWA_TERM + " checklist item \"" + removed + "\"");
   } catch(err){
     console.error(err);
     alert("Couldn't save — try again.");
@@ -373,11 +2199,11 @@ async function refreshPwaFlagRow(wip){
   section.style.display = "block";
   flagRow.classList.toggle("flagged", flagged);
   flagStatus.textContent = flagged
-    ? "\ud83d\udd34 Flagged as needing PWA" + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
+    ? "\ud83d\udd34 Flagged as needing " + PWA_TERM + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
     : "Not flagged";
 
   if (!pwaChecklistItemsCache.length){
-    checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some in "PWA requirement items" below.</p>';
+    checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some on the Checklist items page.</p>';
     return;
   }
 
@@ -403,6 +2229,8 @@ async function savePwaFlagForWip(){
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
+    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM +
+      (checked.length ? " \u2014 items: " + checked.join(", ") : " (no specific items ticked)"));
   } catch(err){
     console.error(err);
     alert("Couldn't save — check your Firebase config.");
@@ -414,6 +2242,7 @@ async function clearPwaFlagForWip(){
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: false, pwaRequiredItems: [] }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
+    logAudit("Cleared " + PWA_TERM + " flag on WIP " + currentWipForFlag);
   } catch(err){
     console.error(err);
     alert("Couldn't clear the flag — check your Firebase config.");
@@ -450,6 +2279,7 @@ async function sendNote(){
     statusEl.className = "status ok";
     document.getElementById("msgField").value = "";
     loadNotes();
+    logAudit("Sent a note to WIP " + wip + ": \"" + (message.length > 60 ? message.slice(0, 60) + "\u2026" : message) + "\"");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't send — check your Firebase config is filled in correctly.";
@@ -477,7 +2307,7 @@ async function loadNotes(){
         '<div><div class="wip">WIP ' + escapeHtml(doc.id) + '</div>' +
         '<div class="msg">' + escapeHtml(data.message || "") + '</div>' +
         '<div class="when">' + escapeHtml(when) + '</div></div>' +
-        '<button onclick="clearNote(\'' + doc.id + '\')">Clear</button>';
+        '<button class="btn btn-secondary btn-inline" onclick="clearNote(\'' + doc.id + '\')">Clear</button>';
       listEl.appendChild(card);
     });
   } catch(err){
@@ -490,14 +2320,11 @@ async function clearNote(wip){
   try {
     await db.collection("wipNotes").doc(wip).delete();
     loadNotes();
+    logAudit("Cleared note on WIP " + wip);
   } catch(err){
     console.error(err);
     alert("Couldn't clear that note — try again.");
   }
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 /* ============================================================
@@ -542,6 +2369,10 @@ async function saveClaimSettings(){
     return;
   }
 
+  const oldThreshold = pwaRulesCache.claimValueThreshold;
+  const oldRate = pwaRulesCache.labourRate;
+  const oldBuffer = pwaRulesCache.nearThresholdBuffer;
+
   pwaRulesCache.claimValueThreshold = threshold;
   pwaRulesCache.labourRate = rate;
   pwaRulesCache.nearThresholdBuffer = buffer;
@@ -549,6 +2380,12 @@ async function saveClaimSettings(){
     await savePwaRulesToFirestore();
     statusEl.textContent = "Saved.";
     statusEl.className = "status ok";
+    const changes = [];
+    const cur = (appSettingsCache && appSettingsCache.currencySymbol) || "\u20ac";
+    if (oldThreshold !== threshold) changes.push("threshold " + cur + oldThreshold + " \u2192 " + cur + threshold);
+    if (oldRate !== rate) changes.push("labour rate " + cur + oldRate + " \u2192 " + cur + rate);
+    if (oldBuffer !== buffer) changes.push("buffer " + cur + oldBuffer + " \u2192 " + cur + buffer);
+    logAudit("Updated claim settings" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
@@ -581,7 +2418,7 @@ function buildJobTypeCard(jt, index){
   alwaysCheckbox.type = "checkbox";
   alwaysCheckbox.checked = !!jt.alwaysPWA;
   alwaysLabel.appendChild(alwaysCheckbox);
-  alwaysLabel.appendChild(document.createTextNode("Always needs PWA, regardless of claim value"));
+  alwaysLabel.appendChild(document.createTextNode("Always needs " + PWA_TERM + ", regardless of claim value"));
   card.appendChild(alwaysLabel);
 
   let mediaItems = Array.isArray(jt.requiredMedia) ? jt.requiredMedia.slice() : [];
@@ -610,7 +2447,7 @@ function buildJobTypeCard(jt, index){
   addInput.type = "text";
   addInput.placeholder = "Add required item";
   const addBtn = document.createElement("button");
-  addBtn.className = "btn btn-secondary";
+  addBtn.className = "btn btn-secondary btn-inline";
   addBtn.textContent = "Add";
   addBtn.onclick = () => {
     const val = addInput.value.trim();
@@ -625,14 +2462,24 @@ function buildJobTypeCard(jt, index){
 
   const saveBtn = document.createElement("button");
   saveBtn.className = "btn";
+  saveBtn.style.marginTop = "0";
   saveBtn.textContent = "Save";
   saveBtn.onclick = async () => {
     const name = nameInput.value.trim();
     if (!name) { alert("Job type needs a name."); return; }
-    pwaRulesCache.jobTypes[index] = { name: name, alwaysPWA: alwaysCheckbox.checked, requiredMedia: mediaItems };
+    const before = pwaRulesCache.jobTypes[index];
+    const after = { name: name, alwaysPWA: alwaysCheckbox.checked, requiredMedia: mediaItems };
+    pwaRulesCache.jobTypes[index] = after;
     try {
       await savePwaRulesToFirestore();
       renderJobTypesList();
+      const changes = [];
+      if (before.name !== after.name) changes.push("name \"" + before.name + "\" \u2192 \"" + after.name + "\"");
+      if (!!before.alwaysPWA !== !!after.alwaysPWA) changes.push("always " + PWA_TERM + ": " + (after.alwaysPWA ? "yes" : "no"));
+      const beforeMedia = (before.requiredMedia || []).join(", ");
+      const afterMedia = after.requiredMedia.join(", ");
+      if (beforeMedia !== afterMedia) changes.push("required items: " + (afterMedia || "none"));
+      logAudit("Edited job type \"" + after.name + "\"" + (changes.length ? " \u2014 " + changes.join("; ") : ""));
     } catch(err){
       console.error(err);
       alert("Couldn't save — try again.");
@@ -648,6 +2495,7 @@ function buildJobTypeCard(jt, index){
     try {
       await savePwaRulesToFirestore();
       renderJobTypesList();
+      logAudit("Deleted job type \"" + jt.name + "\"");
     } catch(err){
       console.error(err);
       alert("Couldn't delete — try again.");
@@ -710,22 +2558,11 @@ async function createJobType(){
     statusEl.textContent = "Added.";
     statusEl.className = "status ok";
     renderJobTypesList();
+    logAudit("Created job type \"" + name + "\"");
   } catch(err){
     console.error(err);
     statusEl.textContent = "Couldn't save — check your Firebase config.";
     statusEl.className = "status err";
-  }
-}
-
-/* ============================================================
-   COLLAPSIBLE SECTIONS
-   ============================================================ */
-function toggleCollapsible(id){
-  const el = document.getElementById(id);
-  const wasOpen = el.classList.contains("open");
-  el.classList.toggle("open");
-  if (!wasOpen && id === "openJobsSection" && !openJobsLoaded){
-    loadOpenJobs();
   }
 }
 
@@ -736,6 +2573,59 @@ let openJobsCache = [];
 let openJobsLoaded = false;
 let selectedJobs = new Set();
 let currentlyFilteredJobs = [];
+let currentJobFilter = "all";
+let vinEnquiryDays = 10; // default — real value loaded from Settings, see loadManufacturerSetting()
+
+function getVinEnquiryStatus(job){
+  const log = Array.isArray(job.vinEnquiryLog) ? job.vinEnquiryLog.slice().sort().reverse() : [];
+  if (!log.length) return { lastPrinted: null, daysSince: null, due: true };
+  const last = new Date(log[0]);
+  const daysSince = Math.floor((Date.now() - last.getTime()) / 86400000);
+  return { lastPrinted: last, daysSince: daysSince, due: daysSince >= vinEnquiryDays };
+}
+
+async function logVinEnquiry(wip){
+  if (!db) return;
+  const nowIso = new Date().toISOString();
+  try {
+    await db.collection("jobs").doc(wip).set({
+      vinEnquiryLog: firebase.firestore.FieldValue.arrayUnion(nowIso)
+    }, { merge: true });
+    const job = openJobsCache.find(j => j.id === wip);
+    if (job){
+      job.vinEnquiryLog = Array.isArray(job.vinEnquiryLog) ? job.vinEnquiryLog.concat(nowIso) : [nowIso];
+    }
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    logAudit("Logged VIN enquiry printed for WIP " + wip);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't log — try again.");
+  }
+}
+
+function setJobFilter(filter){
+  currentJobFilter = filter;
+  document.querySelectorAll("#jobsFilterRow .filter-chip").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
+  renderOpenJobsList(document.getElementById("jobSearchField").value);
+}
+
+function tsMillis(ts){
+  return ts && ts.toDate ? ts.toDate().getTime() : 0;
+}
+
+function sortOpenJobs(jobs, mode){
+  const arr = jobs.slice();
+  if (mode === "oldest") arr.sort((a, b) => tsMillis(a.updatedAt) - tsMillis(b.updatedAt));
+  else if (mode === "reg") arr.sort((a, b) => (a.reg || "").localeCompare(b.reg || ""));
+  else if (mode === "wip") arr.sort((a, b) => a.id.localeCompare(b.id));
+  else if (mode === "vindue") arr.sort((a, b) => {
+    const da = getVinEnquiryStatus(a).daysSince;
+    const db_ = getVinEnquiryStatus(b).daysSince;
+    return (db_ === null ? 9999 : db_) - (da === null ? 9999 : da);
+  });
+  else arr.sort((a, b) => tsMillis(b.updatedAt) - tsMillis(a.updatedAt)); // "recent" default
+  return arr;
+}
 
 async function loadOpenJobs(){
   const listEl = document.getElementById("openJobsList");
@@ -757,17 +2647,33 @@ document.getElementById("jobSearchField").addEventListener("input", (e) => {
 
 function renderOpenJobsList(filterText){
   const listEl = document.getElementById("openJobsList");
-  const filter = (filterText || "").trim().toLowerCase();
-  currentlyFilteredJobs = filter
-    ? openJobsCache.filter(j => j.id.toLowerCase().includes(filter) || (j.reg || "").toLowerCase().includes(filter))
-    : openJobsCache;
+  const search = (filterText || "").trim().toLowerCase();
+  let filtered = search
+    ? openJobsCache.filter(j => j.id.toLowerCase().includes(search) || (j.reg || "").toLowerCase().includes(search))
+    : openJobsCache.slice();
 
-  if (!currentlyFilteredJobs.length){
+  if (currentJobFilter === "pwa"){
+    filtered = filtered.filter(j => j.pwaFlag);
+  } else if (currentJobFilter === "vindue"){
+    filtered = filtered.filter(j => getVinEnquiryStatus(j).due);
+  } else if (currentJobFilter === "stale"){
+    filtered = filtered.filter(j => {
+      const t = tsMillis(j.updatedAt);
+      return t && (Date.now() - t) > 7 * 24 * 60 * 60 * 1000;
+    });
+  }
+
+  const sortSelect = document.getElementById("jobSortSelect");
+  filtered = sortOpenJobs(filtered, sortSelect ? sortSelect.value : "recent");
+
+  currentlyFilteredJobs = filtered;
+
+  if (!filtered.length){
     listEl.innerHTML = '<p class="empty">' +
-      (openJobsCache.length ? "No jobs match that search." : "No open jobs right now.") + '</p>';
+      (openJobsCache.length ? "No jobs match." : "No open jobs right now.") + '</p>';
   } else {
     listEl.innerHTML = "";
-    currentlyFilteredJobs.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
+    filtered.forEach(job => listEl.appendChild(buildOpenJobCard(job)));
   }
   updateBulkControls();
 }
@@ -775,6 +2681,9 @@ function renderOpenJobsList(filterText){
 function buildOpenJobCard(job){
   const card = document.createElement("div");
   card.className = "job-open-card";
+
+  const topRow = document.createElement("div");
+  topRow.className = "joc-top-row";
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
@@ -785,7 +2694,7 @@ function buildOpenJobCard(job){
     else selectedJobs.delete(job.id);
     updateBulkControls();
   };
-  card.appendChild(checkbox);
+  topRow.appendChild(checkbox);
 
   const info = document.createElement("div");
   info.className = "joc-info";
@@ -793,20 +2702,37 @@ function buildOpenJobCard(job){
     ? job.updatedAt.toDate().toLocaleDateString() + " " + job.updatedAt.toDate().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})
     : "unknown";
   const historyCount = Array.isArray(job.history) ? job.history.length : 0;
+  const vin = getVinEnquiryStatus(job);
+  const vinText = vin.lastPrinted
+    ? "VIN enquiry: " + vin.daysSince + "d ago" + (vin.due ? " \u26a0\ufe0f due" : "")
+    : "VIN enquiry: never logged \u26a0\ufe0f due";
   info.innerHTML =
     "<b>WIP " + escapeHtml(job.id) + "</b>" + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
     '<div class="joc-meta">' +
     (job.lastMechanic ? escapeHtml(job.lastMechanic) + " &middot; " : "") +
     historyCount + " sent" +
-    (job.pwaFlag ? " &middot; \ud83d\udd34 PWA flagged" : "") +
-    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>';
-  card.appendChild(info);
+    (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
+    '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>' +
+    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>';
+  topRow.appendChild(info);
+  card.appendChild(topRow);
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "joc-action-row";
+
+  const vinBtn = document.createElement("button");
+  vinBtn.className = "btn btn-secondary";
+  vinBtn.textContent = "Log VIN enquiry";
+  vinBtn.onclick = () => logVinEnquiry(job.id);
+  actionRow.appendChild(vinBtn);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
   closeBtn.onclick = () => closeJobs([job.id]);
-  card.appendChild(closeBtn);
+  actionRow.appendChild(closeBtn);
+
+  card.appendChild(actionRow);
 
   return card;
 }
@@ -838,7 +2764,7 @@ async function closeJobs(wipList){
   const plural = wipList.length > 1;
   const label = plural ? wipList.length + " jobs" : "job " + wipList[0];
   if (!confirm("Close " + label + "? This permanently deletes " + (plural ? "their" : "its") +
-    " Firebase data — reg link, send history, note, PWA flag. SharePoint files are not affected.")) return;
+    " Firebase data — reg link, send history, note, " + PWA_TERM + " flag. SharePoint files are not affected.")) return;
 
   try {
     for (const wip of wipList){
@@ -848,12 +2774,335 @@ async function closeJobs(wipList){
     }
     openJobsCache = openJobsCache.filter(j => !wipList.includes(j.id));
     renderOpenJobsList(document.getElementById("jobSearchField").value);
+    logAudit("Closed " + (plural ? wipList.length + " jobs (" + wipList.join(", ") + ")" : "job " + wipList[0]));
   } catch(err){
     console.error(err);
     alert("Couldn't close " + (plural ? "all of the selected jobs" : "the job") + " — try again.");
   }
 }
 
+/* ============================================================
+   MECHANICS
+   ============================================================ */
+let mechanicsAdminCache = [];
+let mechanicsAdminLoaded = false;
+
+async function loadMechanicsAdmin(){
+  const listEl = document.getElementById("mechanicsAdminList");
+  try {
+    const doc = await db.collection("config").doc("mechanics").get();
+    mechanicsAdminCache = (doc.exists && Array.isArray(doc.data().names)) ? doc.data().names : [];
+    mechanicsAdminLoaded = true;
+  } catch(err){
+    console.error(err);
+    listEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  renderMechanicsAdminList();
+}
+
+function renderMechanicsAdminList(){
+  const listEl = document.getElementById("mechanicsAdminList");
+  if (!mechanicsAdminCache.length){
+    listEl.innerHTML = '<p class="empty">No mechanics yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  mechanicsAdminCache.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(name) + "</span>";
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeMechanicAdmin(i);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function saveMechanicsAdminToFirestore(){
+  await db.collection("config").doc("mechanics").set({ names: mechanicsAdminCache });
+}
+
+async function addMechanicAdmin(){
+  const input = document.getElementById("newMechanicAdminInput");
+  const name = input.value.trim();
+  const statusEl = document.getElementById("mechanicAdminStatus");
+  if (!name) return;
+  if (mechanicsAdminCache.some(m => m.toLowerCase() === name.toLowerCase())){
+    statusEl.textContent = "That name's already on the list.";
+    statusEl.className = "status err";
+    return;
+  }
+  mechanicsAdminCache.push(name);
+  input.value = "";
+  try {
+    await saveMechanicsAdminToFirestore();
+    renderMechanicsAdminList();
+    statusEl.textContent = "Added.";
+    statusEl.className = "status ok";
+    logAudit("Added mechanic \"" + name + "\"");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — try again.";
+    statusEl.className = "status err";
+  }
+}
+
+async function removeMechanicAdmin(index){
+  const name = mechanicsAdminCache[index];
+  if (!confirm('Remove "' + name + '"?')) return;
+  mechanicsAdminCache.splice(index, 1);
+  try {
+    await saveMechanicsAdminToFirestore();
+    renderMechanicsAdminList();
+    logAudit("Removed mechanic \"" + name + "\"");
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10 };
+let appSettingsLoaded = false;
+
+async function loadAppSettingsAdmin(){
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists){
+      const data = doc.data();
+      appSettingsCache.dealerName = data.dealerName || "";
+      appSettingsCache.dealerAddress = data.dealerAddress || "";
+      appSettingsCache.currencySymbol = data.currencySymbol || "\u20ac";
+      appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
+      appSettingsCache.pinTimeoutMinutes = typeof data.pinTimeoutMinutes === "number" ? data.pinTimeoutMinutes : 60;
+      appSettingsCache.vinEnquiryDays = typeof data.vinEnquiryDays === "number" ? data.vinEnquiryDays : 10;
+      manufacturer = data.manufacturer || "kia";
+      pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
+      vinEnquiryDays = appSettingsCache.vinEnquiryDays;
+      if (data.customColors && typeof data.customColors === "object"){
+        customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
+      }
+    }
+    appSettingsLoaded = true;
+  } catch(err){
+    console.error(err);
+    document.getElementById("emailRecipientsList").innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+    return;
+  }
+  document.getElementById("dealerNameField").value = appSettingsCache.dealerName;
+  document.getElementById("dealerAddressField").value = appSettingsCache.dealerAddress;
+  document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
+  document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
+  document.getElementById("vinEnquiryDaysField").value = appSettingsCache.vinEnquiryDays;
+  populateColorFields();
+  document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
+  document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
+  renderEmailRecipientsList();
+}
+
+async function savePinTimeout(){
+  const val = Number(document.getElementById("pinTimeoutField").value);
+  const statusEl = document.getElementById("pinTimeoutStatus");
+  if (isNaN(val) || val < 0){
+    statusEl.textContent = "Enter 0 or a positive number of minutes.";
+    statusEl.className = "status err";
+    return;
+  }
+  const oldVal = appSettingsCache.pinTimeoutMinutes || 0;
+  appSettingsCache.pinTimeoutMinutes = val;
+  pinTimeoutMinutes = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed session timeout " + oldVal + "m \u2192 " + val + "m");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function saveVinEnquiryDays(){
+  const val = Number(document.getElementById("vinEnquiryDaysField").value);
+  const statusEl = document.getElementById("vinEnquiryDaysStatus");
+  if (!val || val <= 0){
+    statusEl.textContent = "Enter a positive number of days.";
+    statusEl.className = "status err";
+    return;
+  }
+  const oldVal = appSettingsCache.vinEnquiryDays || 10;
+  appSettingsCache.vinEnquiryDays = val;
+  vinEnquiryDays = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed VIN enquiry interval " + oldVal + "d \u2192 " + val + "d");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function saveAppSettingsToFirestore(){
+  await db.collection("config").doc("appSettings").set(appSettingsCache, { merge: true });
+}
+
+async function saveDealerDetails(){
+  const statusEl = document.getElementById("dealerStatus");
+  const oldName = appSettingsCache.dealerName;
+  const oldAddress = appSettingsCache.dealerAddress;
+  appSettingsCache.dealerName = document.getElementById("dealerNameField").value.trim();
+  appSettingsCache.dealerAddress = document.getElementById("dealerAddressField").value.trim();
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    const changes = [];
+    if (oldName !== appSettingsCache.dealerName) changes.push('name "' + oldName + '" \u2192 "' + appSettingsCache.dealerName + '"');
+    if (oldAddress !== appSettingsCache.dealerAddress) changes.push('address "' + oldAddress + '" \u2192 "' + appSettingsCache.dealerAddress + '"');
+    logAudit("Updated dealer details" + (changes.length ? " \u2014 " + changes.join(", ") : ""));
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function saveCurrency(){
+  const statusEl = document.getElementById("currencyStatus");
+  const val = document.getElementById("currencyField").value.trim();
+  if (!val){
+    statusEl.textContent = "Enter a currency symbol first.";
+    statusEl.className = "status err";
+    return;
+  }
+  const oldVal = appSettingsCache.currencySymbol;
+  appSettingsCache.currencySymbol = val;
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Changed currency symbol " + oldVal + " \u2192 " + val);
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function renderEmailRecipientsList(){
+  const listEl = document.getElementById("emailRecipientsList");
+  if (!appSettingsCache.emailRecipients.length){
+    listEl.innerHTML = '<p class="empty">No recipients yet — add one below.</p>';
+    return;
+  }
+  listEl.innerHTML = "";
+  appSettingsCache.emailRecipients.forEach((email, i) => {
+    const row = document.createElement("div");
+    row.className = "checklist-row";
+    row.innerHTML = "<span>" + escapeHtml(email) + (i === 0 ? " <b>(primary)</b>" : "") + "</span>";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "order-btn";
+    upBtn.textContent = "\u2191";
+    upBtn.disabled = i === 0;
+    upBtn.onclick = () => moveEmailRecipient(i, -1);
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "order-btn";
+    downBtn.textContent = "\u2193";
+    downBtn.disabled = i === appSettingsCache.emailRecipients.length - 1;
+    downBtn.onclick = () => moveEmailRecipient(i, 1);
+
+    const rm = document.createElement("button");
+    rm.className = "rm-item";
+    rm.textContent = "\u00d7";
+    rm.onclick = () => removeEmailRecipient(i);
+
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+async function addEmailRecipient(){
+  const input = document.getElementById("newEmailInput");
+  const val = input.value.trim();
+  if (!val) return;
+  appSettingsCache.emailRecipients.push(val);
+  input.value = "";
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+    logAudit("Added email recipient " + val);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function removeEmailRecipient(index){
+  const removed = appSettingsCache.emailRecipients[index];
+  appSettingsCache.emailRecipients.splice(index, 1);
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+    logAudit("Removed email recipient " + removed);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function moveEmailRecipient(index, delta){
+  const newIndex = index + delta;
+  if (newIndex < 0 || newIndex >= appSettingsCache.emailRecipients.length) return;
+  const tmp = appSettingsCache.emailRecipients[index];
+  appSettingsCache.emailRecipients[index] = appSettingsCache.emailRecipients[newIndex];
+  appSettingsCache.emailRecipients[newIndex] = tmp;
+  try {
+    await saveAppSettingsToFirestore();
+    renderEmailRecipientsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+async function loadManufacturerSetting(){
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists){
+      const data = doc.data();
+      if (data.manufacturer) manufacturer = data.manufacturer;
+      if (typeof data.pinTimeoutMinutes === "number") pinTimeoutMinutes = data.pinTimeoutMinutes;
+      if (typeof data.vinEnquiryDays === "number") vinEnquiryDays = data.vinEnquiryDays;
+      if (data.customColors && typeof data.customColors === "object"){
+        customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
+      }
+    }
+  } catch(err){
+    console.error("Couldn't load manufacturer setting", err);
+  }
+  applyTerminology();
+  applyCustomColors();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+checkLoginGate();
+loadManufacturerSetting();
+loadDashboard();
 loadNotes();
 loadPwaRules();
 loadPwaChecklistItems();
