@@ -3160,13 +3160,11 @@ function buildOpenJobCard(job){
   partsDetailsBtn.onclick = () => openPartsOverlay(job.id);
   actionRow.appendChild(partsDetailsBtn);
 
-  if (job.pwaFlag){
-    const notifyBtn = document.createElement("button");
-    notifyBtn.className = "btn btn-secondary";
-    notifyBtn.textContent = job.partsNotifiedAt ? "Re-notify parts" : "Notify parts";
-    notifyBtn.onclick = () => openNotifyPartsOverlay(job.id);
-    actionRow.appendChild(notifyBtn);
-  }
+  const notifyBtn = document.createElement("button");
+  notifyBtn.className = "btn btn-secondary";
+  notifyBtn.textContent = job.partsNotifiedAt ? "Re-notify parts" : "Notify parts";
+  notifyBtn.onclick = () => openNotifyPartsOverlay(job.id);
+  actionRow.appendChild(notifyBtn);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
