@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warranty app — admin</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --bg:#15161A; --surface:#1E1F24; --surface-2:#282A31; --border:#34363F;
@@ -240,6 +241,11 @@
   .add-row button{flex-shrink:0;}
 
   .checklist-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .pwa-send-list{list-style:none;margin:0 0 4px;padding:0;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:9px;}
+  .pwa-send-list li{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+  .pwa-send-list li:last-child{border-bottom:none;}
+  .pwa-send-list li.empty-item{color:var(--text-dim);font-style:italic;}
   .checklist-row:last-child{border-bottom:none;}
   .checklist-row input{width:20px;height:20px;flex-shrink:0;}
   .checklist-row span{font-size:14px;flex:1;}
@@ -632,6 +638,22 @@
         <div class="status" id="vinEnquiryDaysStatus"></div>
       </div>
 
+      <div class="panel" id="settingsPanel-emailNotify">
+        <h2>Parts email notifications</h2>
+        <p class="panel-sub">Sends via <a href="https://www.emailjs.com" target="_blank" style="color:var(--accent);">EmailJS</a> &mdash; a free service built for sending real email straight from a browser, no server needed. You'll need a free EmailJS account connected to a real mailbox first; see the setup guide for the steps. It can't attach a real screenshot &mdash; this app never has the actual photo files, they go straight to SharePoint &mdash; but it sends the WIP, reg, and the exact parts list you ticked when flagging the job.</p>
+        <label for="emailjsServiceIdField">EmailJS Service ID</label>
+        <input type="text" id="emailjsServiceIdField" placeholder="e.g. service_abc123">
+        <label for="emailjsTemplateIdField">EmailJS Template ID</label>
+        <input type="text" id="emailjsTemplateIdField" placeholder="e.g. template_xyz789">
+        <label for="emailjsPublicKeyField">EmailJS Public Key</label>
+        <input type="text" id="emailjsPublicKeyField" placeholder="Found in EmailJS \u2192 Account \u2192 General">
+        <label for="partsRecipientField">Parts team email</label>
+        <input type="text" id="partsRecipientField" placeholder="e.g. parts@yourdealer.ie">
+        <button class="btn" onclick="saveEmailNotifySettings()">Save</button>
+        <button class="btn btn-secondary" onclick="sendTestEmail()">Send test email</button>
+        <div class="status" id="emailNotifyStatus"></div>
+      </div>
+
       <div class="panel" id="settingsPanel-users">
         <h2>Users &amp; permissions</h2>
         <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
@@ -667,6 +689,22 @@
       <div class="status err" id="loginError"></div>
       <button class="btn" onclick="attemptLogin()">Unlock</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notifyPartsOverlay">
+  <div class="modal-box">
+    <h2>Notify parts</h2>
+    <p class="panel-sub" id="notifyPartsWipInfo"></p>
+    <label>Items ticked when this was flagged</label>
+    <ul id="notifyPartsItemsList" class="pwa-send-list" style="margin-top:6px;"></ul>
+    <label for="notifyPartsNote">Extra note (optional)</label>
+    <textarea id="notifyPartsNote" placeholder="Anything else parts should know"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="sendPartsNotification()">Send email</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closeNotifyPartsOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="notifyPartsStatus"></div>
   </div>
 </div>
 
@@ -1109,11 +1147,11 @@ function getPagePermission(pageId){
 function canSeePage(pageId){ return getPagePermission(pageId) !== "none"; }
 function canEditPage(pageId){ return getPagePermission(pageId) === "edit"; }
 
-const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "users"];
+const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "emailNotify", "users"];
 const SETTINGS_SECTION_LABELS = {
   manufacturer: "Manufacturer", dealer: "Dealer details", emails: "Warranty email recipients",
   currency: "Currency", appearance: "Appearance", sessionTimeout: "Session timeout",
-  vinEnquiry: "VIN enquiry reminder", users: "Users & permissions"
+  vinEnquiry: "VIN enquiry reminder", emailNotify: "Parts email notifications", users: "Users & permissions"
 };
 
 function getSettingsSectionPermission(sectionId){
@@ -2894,6 +2932,82 @@ async function savePartsStatus(){
   }
 }
 
+let currentNotifyWip = null;
+
+function openNotifyPartsOverlay(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  if (!job) return;
+  currentNotifyWip = wip;
+
+  document.getElementById("notifyPartsWipInfo").textContent =
+    "WIP " + wip + (job.reg ? " \u00b7 " + job.reg : "") +
+    (job.partsNotifiedAt ? " \u2014 already notified once" : "");
+
+  const items = Array.isArray(job.pwaRequiredItems) ? job.pwaRequiredItems : [];
+  const itemsEl = document.getElementById("notifyPartsItemsList");
+  itemsEl.innerHTML = items.length
+    ? items.map(i => "<li>" + escapeHtml(i) + "</li>").join("")
+    : '<li class="empty-item">No specific items were ticked when this job was flagged \u2014 the email will just note that.</li>';
+
+  document.getElementById("notifyPartsNote").value = "";
+  document.getElementById("notifyPartsStatus").textContent = emailNotifyConfigured() ? "" : "Email notifications aren't set up yet \u2014 configure them in Settings first.";
+  document.getElementById("notifyPartsStatus").className = emailNotifyConfigured() ? "status" : "status err";
+  document.getElementById("notifyPartsOverlay").classList.add("show");
+}
+
+function closeNotifyPartsOverlay(){
+  document.getElementById("notifyPartsOverlay").classList.remove("show");
+  currentNotifyWip = null;
+}
+
+async function sendPartsNotification(){
+  if (!currentNotifyWip) return;
+  const job = openJobsCache.find(j => j.id === currentNotifyWip);
+  if (!job) return;
+  const statusEl = document.getElementById("notifyPartsStatus");
+
+  if (!emailNotifyConfigured()){
+    statusEl.textContent = "Email notifications aren't set up yet \u2014 configure them in Settings first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const items = Array.isArray(job.pwaRequiredItems) && job.pwaRequiredItems.length
+    ? job.pwaRequiredItems.join(", ") : "None specified when flagged";
+  const note = document.getElementById("notifyPartsNote").value.trim();
+
+  statusEl.textContent = "Sending…";
+  statusEl.className = "status";
+
+  try {
+    await sendEmailViaEmailJS({
+      to_email: appSettingsCache.partsRecipient,
+      wip: currentNotifyWip,
+      reg: job.reg || "",
+      items: items,
+      note: note || "(none)",
+      sender: currentUserName()
+    });
+
+    await db.collection("jobs").doc(currentNotifyWip).set({
+      partsNotifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      partsNotifiedBy: currentUserName()
+    }, { merge: true });
+    job.partsNotifiedAt = { toDate: () => new Date() };
+    job.partsNotifiedBy = currentUserName();
+
+    statusEl.textContent = "Sent.";
+    statusEl.className = "status ok";
+    logAudit("Notified parts team about WIP " + currentNotifyWip + (note ? " \u2014 " + note : ""));
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    setTimeout(closeNotifyPartsOverlay, 900);
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send \u2014 check your EmailJS setup in Settings.";
+    statusEl.className = "status err";
+  }
+}
+
 function setJobFilter(filter){
   currentJobFilter = filter;
   document.querySelectorAll("#jobsFilterRow .filter-chip").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
@@ -3044,6 +3158,14 @@ function buildOpenJobCard(job){
   partsDetailsBtn.onclick = () => openPartsOverlay(job.id);
   actionRow.appendChild(partsDetailsBtn);
 
+  if (job.pwaFlag){
+    const notifyBtn = document.createElement("button");
+    notifyBtn.className = "btn btn-secondary";
+    notifyBtn.textContent = job.partsNotifiedAt ? "Re-notify parts" : "Notify parts";
+    notifyBtn.onclick = () => openNotifyPartsOverlay(job.id);
+    actionRow.appendChild(notifyBtn);
+  }
+
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
@@ -3185,7 +3307,8 @@ async function removeMechanicAdmin(index){
 /* ============================================================
    SETTINGS
    ============================================================ */
-let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10 };
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10,
+  emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "", partsRecipient: "" };
 let appSettingsLoaded = false;
 
 async function loadAppSettingsAdmin(){
@@ -3199,6 +3322,10 @@ async function loadAppSettingsAdmin(){
       appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
       appSettingsCache.pinTimeoutMinutes = typeof data.pinTimeoutMinutes === "number" ? data.pinTimeoutMinutes : 60;
       appSettingsCache.vinEnquiryDays = typeof data.vinEnquiryDays === "number" ? data.vinEnquiryDays : 10;
+      appSettingsCache.emailjsServiceId = data.emailjsServiceId || "";
+      appSettingsCache.emailjsTemplateId = data.emailjsTemplateId || "";
+      appSettingsCache.emailjsPublicKey = data.emailjsPublicKey || "";
+      appSettingsCache.partsRecipient = data.partsRecipient || "";
       manufacturer = data.manufacturer || "kia";
       pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
       vinEnquiryDays = appSettingsCache.vinEnquiryDays;
@@ -3217,6 +3344,10 @@ async function loadAppSettingsAdmin(){
   document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
   document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
   document.getElementById("vinEnquiryDaysField").value = appSettingsCache.vinEnquiryDays;
+  document.getElementById("emailjsServiceIdField").value = appSettingsCache.emailjsServiceId;
+  document.getElementById("emailjsTemplateIdField").value = appSettingsCache.emailjsTemplateId;
+  document.getElementById("emailjsPublicKeyField").value = appSettingsCache.emailjsPublicKey;
+  document.getElementById("partsRecipientField").value = appSettingsCache.partsRecipient;
   populateColorFields();
   document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
   document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
@@ -3269,9 +3400,78 @@ async function saveVinEnquiryDays(){
   }
 }
 
+async function saveEmailNotifySettings(){
+  const statusEl = document.getElementById("emailNotifyStatus");
+  appSettingsCache.emailjsServiceId = document.getElementById("emailjsServiceIdField").value.trim();
+  appSettingsCache.emailjsTemplateId = document.getElementById("emailjsTemplateIdField").value.trim();
+  appSettingsCache.emailjsPublicKey = document.getElementById("emailjsPublicKeyField").value.trim();
+  appSettingsCache.partsRecipient = document.getElementById("partsRecipientField").value.trim();
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Updated parts email notification settings");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function emailNotifyConfigured(){
+  return !!(appSettingsCache.emailjsServiceId && appSettingsCache.emailjsTemplateId &&
+    appSettingsCache.emailjsPublicKey && appSettingsCache.partsRecipient);
+}
+
+async function sendEmailViaEmailJS(templateParams){
+  if (!emailNotifyConfigured()){
+    throw new Error("Email notifications aren't fully configured yet.");
+  }
+  if (typeof emailjs === "undefined"){
+    throw new Error("EmailJS didn't load — check your internet connection and try again.");
+  }
+  return emailjs.send(appSettingsCache.emailjsServiceId, appSettingsCache.emailjsTemplateId, templateParams, appSettingsCache.emailjsPublicKey);
+}
+
+async function sendTestEmail(){
+  const statusEl = document.getElementById("emailNotifyStatus");
+  // Grab whatever's currently in the fields, not just what was last saved — lets you test before hitting Save.
+  const serviceId = document.getElementById("emailjsServiceIdField").value.trim();
+  const templateId = document.getElementById("emailjsTemplateIdField").value.trim();
+  const publicKey = document.getElementById("emailjsPublicKeyField").value.trim();
+  const recipient = document.getElementById("partsRecipientField").value.trim();
+
+  if (!serviceId || !templateId || !publicKey || !recipient){
+    statusEl.textContent = "Fill in all four fields first.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (typeof emailjs === "undefined"){
+    statusEl.textContent = "EmailJS didn't load — check your internet connection and try again.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  statusEl.textContent = "Sending test email…";
+  statusEl.className = "status";
+  try {
+    await emailjs.send(serviceId, templateId, {
+      to_email: recipient, wip: "TEST", reg: "TEST123", items: "This is a test \u2014 no real job", note: "Sent from Settings to confirm the setup works.", sender: currentUserName()
+    }, publicKey);
+    statusEl.textContent = "Test email sent \u2014 check " + recipient + ".";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send \u2014 double-check your Service ID, Template ID, and Public Key.";
+    statusEl.className = "status err";
+  }
+}
+
 async function saveAppSettingsToFirestore(){
   await db.collection("config").doc("appSettings").set(appSettingsCache, { merge: true });
 }
+
+
 
 async function saveDealerDetails(){
   const statusEl = document.getElementById("dealerStatus");
