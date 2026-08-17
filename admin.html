@@ -696,8 +696,8 @@
   <div class="modal-box">
     <h2>Notify parts</h2>
     <p class="panel-sub" id="notifyPartsWipInfo"></p>
-    <label>Items ticked when this was flagged</label>
-    <ul id="notifyPartsItemsList" class="pwa-send-list" style="margin-top:6px;"></ul>
+    <label for="notifyPartsField">Part(s) needed</label>
+    <textarea id="notifyPartsField" placeholder="e.g. Front bumper, headlight assembly"></textarea>
     <label for="notifyPartsNote">Extra note (optional)</label>
     <textarea id="notifyPartsNote" placeholder="Anything else parts should know"></textarea>
     <div style="display:flex;gap:8px;margin-top:14px;">
@@ -2943,12 +2943,7 @@ function openNotifyPartsOverlay(wip){
     "WIP " + wip + (job.reg ? " \u00b7 " + job.reg : "") +
     (job.partsNotifiedAt ? " \u2014 already notified once" : "");
 
-  const items = Array.isArray(job.pwaRequiredItems) ? job.pwaRequiredItems : [];
-  const itemsEl = document.getElementById("notifyPartsItemsList");
-  itemsEl.innerHTML = items.length
-    ? items.map(i => "<li>" + escapeHtml(i) + "</li>").join("")
-    : '<li class="empty-item">No specific items were ticked when this job was flagged \u2014 the email will just note that.</li>';
-
+  document.getElementById("notifyPartsField").value = job.partsNote || "";
   document.getElementById("notifyPartsNote").value = "";
   document.getElementById("notifyPartsStatus").textContent = emailNotifyConfigured() ? "" : "Email notifications aren't set up yet \u2014 configure them in Settings first.";
   document.getElementById("notifyPartsStatus").className = emailNotifyConfigured() ? "status" : "status err";
@@ -2972,9 +2967,14 @@ async function sendPartsNotification(){
     return;
   }
 
-  const items = Array.isArray(job.pwaRequiredItems) && job.pwaRequiredItems.length
-    ? job.pwaRequiredItems.join(", ") : "None specified when flagged";
+  const partsNeeded = document.getElementById("notifyPartsField").value.trim();
   const note = document.getElementById("notifyPartsNote").value.trim();
+
+  if (!partsNeeded){
+    statusEl.textContent = "Say what part's needed first.";
+    statusEl.className = "status err";
+    return;
+  }
 
   statusEl.textContent = "Sending…";
   statusEl.className = "status";
@@ -2984,17 +2984,19 @@ async function sendPartsNotification(){
       to_email: appSettingsCache.partsRecipient,
       wip: currentNotifyWip,
       reg: job.reg || "",
-      items: items,
+      items: partsNeeded,
       note: note || "(none)",
       sender: currentUserName()
     });
 
     await db.collection("jobs").doc(currentNotifyWip).set({
       partsNotifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      partsNotifiedBy: currentUserName()
+      partsNotifiedBy: currentUserName(),
+      partsNote: partsNeeded
     }, { merge: true });
     job.partsNotifiedAt = { toDate: () => new Date() };
     job.partsNotifiedBy = currentUserName();
+    job.partsNote = partsNeeded;
 
     statusEl.textContent = "Sent.";
     statusEl.className = "status ok";
