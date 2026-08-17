@@ -193,6 +193,10 @@
   .customize-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
   .customize-row span{flex:1;font-size:14px;}
   .customize-row.is-off span{color:var(--text-dim);}
+  .report-toggle{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);
+    font-weight:600;flex-shrink:0;white-space:nowrap;cursor:pointer;}
+  .report-toggle input{width:15px;height:15px;flex-shrink:0;}
+  .report-toggle input:disabled{opacity:.3;}
   .order-btn{background:none;border:1px solid var(--border);color:var(--text-dim);
     width:28px;height:28px;border-radius:6px;font-size:13px;flex-shrink:0;cursor:pointer;}
   .order-btn:hover{background:var(--surface-2);color:var(--text);}
@@ -265,7 +269,9 @@
   .job-open-card .joc-info{font-size:14px;flex:1;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
   .joc-vin-due{color:#F5C542;font-weight:700;}
-  .joc-parts-waiting{color:#8FCBEE;font-weight:700;}
+  .joc-parts-line{line-height:1.6;}
+  .parts-status-badge{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;
+    border-radius:5px;margin-right:2px;letter-spacing:.3px;}
   .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
   .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
@@ -495,7 +501,7 @@
           <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
           <button class="filter-chip" data-filter="vindue" onclick="setJobFilter('vindue')">VIN enquiry due</button>
           <button class="filter-chip" data-filter="stale" onclick="setJobFilter('stale')">Stale (7+ days)</button>
-          <button class="filter-chip" data-filter="parts" onclick="setJobFilter('parts')">Waiting on parts</button>
+          <button class="filter-chip" data-filter="parts" onclick="setJobFilter('parts')">Parts pending</button>
         </div>
         <div class="bulk-bar" id="bulkBar">
           <label class="checkbox-label">
@@ -666,14 +672,26 @@
 
 <div class="modal-overlay" id="partsOverlay">
   <div class="modal-box">
-    <h2>Parts status</h2>
+    <h2>Parts details</h2>
     <p class="panel-sub" id="partsOverlayWip"></p>
-    <label class="checkbox-label" style="margin-top:0;">
-      <input type="checkbox" id="partsWaitingCheckbox">
-      Waiting on parts
-    </label>
+
+    <label for="partsStatusSelect">Status</label>
+    <select id="partsStatusSelect">
+      <option value="">None</option>
+      <option value="needed">Needed &mdash; not yet ordered</option>
+      <option value="S">S &mdash; Stock order (ordered)</option>
+      <option value="R">R &mdash; Reserved (arrived, not yet issued)</option>
+      <option value="M">M &mdash; Memo (pricing only, nothing ordered)</option>
+    </select>
+
+    <label for="partsETAField">ETA</label>
+    <input type="text" id="partsETAField" placeholder="e.g. 2 weeks, or 15 Sept">
+
     <label for="partsNoteField">Note</label>
-    <textarea id="partsNoteField" placeholder="e.g. Front bumper ordered from Kia, ETA Friday"></textarea>
+    <textarea id="partsNoteField" placeholder="Any extra detail &mdash; this stays here even if the status changes"></textarea>
+
+    <div class="status" id="partsDatesInfo"></div>
+
     <div style="display:flex;gap:8px;margin-top:14px;">
       <button class="btn" style="margin:0;" onclick="savePartsStatus()">Save</button>
       <button class="btn btn-secondary" style="margin:0;" onclick="closePartsOverlay()">Cancel</button>
@@ -1564,14 +1582,21 @@ const DEFAULT_LAYOUT = ["stat-openJobs","stat-pwaFlagged","stat-activeNotes","st
 
 let dashboardLayout = DEFAULT_LAYOUT.slice();
 let dashboardLayoutLoaded = false;
+let reportWidgets = []; // widget IDs flagged "include in report" — empty by default, opt-in
 let lastDashboardCtx = null;
 let dashChartInstances = [];
 
 async function loadDashboardLayout(){
   try {
     const doc = await db.collection("config").doc("dashboardLayout").get();
-    if (doc.exists && Array.isArray(doc.data().widgets) && doc.data().widgets.length){
-      dashboardLayout = doc.data().widgets.filter(id => WIDGET_LIBRARY[id]);
+    if (doc.exists){
+      const data = doc.data();
+      if (Array.isArray(data.widgets) && data.widgets.length){
+        dashboardLayout = data.widgets.filter(id => WIDGET_LIBRARY[id]);
+      }
+      if (Array.isArray(data.reportWidgets)){
+        reportWidgets = data.reportWidgets.filter(id => WIDGET_LIBRARY[id]);
+      }
     }
   } catch(err){
     console.error(err);
@@ -1581,7 +1606,7 @@ async function loadDashboardLayout(){
 
 function saveDashboardLayout(){
   if (!db) return;
-  db.collection("config").doc("dashboardLayout").set({ widgets: dashboardLayout })
+  db.collection("config").doc("dashboardLayout").set({ widgets: dashboardLayout, reportWidgets: reportWidgets })
     .catch(err => console.error("Couldn't save dashboard layout", err));
 }
 
@@ -1622,7 +1647,7 @@ async function loadDashboard(){
     const staleJobs = jobs.filter(j => j.updatedAt && j.updatedAt.toDate &&
       (now - j.updatedAt.toDate().getTime()) > 7 * 24 * 60 * 60 * 1000);
     const vinDueJobs = jobs.filter(j => getVinEnquiryStatus(j).due);
-    const partsWaitingJobs = jobs.filter(j => j.partsWaiting);
+    const partsWaitingJobs = jobs.filter(j => j.partsStatus === "needed" || j.partsStatus === "S");
 
     const mechanicsList = (mechDoc.exists && Array.isArray(mechDoc.data().names)) ? mechDoc.data().names : [];
     const jobTypesList = (rulesDoc.exists && Array.isArray(rulesDoc.data().jobTypes)) ? rulesDoc.data().jobTypes : [];
@@ -1765,9 +1790,13 @@ function renderWidgetBody(type, body, ctx){
 function buildPartsWaitingRow(job){
   const row = document.createElement("div");
   row.className = "activity-row";
+  const info = job.partsStatus ? PARTS_STATUS_INFO[job.partsStatus] : null;
+  const badgeHtml = info ? '<span class="parts-status-badge" style="background:' + info.bg + ';color:' + info.color + ';">' +
+    escapeHtml(info.badgeText) + '</span> ' : "";
+  const detail = job.partsETA ? "ETA: " + escapeHtml(job.partsETA) : (job.partsNote ? escapeHtml(job.partsNote) : "No detail yet");
   row.innerHTML =
     '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
-    '<div class="meta">' + (job.partsNote ? escapeHtml(job.partsNote) : "No note") + '</div></div>';
+    '<div class="meta">' + badgeHtml + detail + '</div></div>';
   const btn = document.createElement("button");
   btn.className = "btn btn-secondary btn-inline";
   btn.style.margin = "0";
@@ -1840,6 +1869,17 @@ function renderCustomizeList(){
     span.textContent = WIDGET_LIBRARY[id].title;
     row.appendChild(span);
 
+    const reportLabel = document.createElement("label");
+    reportLabel.className = "report-toggle";
+    const reportCb = document.createElement("input");
+    reportCb.type = "checkbox";
+    reportCb.checked = reportWidgets.includes(id);
+    reportCb.disabled = !isEnabled;
+    reportCb.onchange = () => toggleReportInclusion(id, reportCb.checked);
+    reportLabel.appendChild(reportCb);
+    reportLabel.appendChild(document.createTextNode("Report"));
+    row.appendChild(reportLabel);
+
     const upBtn = document.createElement("button");
     upBtn.className = "order-btn";
     upBtn.textContent = "\u2191";
@@ -1863,10 +1903,21 @@ function toggleWidget(id, enabled){
     if (!dashboardLayout.includes(id)) dashboardLayout.push(id);
   } else {
     dashboardLayout = dashboardLayout.filter(w => w !== id);
+    reportWidgets = reportWidgets.filter(w => w !== id); // can't be report-included if it's not even on the dashboard
   }
   saveDashboardLayout();
   renderCustomizeList();
   if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function toggleReportInclusion(id, included){
+  if (included){
+    if (!reportWidgets.includes(id)) reportWidgets.push(id);
+  } else {
+    reportWidgets = reportWidgets.filter(w => w !== id);
+  }
+  saveDashboardLayout();
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx); // re-tag widgets for print
 }
 
 function moveWidget(id, delta){
@@ -1904,17 +1955,20 @@ function exportDashboardCSV(){
 }
 
 function exportOpenJobsCSV(){
-  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due", "Waiting on Parts", "Parts Note"]];
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due", "Parts Status", "Parts ETA", "Parts Ordered Date", "Parts Reserved Date", "Parts Note"]];
   currentlyFilteredJobs.forEach(job => {
     const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
     const vin = getVinEnquiryStatus(job);
+    const statusLabel = job.partsStatus && PARTS_STATUS_INFO[job.partsStatus] ? PARTS_STATUS_INFO[job.partsStatus].label : "";
     rows.push([
       job.id, job.reg || "", job.lastMechanic || "",
       Array.isArray(job.history) ? job.history.length : 0,
       job.pwaFlag ? "Yes" : "No", when,
       vin.daysSince === null ? "never logged" : vin.daysSince,
       vin.due ? "Yes" : "No",
-      job.partsWaiting ? "Yes" : "No",
+      statusLabel, job.partsETA || "",
+      job.partsOrderedDate ? new Date(job.partsOrderedDate).toISOString() : "",
+      job.partsReceivedDate ? new Date(job.partsReceivedDate).toISOString() : "",
       job.partsNote || ""
     ]);
   });
@@ -2722,14 +2776,81 @@ async function logVinEnquiry(wip){
   }
 }
 
+const PARTS_STATUS_INFO = {
+  needed: { label: "Needed", badgeText: "Needed", color: "#FF9C9C", bg: "#2B0705" },
+  S: { label: "Ordered", badgeText: "S", color: "#F5D77A", bg: "#3A2E00" },
+  R: { label: "Reserved", badgeText: "R", color: "#5FCB82", bg: "#123A1E" },
+  M: { label: "Memo", badgeText: "M", color: "#8FCBEE", bg: "#0D2A3D" }
+};
+
+function buildPartsInfoLine(job){
+  const info = job.partsStatus ? PARTS_STATUS_INFO[job.partsStatus] : null;
+  const hasAnything = info || job.partsNote || job.partsETA;
+  if (!hasAnything) return "";
+
+  let html = '<div class="joc-meta joc-parts-line">';
+  if (info){
+    html += '<span class="parts-status-badge" style="background:' + info.bg + ';color:' + info.color + ';">' +
+      escapeHtml(info.badgeText) + '</span> ' + escapeHtml(info.label);
+  }
+  if (job.partsETA) html += (info ? " &middot; " : "") + "ETA: " + escapeHtml(job.partsETA);
+  if (job.partsNote) html += (info || job.partsETA ? "<br>" : "") + escapeHtml(job.partsNote);
+  html += '</div>';
+  return html;
+}
+
+async function updatePartsFields(wip, fields){
+  const updates = Object.assign({
+    partsUpdatedBy: currentUserName(),
+    partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, fields);
+  try {
+    await db.collection("jobs").doc(wip).set(updates, { merge: true });
+    const job = openJobsCache.find(j => j.id === wip);
+    if (job) Object.assign(job, fields, { partsUpdatedBy: currentUserName(), partsUpdatedAt: { toDate: () => new Date() } });
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    const label = fields.partsStatus && PARTS_STATUS_INFO[fields.partsStatus] ? PARTS_STATUS_INFO[fields.partsStatus].label : fields.partsStatus;
+    logAudit("Set parts status to \"" + label + "\" on WIP " + wip);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+function markPartsNeeded(wip){ updatePartsFields(wip, { partsStatus: "needed" }); }
+
+function markPartsOrdered(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  const fields = { partsStatus: "S" };
+  if (!job || !job.partsOrderedDate) fields.partsOrderedDate = new Date().toISOString();
+  updatePartsFields(wip, fields);
+}
+
+function markPartsReserved(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  const fields = { partsStatus: "R" };
+  if (!job || !job.partsReceivedDate) fields.partsReceivedDate = new Date().toISOString();
+  updatePartsFields(wip, fields);
+}
+
 let currentPartsWip = null;
 
 function openPartsOverlay(wip){
   const job = openJobsCache.find(j => j.id === wip);
   currentPartsWip = wip;
   document.getElementById("partsOverlayWip").textContent = "WIP " + wip + (job && job.reg ? " \u00b7 " + job.reg : "");
-  document.getElementById("partsWaitingCheckbox").checked = !!(job && job.partsWaiting);
+  document.getElementById("partsStatusSelect").value = (job && job.partsStatus) || "";
+  document.getElementById("partsETAField").value = (job && job.partsETA) || "";
   document.getElementById("partsNoteField").value = (job && job.partsNote) || "";
+
+  const datesInfo = document.getElementById("partsDatesInfo");
+  const bits = [];
+  if (job && job.partsOrderedDate) bits.push("Ordered " + new Date(job.partsOrderedDate).toLocaleDateString());
+  if (job && job.partsReceivedDate) bits.push("Reserved " + new Date(job.partsReceivedDate).toLocaleDateString());
+  datesInfo.textContent = bits.join(" \u00b7 ");
+  datesInfo.className = "status";
+
   document.getElementById("partsStatusMsg").textContent = "";
   document.getElementById("partsOverlay").classList.add("show");
 }
@@ -2741,26 +2862,30 @@ function closePartsOverlay(){
 
 async function savePartsStatus(){
   if (!currentPartsWip) return;
-  const waiting = document.getElementById("partsWaitingCheckbox").checked;
+  const status = document.getElementById("partsStatusSelect").value; // "" | "needed" | "S" | "R" | "M"
+  const eta = document.getElementById("partsETAField").value.trim();
   const note = document.getElementById("partsNoteField").value.trim();
   const statusEl = document.getElementById("partsStatusMsg");
+
+  const job = openJobsCache.find(j => j.id === currentPartsWip);
+  const updates = {
+    partsStatus: status || null,
+    partsETA: eta,
+    partsNote: note,
+    partsUpdatedBy: currentUserName(),
+    partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  // Manually setting S or R here still stamps a date, same as the quick-action buttons would.
+  if (status === "S" && (!job || !job.partsOrderedDate)) updates.partsOrderedDate = new Date().toISOString();
+  if (status === "R" && (!job || !job.partsReceivedDate)) updates.partsReceivedDate = new Date().toISOString();
+
   try {
-    await db.collection("jobs").doc(currentPartsWip).set({
-      partsWaiting: waiting,
-      partsNote: note,
-      partsUpdatedBy: currentUserName(),
-      partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    const job = openJobsCache.find(j => j.id === currentPartsWip);
-    if (job){
-      job.partsWaiting = waiting;
-      job.partsNote = note;
-      job.partsUpdatedBy = currentUserName();
-      job.partsUpdatedAt = { toDate: () => new Date() };
-    }
+    await db.collection("jobs").doc(currentPartsWip).set(updates, { merge: true });
+    if (job) Object.assign(job, updates, { partsUpdatedAt: { toDate: () => new Date() } });
     renderOpenJobsList(document.getElementById("jobSearchField").value);
     if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
-    logAudit((waiting ? "Marked" : "Cleared") + " parts waiting on WIP " + currentPartsWip + (note ? " \u2014 " + note : ""));
+    const label = status && PARTS_STATUS_INFO[status] ? PARTS_STATUS_INFO[status].label : (status || "None");
+    logAudit("Updated parts details on WIP " + currentPartsWip + " (" + label + ")");
     closePartsOverlay();
   } catch(err){
     console.error(err);
@@ -2828,7 +2953,7 @@ function renderOpenJobsList(filterText){
       return t && (Date.now() - t) > 7 * 24 * 60 * 60 * 1000;
     });
   } else if (currentJobFilter === "parts"){
-    filtered = filtered.filter(j => j.partsWaiting);
+    filtered = filtered.filter(j => j.partsStatus === "needed" || j.partsStatus === "S");
   }
 
   const sortSelect = document.getElementById("jobSortSelect");
@@ -2882,8 +3007,7 @@ function buildOpenJobCard(job){
     (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
     '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>' +
     '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>' +
-    (job.partsWaiting ? '<div class="joc-meta joc-parts-waiting">\ud83d\udd27 Waiting on parts' +
-      (job.partsNote ? ": " + escapeHtml(job.partsNote) : "") + '</div>' : '');
+    buildPartsInfoLine(job);
   topRow.appendChild(info);
   card.appendChild(topRow);
 
@@ -2896,11 +3020,29 @@ function buildOpenJobCard(job){
   vinBtn.onclick = () => logVinEnquiry(job.id);
   actionRow.appendChild(vinBtn);
 
-  const partsBtn = document.createElement("button");
-  partsBtn.className = "btn btn-secondary";
-  partsBtn.textContent = job.partsWaiting ? "Update parts" : "Log parts";
-  partsBtn.onclick = () => openPartsOverlay(job.id);
-  actionRow.appendChild(partsBtn);
+  const needBtn = document.createElement("button");
+  needBtn.className = "btn btn-secondary";
+  needBtn.textContent = "Need part";
+  needBtn.onclick = () => markPartsNeeded(job.id);
+  actionRow.appendChild(needBtn);
+
+  const orderedBtn = document.createElement("button");
+  orderedBtn.className = "btn btn-secondary";
+  orderedBtn.textContent = "Mark ordered";
+  orderedBtn.onclick = () => markPartsOrdered(job.id);
+  actionRow.appendChild(orderedBtn);
+
+  const reservedBtn = document.createElement("button");
+  reservedBtn.className = "btn btn-secondary";
+  reservedBtn.textContent = "Mark reserved";
+  reservedBtn.onclick = () => markPartsReserved(job.id);
+  actionRow.appendChild(reservedBtn);
+
+  const partsDetailsBtn = document.createElement("button");
+  partsDetailsBtn.className = "btn btn-secondary";
+  partsDetailsBtn.textContent = "Parts details";
+  partsDetailsBtn.onclick = () => openPartsOverlay(job.id);
+  actionRow.appendChild(partsDetailsBtn);
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
