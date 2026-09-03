@@ -40,6 +40,7 @@
   .nav-item:hover{background:var(--surface-2);color:var(--text);}
   .nav-item.active{background:var(--accent);color:var(--accent-text);}
   .nav-link{border-top:1px solid var(--border);padding-top:16px;}
+  .nav-divider{height:1px;background:var(--border);margin:8px 12px;}
   .nav-bottom-group{margin-top:auto;display:flex;flex-direction:column;}
 
   #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
@@ -56,6 +57,7 @@
     .brand{display:none;}
     .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
     .nav-link{margin-top:0;border-top:none;padding-top:0;}
+    .nav-divider{width:1px;height:24px;margin:0 4px;}
     .nav-bottom-group{margin-top:0;display:flex;flex-direction:row;}
     #mainArea{padding:18px;}
   }
@@ -66,6 +68,12 @@
   .panel h2{margin:0 0 4px;font-size:17px;font-weight:700;}
   .panel h3{margin:0 0 16px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);}
   .panel .panel-sub{color:var(--text-dim);font-size:13px;margin:0 0 18px;}
+
+  .settings-jump-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;
+    padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .settings-jump-row a{background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:16px;padding:6px 13px;font-size:12px;font-weight:600;text-decoration:none;}
+  .settings-jump-row a:hover{color:var(--text);border-color:var(--accent);}
 
   label{display:block;font-size:12px;color:var(--text-dim);font-weight:700;margin:16px 0 6px;
     text-transform:uppercase;letter-spacing:.4px;}
@@ -280,6 +288,10 @@
     border-radius:5px;margin-right:2px;letter-spacing:.3px;}
   .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
+  .joc-group-label{font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;
+    letter-spacing:.3px;align-self:center;margin-right:-2px;}
+  .joc-close-row{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;
+    border-top:1px solid var(--border);}
   .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
   .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
     margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--border);}
@@ -324,6 +336,7 @@
     <button class="nav-item" data-page="mechanics" onclick="showPage('mechanics')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Mechanics</button>
+    <div class="nav-divider"></div>
     <button class="nav-item" data-page="settings" onclick="showPage('settings')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
       Settings</button>
@@ -404,17 +417,18 @@
 
         <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
           <div class="pwa-flag-row" id="pwaFlagRow"><span id="pwaFlagStatus"></span></div>
+          <label class="checkbox-label" style="margin-top:12px;">
+            <input type="checkbox" id="pwaFlagSimpleCheckbox" onchange="togglePwaFlagSimple()">
+            <span id="pwaFlagSimpleLabel">Needs PWA</span>
+          </label>
           <div class="collapsible" id="pwaFlagChecklistCollapsible">
             <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
-              <span>Set required items</span><span class="chevron">&#9656;</span>
+              <span id="pwaFlagChecklistLabel">Required items (optional)</span><span class="chevron">&#9656;</span>
             </button>
             <div class="collapsible-body">
-              <p class="panel-sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+              <p class="panel-sub" style="margin:0 0 4px;" id="pwaFlagChecklistSub">Optional &mdash; tick anything specific this job needs. The mechanic sees whatever you tick here, but leaving it all unticked is fine too; the flag alone is enough.</p>
               <div id="pwaWipChecklist"></div>
-              <div style="display:flex;gap:8px;margin-top:12px;">
-                <button class="btn btn-inline" onclick="savePwaFlagForWip()">Save PWA requirement</button>
-                <button class="btn btn-secondary btn-inline" onclick="clearPwaFlagForWip()">Clear flag</button>
-              </div>
+              <button class="btn btn-inline" style="margin-top:12px;" onclick="savePwaFlagForWip()">Save required items</button>
             </div>
           </div>
         </div>
@@ -539,6 +553,18 @@
 
     <!-- ============ SETTINGS ============ -->
     <div class="page" id="page-settings">
+      <div class="settings-jump-row" id="settingsJumpRow">
+        <a href="#settingsPanel-manufacturer">Manufacturer</a>
+        <a href="#settingsPanel-dealer">Dealer</a>
+        <a href="#settingsPanel-emails">Emails</a>
+        <a href="#settingsPanel-currency">Currency</a>
+        <a href="#settingsPanel-appearance">Appearance</a>
+        <a href="#settingsPanel-sessionTimeout">Session timeout</a>
+        <a href="#settingsPanel-vinEnquiry">VIN reminder</a>
+        <a href="#settingsPanel-emailNotify">Parts email</a>
+        <a href="#settingsPanel-users">Users</a>
+      </div>
+
       <div class="panel" id="settingsPanel-manufacturer">
         <h2>Manufacturer</h2>
         <p class="panel-sub">Swaps terminology throughout the whole app &mdash; e.g. "PWA" only makes sense for Kia. Pick anything else and it switches to generic wording everywhere, no other changes needed.</p>
@@ -840,6 +866,7 @@ function applyTerminology(){
   document.getElementById("claimSettingsSub").textContent = "Used by the mechanic app's " + PWA_TERM + " checker.";
   document.getElementById("jobTypesSub").textContent = "What " + t.mfrName + " needs for each job type \u2014 read live by the mechanic app.";
   document.getElementById("alwaysPwaLabel").textContent = "Always needs " + PWA_TERM + ", regardless of claim value";
+  document.getElementById("pwaFlagSimpleLabel").textContent = "Needs " + PWA_TERM;
   document.getElementById("checklistTitle").textContent = PWA_TERM + " requirement items";
   document.getElementById("checklistSub").innerHTML = "The checklist you pick from when flagging a specific job as needing " + PWA_TERM + ". Add whatever " + t.mfrName + " might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.";
   document.getElementById("openJobsDesc").textContent = '"Close job" permanently deletes that job\'s Firebase data (reg link, send history, note, ' + PWA_TERM + ' flag). SharePoint files are untouched.';
@@ -1172,6 +1199,8 @@ function applySettingsSectionPermissions(){
       panel.style.display = level === "none" ? "none" : "";
       panel.classList.toggle("read-only", level === "view");
     });
+    const jumpLink = document.querySelector('.settings-jump-row a[href="#settingsPanel-' + sectionId + '"]');
+    if (jumpLink) jumpLink.style.display = level === "none" ? "none" : "";
   });
 }
 
@@ -2412,6 +2441,7 @@ async function refreshPwaFlagRow(wip){
   flagStatus.textContent = flagged
     ? "\ud83d\udd34 Flagged as needing " + PWA_TERM + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
     : "Not flagged";
+  document.getElementById("pwaFlagSimpleCheckbox").checked = flagged;
 
   if (!pwaChecklistItemsCache.length){
     checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some on the Checklist items page.</p>';
@@ -2434,14 +2464,32 @@ async function refreshPwaFlagRow(wip){
   });
 }
 
+async function togglePwaFlagSimple(){
+  if (!currentWipForFlag) return;
+  const cb = document.getElementById("pwaFlagSimpleCheckbox");
+  if (cb.checked){
+    try {
+      await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true }, { merge: true });
+      refreshPwaFlagRow(currentWipForFlag);
+      logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM);
+    } catch(err){
+      console.error(err);
+      alert("Couldn't save — check your Firebase config.");
+      cb.checked = false;
+    }
+  } else {
+    clearPwaFlagForWip();
+  }
+}
+
 async function savePwaFlagForWip(){
   if (!currentWipForFlag) return;
   const checked = Array.from(document.querySelectorAll("#pwaWipChecklist input[type=checkbox]:checked")).map(cb => cb.value);
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
-    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM +
-      (checked.length ? " \u2014 items: " + checked.join(", ") : " (no specific items ticked)"));
+    logAudit("Updated required items for WIP " + currentWipForFlag +
+      (checked.length ? " \u2014 items: " + checked.join(", ") : " (cleared, no items)"));
   } catch(err){
     console.error(err);
     alert("Couldn't save — check your Firebase config.");
@@ -3136,6 +3184,11 @@ function buildOpenJobCard(job){
   vinBtn.onclick = () => logVinEnquiry(job.id);
   actionRow.appendChild(vinBtn);
 
+  const partsGroupLabel = document.createElement("span");
+  partsGroupLabel.className = "joc-group-label";
+  partsGroupLabel.textContent = "Parts:";
+  actionRow.appendChild(partsGroupLabel);
+
   const needBtn = document.createElement("button");
   needBtn.className = "btn btn-secondary";
   needBtn.textContent = "Need part";
@@ -3166,13 +3219,18 @@ function buildOpenJobCard(job){
   notifyBtn.onclick = () => openNotifyPartsOverlay(job.id);
   actionRow.appendChild(notifyBtn);
 
+  card.appendChild(actionRow);
+
+  // Close job sits on its own row, separated by a divider, so it can never
+  // be mistaken for one of the routine status-update buttons above.
+  const closeRow = document.createElement("div");
+  closeRow.className = "joc-close-row";
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
   closeBtn.onclick = () => closeJobs([job.id]);
-  actionRow.appendChild(closeBtn);
-
-  card.appendChild(actionRow);
+  closeRow.appendChild(closeBtn);
+  card.appendChild(closeRow);
 
   return card;
 }
@@ -3607,6 +3665,10 @@ async function loadManufacturerSetting(){
       if (data.customColors && typeof data.customColors === "object"){
         customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
       }
+      appSettingsCache.emailjsServiceId = data.emailjsServiceId || "";
+      appSettingsCache.emailjsTemplateId = data.emailjsTemplateId || "";
+      appSettingsCache.emailjsPublicKey = data.emailjsPublicKey || "";
+      appSettingsCache.partsRecipient = data.partsRecipient || "";
     }
   } catch(err){
     console.error("Couldn't load manufacturer setting", err);
