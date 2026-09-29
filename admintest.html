@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warranty app — admin</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --bg:#15161A; --surface:#1E1F24; --surface-2:#282A31; --border:#34363F;
@@ -39,6 +40,7 @@
   .nav-item:hover{background:var(--surface-2);color:var(--text);}
   .nav-item.active{background:var(--accent);color:var(--accent-text);}
   .nav-link{border-top:1px solid var(--border);padding-top:16px;}
+  .nav-divider{height:1px;background:var(--border);margin:8px 12px;}
   .nav-bottom-group{margin-top:auto;display:flex;flex-direction:column;}
 
   #mainArea{flex:1;min-width:0;padding:30px 36px 60px;max-width:1180px;}
@@ -55,6 +57,7 @@
     .brand{display:none;}
     .nav-item{flex-shrink:0;padding:9px 13px;margin-bottom:0;margin-right:4px;white-space:nowrap;}
     .nav-link{margin-top:0;border-top:none;padding-top:0;}
+    .nav-divider{width:1px;height:24px;margin:0 4px;}
     .nav-bottom-group{margin-top:0;display:flex;flex-direction:row;}
     #mainArea{padding:18px;}
   }
@@ -65,6 +68,12 @@
   .panel h2{margin:0 0 4px;font-size:17px;font-weight:700;}
   .panel h3{margin:0 0 16px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);}
   .panel .panel-sub{color:var(--text-dim);font-size:13px;margin:0 0 18px;}
+
+  .settings-jump-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;
+    padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .settings-jump-row a{background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);
+    border-radius:16px;padding:6px 13px;font-size:12px;font-weight:600;text-decoration:none;}
+  .settings-jump-row a:hover{color:var(--text);border-color:var(--accent);}
 
   label{display:block;font-size:12px;color:var(--text-dim);font-weight:700;margin:16px 0 6px;
     text-transform:uppercase;letter-spacing:.4px;}
@@ -129,6 +138,56 @@
   input[type=color]{width:100%;height:44px;padding:3px;border-radius:9px;border:1px solid var(--border);
     background:var(--surface-2);cursor:pointer;}
 
+  .priority-select-row{display:flex;gap:8px;margin-top:6px;}
+  .priority-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);
+    color:var(--text-dim);font-size:13px;font-weight:700;cursor:pointer;}
+  .priority-btn.priority-low.active{background:#0D2A3D;color:#8FCBEE;border-color:#8FCBEE;}
+  .priority-btn.priority-medium.active{background:#3A2E00;color:#F5D77A;border-color:#F5D77A;}
+  .priority-btn.priority-high.active{background:#2B0705;color:#FF9C9C;border-color:#FF9C9C;}
+
+  .task-table-header{display:grid;grid-template-columns:130px 1fr 110px 170px 32px;gap:10px;
+    padding:0 14px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim);}
+  .task-board{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .task-group{border-bottom:1px solid var(--border);}
+  .task-group:last-child{border-bottom:none;}
+  .task-group-header{width:100%;display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;
+    font-weight:700;font-size:13px;border:none;border-left:4px solid transparent;background:var(--surface-2);color:var(--text);}
+  .task-group-header .chevron{margin-left:auto;font-size:11px;color:var(--text-dim);transition:transform .15s ease;}
+  .task-group.collapsed .chevron{transform:rotate(-90deg);}
+  .task-group.collapsed .task-group-body{display:none;}
+  .task-group-header.group-todo{border-left-color:#8A8F98;}
+  .task-group-header.group-in_progress{border-left-color:#F5C542;}
+  .task-group-header.group-done{border-left-color:#2FA84F;}
+
+  .task-row{display:grid;grid-template-columns:130px 1fr 110px 170px 32px;gap:10px;align-items:center;
+    padding:10px 14px;border-top:1px solid var(--border);font-size:13px;background:var(--surface);}
+  .task-group-body .task-row:first-child{border-top:none;}
+  .task-row.compact{grid-template-columns:120px 1fr 100px 32px;}
+  .task-row-title .title{font-size:14px;font-weight:600;}
+  .task-row-title .title.done-text{text-decoration:line-through;color:var(--text-dim);}
+  .task-row-title .desc{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .task-row-meta{font-size:11px;color:var(--text-dim);line-height:1.5;}
+  .task-row-delete{background:none;border:none;color:var(--text-dim);width:26px;height:26px;
+    border-radius:6px;cursor:pointer;font-size:16px;justify-self:center;}
+  .task-row-delete:hover{background:var(--surface-2);color:var(--danger);}
+
+  .pill-select{border:none;border-radius:14px;padding:5px 8px;font-size:11px;font-weight:700;
+    cursor:pointer;width:100%;text-align:center;text-align-last:center;}
+  .status-todo{background:#3A3C41;color:#C7C9CE;}
+  .status-in_progress{background:#4A3A0D;color:#F5C542;}
+  .status-done{background:#123A1E;color:#5FCB82;}
+  .priority-low{background:#0D2A3D;color:#8FCBEE;}
+  .priority-medium{background:#3A2E00;color:#F5D77A;}
+  .priority-high{background:#2B0705;color:#FF9C9C;}
+
+  .task-widget-list .task-row:first-child{border-top:none;}
+  @media (max-width:700px){
+    .task-table-header{display:none;}
+    .task-row{grid-template-columns:1fr;gap:6px;padding:12px 14px;}
+    .task-row.compact{grid-template-columns:1fr;}
+    .task-row-delete{justify-self:end;}
+  }
+
   .permission-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:9px 0;border-bottom:1px solid var(--border);}
   .permission-row:last-child{border-bottom:none;}
@@ -143,6 +202,10 @@
   .customize-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
   .customize-row span{flex:1;font-size:14px;}
   .customize-row.is-off span{color:var(--text-dim);}
+  .report-toggle{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);
+    font-weight:600;flex-shrink:0;white-space:nowrap;cursor:pointer;}
+  .report-toggle input{width:15px;height:15px;flex-shrink:0;}
+  .report-toggle input:disabled{opacity:.3;}
   .order-btn{background:none;border:1px solid var(--border);color:var(--text-dim);
     width:28px;height:28px;border-radius:6px;font-size:13px;flex-shrink:0;cursor:pointer;}
   .order-btn:hover{background:var(--surface-2);color:var(--text);}
@@ -186,6 +249,11 @@
   .add-row button{flex-shrink:0;}
 
   .checklist-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .pwa-send-list{list-style:none;margin:0 0 4px;padding:0;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:9px;}
+  .pwa-send-list li{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+  .pwa-send-list li:last-child{border-bottom:none;}
+  .pwa-send-list li.empty-item{color:var(--text-dim);font-style:italic;}
   .checklist-row:last-child{border-bottom:none;}
   .checklist-row input{width:20px;height:20px;flex-shrink:0;}
   .checklist-row span{font-size:14px;flex:1;}
@@ -215,8 +283,15 @@
   .job-open-card .joc-info{font-size:14px;flex:1;}
   .job-open-card .joc-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
   .joc-vin-due{color:#F5C542;font-weight:700;}
+  .joc-parts-line{line-height:1.6;}
+  .parts-status-badge{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;
+    border-radius:5px;margin-right:2px;letter-spacing:.3px;}
   .joc-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .job-open-card button{margin:0;min-height:38px;width:auto;padding:0 14px;flex-shrink:0;font-size:13px;}
+  .joc-group-label{font-size:11px;color:var(--text-dim);font-weight:700;text-transform:uppercase;
+    letter-spacing:.3px;align-self:center;margin-right:-2px;}
+  .joc-close-row{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;
+    border-top:1px solid var(--border);}
   .joc-checkbox{width:19px;height:19px;flex-shrink:0;margin-top:2px;}
   .bulk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
     margin:14px 0;padding-bottom:14px;border-bottom:1px solid var(--border);}
@@ -243,6 +318,9 @@
     <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
       Dashboard</button>
+    <button class="nav-item" data-page="tasks" onclick="showPage('tasks')">
+      <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+      Tasks</button>
     <button class="nav-item" data-page="notes" onclick="showPage('notes')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span id="navLabelNotes">Notes &amp; PWA flags</span></button>
@@ -258,6 +336,7 @@
     <button class="nav-item" data-page="mechanics" onclick="showPage('mechanics')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Mechanics</button>
+    <div class="nav-divider"></div>
     <button class="nav-item" data-page="settings" onclick="showPage('settings')">
       <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
       Settings</button>
@@ -299,6 +378,33 @@
       <div id="dashboardWidgets"><p class="empty">Loading…</p></div>
     </div>
 
+    <!-- ============ TASKS ============ -->
+    <div class="page" id="page-tasks">
+      <div class="panel">
+        <h2>Add a task</h2>
+        <label for="newTaskTitle">Task</label>
+        <input type="text" id="newTaskTitle" placeholder="e.g. Chase up VIN enquiry for WIP 12345">
+        <label for="newTaskDesc">Details (optional)</label>
+        <textarea id="newTaskDesc" placeholder="Any extra context"></textarea>
+        <label>Priority</label>
+        <div class="priority-select-row">
+          <button type="button" class="priority-btn priority-low" data-priority="low" onclick="selectNewTaskPriority('low')">Low</button>
+          <button type="button" class="priority-btn priority-medium active" data-priority="medium" onclick="selectNewTaskPriority('medium')">Medium</button>
+          <button type="button" class="priority-btn priority-high" data-priority="high" onclick="selectNewTaskPriority('high')">High</button>
+        </div>
+        <button class="btn" onclick="createTask()">Add task</button>
+        <div class="status" id="newTaskStatus"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Tasks</h2>
+        <div class="task-table-header">
+          <span>Status</span><span>Task</span><span>Priority</span><span>Details</span><span></span>
+        </div>
+        <div id="tasksBoard"><p class="empty">Loading…</p></div>
+      </div>
+    </div>
+
     <!-- ============ NOTES & PWA FLAGS ============ -->
     <div class="page" id="page-notes">
       <div class="panel">
@@ -311,17 +417,18 @@
 
         <div class="pwa-flag-section" id="pwaFlagSection" style="display:none;">
           <div class="pwa-flag-row" id="pwaFlagRow"><span id="pwaFlagStatus"></span></div>
+          <label class="checkbox-label" style="margin-top:12px;">
+            <input type="checkbox" id="pwaFlagSimpleCheckbox" onchange="togglePwaFlagSimple()">
+            <span id="pwaFlagSimpleLabel">Needs PWA</span>
+          </label>
           <div class="collapsible" id="pwaFlagChecklistCollapsible">
             <button class="collapsible-header" onclick="toggleCollapsible('pwaFlagChecklistCollapsible')">
-              <span>Set required items</span><span class="chevron">&#9656;</span>
+              <span id="pwaFlagChecklistLabel">Required items (optional)</span><span class="chevron">&#9656;</span>
             </button>
             <div class="collapsible-body">
-              <p class="panel-sub" style="margin:0 0 4px;">Tick whatever this specific job needs &mdash; the mechanic sees this exact list before they're allowed to send.</p>
+              <p class="panel-sub" style="margin:0 0 4px;" id="pwaFlagChecklistSub">Optional &mdash; tick anything specific this job needs. The mechanic sees whatever you tick here, but leaving it all unticked is fine too; the flag alone is enough.</p>
               <div id="pwaWipChecklist"></div>
-              <div style="display:flex;gap:8px;margin-top:12px;">
-                <button class="btn btn-inline" onclick="savePwaFlagForWip()">Save PWA requirement</button>
-                <button class="btn btn-secondary btn-inline" onclick="clearPwaFlagForWip()">Clear flag</button>
-              </div>
+              <button class="btn btn-inline" style="margin-top:12px;" onclick="savePwaFlagForWip()">Save required items</button>
             </div>
           </div>
         </div>
@@ -414,6 +521,7 @@
           <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
           <button class="filter-chip" data-filter="vindue" onclick="setJobFilter('vindue')">VIN enquiry due</button>
           <button class="filter-chip" data-filter="stale" onclick="setJobFilter('stale')">Stale (7+ days)</button>
+          <button class="filter-chip" data-filter="parts" onclick="setJobFilter('parts')">Parts pending</button>
         </div>
         <div class="bulk-bar" id="bulkBar">
           <label class="checkbox-label">
@@ -445,6 +553,18 @@
 
     <!-- ============ SETTINGS ============ -->
     <div class="page" id="page-settings">
+      <div class="settings-jump-row" id="settingsJumpRow">
+        <a href="#settingsPanel-manufacturer">Manufacturer</a>
+        <a href="#settingsPanel-dealer">Dealer</a>
+        <a href="#settingsPanel-emails">Emails</a>
+        <a href="#settingsPanel-currency">Currency</a>
+        <a href="#settingsPanel-appearance">Appearance</a>
+        <a href="#settingsPanel-sessionTimeout">Session timeout</a>
+        <a href="#settingsPanel-vinEnquiry">VIN reminder</a>
+        <a href="#settingsPanel-emailNotify">Parts email</a>
+        <a href="#settingsPanel-users">Users</a>
+      </div>
+
       <div class="panel" id="settingsPanel-manufacturer">
         <h2>Manufacturer</h2>
         <p class="panel-sub">Swaps terminology throughout the whole app &mdash; e.g. "PWA" only makes sense for Kia. Pick anything else and it switches to generic wording everywhere, no other changes needed.</p>
@@ -544,6 +664,22 @@
         <div class="status" id="vinEnquiryDaysStatus"></div>
       </div>
 
+      <div class="panel" id="settingsPanel-emailNotify">
+        <h2>Parts email notifications</h2>
+        <p class="panel-sub">Sends via <a href="https://www.emailjs.com" target="_blank" style="color:var(--accent);">EmailJS</a> &mdash; a free service built for sending real email straight from a browser, no server needed. You'll need a free EmailJS account connected to a real mailbox first; see the setup guide for the steps. It can't attach a real screenshot &mdash; this app never has the actual photo files, they go straight to SharePoint &mdash; but it sends the WIP, reg, and the exact parts list you ticked when flagging the job.</p>
+        <label for="emailjsServiceIdField">EmailJS Service ID</label>
+        <input type="text" id="emailjsServiceIdField" placeholder="e.g. service_abc123">
+        <label for="emailjsTemplateIdField">EmailJS Template ID</label>
+        <input type="text" id="emailjsTemplateIdField" placeholder="e.g. template_xyz789">
+        <label for="emailjsPublicKeyField">EmailJS Public Key</label>
+        <input type="text" id="emailjsPublicKeyField" placeholder="Found in EmailJS \u2192 Account \u2192 General">
+        <label for="partsRecipientField">Parts team email</label>
+        <input type="text" id="partsRecipientField" placeholder="e.g. parts@yourdealer.ie">
+        <button class="btn" onclick="saveEmailNotifySettings()">Save</button>
+        <button class="btn btn-secondary" onclick="sendTestEmail()">Send test email</button>
+        <div class="status" id="emailNotifyStatus"></div>
+      </div>
+
       <div class="panel" id="settingsPanel-users">
         <h2>Users &amp; permissions</h2>
         <p class="panel-sub">Once you add at least one user, this panel will ask for a PIN before showing anything. Until then, it stays open to everyone \u2014 same as it's always been. Worth reading this plainly: since there's no real backend yet, this is a light gate, not a secure login \u2014 it stops casual access and gives every action a name to attach to, but it isn't a substitute for real authentication.</p>
@@ -579,6 +715,52 @@
       <div class="status err" id="loginError"></div>
       <button class="btn" onclick="attemptLogin()">Unlock</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notifyPartsOverlay">
+  <div class="modal-box">
+    <h2>Notify parts</h2>
+    <p class="panel-sub" id="notifyPartsWipInfo"></p>
+    <label for="notifyPartsField">Part(s) needed</label>
+    <textarea id="notifyPartsField" placeholder="e.g. Front bumper, headlight assembly"></textarea>
+    <label for="notifyPartsNote">Extra note (optional)</label>
+    <textarea id="notifyPartsNote" placeholder="Anything else parts should know"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="sendPartsNotification()">Send email</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closeNotifyPartsOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="notifyPartsStatus"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="partsOverlay">
+  <div class="modal-box">
+    <h2>Parts details</h2>
+    <p class="panel-sub" id="partsOverlayWip"></p>
+
+    <label for="partsStatusSelect">Status</label>
+    <select id="partsStatusSelect">
+      <option value="">None</option>
+      <option value="needed">Needed &mdash; not yet ordered</option>
+      <option value="S">S &mdash; Stock order (ordered)</option>
+      <option value="R">R &mdash; Reserved (arrived, not yet issued)</option>
+      <option value="M">M &mdash; Memo (pricing only, nothing ordered)</option>
+    </select>
+
+    <label for="partsETAField">ETA</label>
+    <input type="text" id="partsETAField" placeholder="e.g. 2 weeks, or 15 Sept">
+
+    <label for="partsNoteField">Note</label>
+    <textarea id="partsNoteField" placeholder="Any extra detail &mdash; this stays here even if the status changes"></textarea>
+
+    <div class="status" id="partsDatesInfo"></div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn" style="margin:0;" onclick="savePartsStatus()">Save</button>
+      <button class="btn btn-secondary" style="margin:0;" onclick="closePartsOverlay()">Cancel</button>
+    </div>
+    <div class="status" id="partsStatusMsg"></div>
   </div>
 </div>
 
@@ -684,6 +866,7 @@ function applyTerminology(){
   document.getElementById("claimSettingsSub").textContent = "Used by the mechanic app's " + PWA_TERM + " checker.";
   document.getElementById("jobTypesSub").textContent = "What " + t.mfrName + " needs for each job type \u2014 read live by the mechanic app.";
   document.getElementById("alwaysPwaLabel").textContent = "Always needs " + PWA_TERM + ", regardless of claim value";
+  document.getElementById("pwaFlagSimpleLabel").textContent = "Needs " + PWA_TERM;
   document.getElementById("checklistTitle").textContent = PWA_TERM + " requirement items";
   document.getElementById("checklistSub").innerHTML = "The checklist you pick from when flagging a specific job as needing " + PWA_TERM + ". Add whatever " + t.mfrName + " might ask for &mdash; CVN, LOT, fault video, service history, whatever comes up.";
   document.getElementById("openJobsDesc").textContent = '"Close job" permanently deletes that job\'s Firebase data (reg link, send history, note, ' + PWA_TERM + ' flag). SharePoint files are untouched.';
@@ -721,6 +904,7 @@ async function saveManufacturer(value){
 
 const PAGE_INFO = {
   dashboard: ["Dashboard", "A quick read on what's currently going on"],
+  tasks: ["Tasks", "Shared task list for admin staff \u2014 everyone sees the same list"],
   notes: ["Notes & PWA flags", "Send a note or flag a job for a specific WIP"],
   rules: ["PWA rules", "Kia's claim rules, read live by the mechanic app"],
   checklist: ["Checklist items", "The library you pick from when flagging a job"],
@@ -737,6 +921,10 @@ function showPage(id){
   document.getElementById("pageSub").textContent = PAGE_INFO[id][1];
 
   if (id === "dashboard") loadDashboard();
+  else if (id === "tasks"){
+    if (!tasksLoaded) loadTasks(); // fetches, then renders
+    else renderTasks(); // already fetched (e.g. by the Dashboard widget) — just paint it
+  }
   else if (id === "jobs"){
     if (!openJobsLoaded) loadOpenJobs(); // fetches, then renders
     else renderOpenJobsList(document.getElementById("jobSearchField").value); // already fetched (e.g. by Dashboard) — just paint it
@@ -894,7 +1082,7 @@ let allUsersCache = [];
 let usersLoaded = false;
 let editingUserId = null;
 
-const ALL_PAGE_IDS = ["dashboard", "notes", "rules", "checklist", "jobs", "mechanics", "settings"];
+const ALL_PAGE_IDS = ["dashboard", "tasks", "notes", "rules", "checklist", "jobs", "mechanics", "settings"];
 
 async function checkLoginGate(){
   try {
@@ -986,11 +1174,11 @@ function getPagePermission(pageId){
 function canSeePage(pageId){ return getPagePermission(pageId) !== "none"; }
 function canEditPage(pageId){ return getPagePermission(pageId) === "edit"; }
 
-const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "users"];
+const SETTINGS_SECTIONS = ["manufacturer", "dealer", "emails", "currency", "appearance", "sessionTimeout", "vinEnquiry", "emailNotify", "users"];
 const SETTINGS_SECTION_LABELS = {
   manufacturer: "Manufacturer", dealer: "Dealer details", emails: "Warranty email recipients",
   currency: "Currency", appearance: "Appearance", sessionTimeout: "Session timeout",
-  vinEnquiry: "VIN enquiry reminder", users: "Users & permissions"
+  vinEnquiry: "VIN enquiry reminder", emailNotify: "Parts email notifications", users: "Users & permissions"
 };
 
 function getSettingsSectionPermission(sectionId){
@@ -1011,6 +1199,8 @@ function applySettingsSectionPermissions(){
       panel.style.display = level === "none" ? "none" : "";
       panel.classList.toggle("read-only", level === "view");
     });
+    const jumpLink = document.querySelector('.settings-jump-row a[href="#settingsPanel-' + sectionId + '"]');
+    if (jumpLink) jumpLink.style.display = level === "none" ? "none" : "";
   });
 }
 
@@ -1447,6 +1637,9 @@ const WIDGET_LIBRARY = {
   "list-recent": { title: "Recent activity", type: "list-recent" },
   "list-stale": { title: "Stale jobs (7+ days)", type: "list-stale" },
   "list-audit": { title: "Audit log", type: "list-audit" },
+  "list-tasks": { title: "Open tasks", type: "list-tasks" },
+  "stat-partsWaiting": { title: "Waiting on parts", type: "stat", render: ctx => ctx.partsWaitingCount },
+  "list-partsWaiting": { title: "Waiting on parts", type: "list-partsWaiting" },
   "stat-vinDue": { title: "VIN enquiries due", type: "stat", render: ctx => ctx.vinDueCount },
   "list-vindue": { title: "VIN enquiries due", type: "list-vindue" }
 };
@@ -1456,14 +1649,21 @@ const DEFAULT_LAYOUT = ["stat-openJobs","stat-pwaFlagged","stat-activeNotes","st
 
 let dashboardLayout = DEFAULT_LAYOUT.slice();
 let dashboardLayoutLoaded = false;
+let reportWidgets = []; // widget IDs flagged "include in report" — empty by default, opt-in
 let lastDashboardCtx = null;
 let dashChartInstances = [];
 
 async function loadDashboardLayout(){
   try {
     const doc = await db.collection("config").doc("dashboardLayout").get();
-    if (doc.exists && Array.isArray(doc.data().widgets) && doc.data().widgets.length){
-      dashboardLayout = doc.data().widgets.filter(id => WIDGET_LIBRARY[id]);
+    if (doc.exists){
+      const data = doc.data();
+      if (Array.isArray(data.widgets) && data.widgets.length){
+        dashboardLayout = data.widgets.filter(id => WIDGET_LIBRARY[id]);
+      }
+      if (Array.isArray(data.reportWidgets)){
+        reportWidgets = data.reportWidgets.filter(id => WIDGET_LIBRARY[id]);
+      }
     }
   } catch(err){
     console.error(err);
@@ -1473,7 +1673,7 @@ async function loadDashboardLayout(){
 
 function saveDashboardLayout(){
   if (!db) return;
-  db.collection("config").doc("dashboardLayout").set({ widgets: dashboardLayout })
+  db.collection("config").doc("dashboardLayout").set({ widgets: dashboardLayout, reportWidgets: reportWidgets })
     .catch(err => console.error("Couldn't save dashboard layout", err));
 }
 
@@ -1514,12 +1714,13 @@ async function loadDashboard(){
     const staleJobs = jobs.filter(j => j.updatedAt && j.updatedAt.toDate &&
       (now - j.updatedAt.toDate().getTime()) > 7 * 24 * 60 * 60 * 1000);
     const vinDueJobs = jobs.filter(j => getVinEnquiryStatus(j).due);
+    const partsWaitingJobs = jobs.filter(j => j.partsStatus === "needed" || j.partsStatus === "S");
 
     const mechanicsList = (mechDoc.exists && Array.isArray(mechDoc.data().names)) ? mechDoc.data().names : [];
     const jobTypesList = (rulesDoc.exists && Array.isArray(rulesDoc.data().jobTypes)) ? rulesDoc.data().jobTypes : [];
 
     const ctx = {
-      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs,
+      jobs, labelCounts, mechanicCounts, staleJobs, vinDueJobs, partsWaitingJobs,
       totalOpen: jobs.length,
       flaggedCount, completedFlagged,
       activeNotes: notesSnap.size,
@@ -1527,7 +1728,8 @@ async function loadDashboard(){
       mechanicCount: mechanicsList.length,
       jobTypeCount: jobTypesList.length,
       staleCount: staleJobs.length,
-      vinDueCount: vinDueJobs.length
+      vinDueCount: vinDueJobs.length,
+      partsWaitingCount: partsWaitingJobs.length
     };
     lastDashboardCtx = ctx;
 
@@ -1644,7 +1846,31 @@ function renderWidgetBody(type, body, ctx){
   } else if (type === "list-vindue"){
     if (!ctx.vinDueJobs.length){ body.innerHTML = '<p class="empty">Nothing due right now.</p>'; return; }
     ctx.vinDueJobs.slice(0, 10).forEach(job => body.appendChild(buildVinDueRow(job)));
+  } else if (type === "list-tasks"){
+    renderTasksWidget(body);
+  } else if (type === "list-partsWaiting"){
+    if (!ctx.partsWaitingJobs.length){ body.innerHTML = '<p class="empty">Nothing waiting on parts right now.</p>'; return; }
+    ctx.partsWaitingJobs.slice(0, 10).forEach(job => body.appendChild(buildPartsWaitingRow(job)));
   }
+}
+
+function buildPartsWaitingRow(job){
+  const row = document.createElement("div");
+  row.className = "activity-row";
+  const info = job.partsStatus ? PARTS_STATUS_INFO[job.partsStatus] : null;
+  const badgeHtml = info ? '<span class="parts-status-badge" style="background:' + info.bg + ';color:' + info.color + ';">' +
+    escapeHtml(info.badgeText) + '</span> ' : "";
+  const detail = job.partsETA ? "ETA: " + escapeHtml(job.partsETA) : (job.partsNote ? escapeHtml(job.partsNote) : "No detail yet");
+  row.innerHTML =
+    '<div><b>WIP ' + escapeHtml(job.id) + '</b>' + (job.reg ? " &middot; " + escapeHtml(job.reg) : "") +
+    '<div class="meta">' + badgeHtml + detail + '</div></div>';
+  const btn = document.createElement("button");
+  btn.className = "btn btn-secondary btn-inline";
+  btn.style.margin = "0";
+  btn.textContent = "Update";
+  btn.onclick = () => { showPage("jobs"); openPartsOverlay(job.id); };
+  row.appendChild(btn);
+  return row;
 }
 
 function buildVinDueRow(job){
@@ -1710,6 +1936,17 @@ function renderCustomizeList(){
     span.textContent = WIDGET_LIBRARY[id].title;
     row.appendChild(span);
 
+    const reportLabel = document.createElement("label");
+    reportLabel.className = "report-toggle";
+    const reportCb = document.createElement("input");
+    reportCb.type = "checkbox";
+    reportCb.checked = reportWidgets.includes(id);
+    reportCb.disabled = !isEnabled;
+    reportCb.onchange = () => toggleReportInclusion(id, reportCb.checked);
+    reportLabel.appendChild(reportCb);
+    reportLabel.appendChild(document.createTextNode("Report"));
+    row.appendChild(reportLabel);
+
     const upBtn = document.createElement("button");
     upBtn.className = "order-btn";
     upBtn.textContent = "\u2191";
@@ -1733,10 +1970,21 @@ function toggleWidget(id, enabled){
     if (!dashboardLayout.includes(id)) dashboardLayout.push(id);
   } else {
     dashboardLayout = dashboardLayout.filter(w => w !== id);
+    reportWidgets = reportWidgets.filter(w => w !== id); // can't be report-included if it's not even on the dashboard
   }
   saveDashboardLayout();
   renderCustomizeList();
   if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+}
+
+function toggleReportInclusion(id, included){
+  if (included){
+    if (!reportWidgets.includes(id)) reportWidgets.push(id);
+  } else {
+    reportWidgets = reportWidgets.filter(w => w !== id);
+  }
+  saveDashboardLayout();
+  if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx); // re-tag widgets for print
 }
 
 function moveWidget(id, delta){
@@ -1774,19 +2022,287 @@ function exportDashboardCSV(){
 }
 
 function exportOpenJobsCSV(){
-  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due"]];
+  const rows = [["WIP", "Reg", "Last Mechanic", "Items Sent", PWA_TERM + " Flagged", "Last Updated", "Days Since VIN Enquiry", "VIN Enquiry Due", "Parts Status", "Parts ETA", "Parts Ordered Date", "Parts Reserved Date", "Parts Note"]];
   currentlyFilteredJobs.forEach(job => {
     const when = job.updatedAt && job.updatedAt.toDate ? job.updatedAt.toDate().toISOString() : "";
     const vin = getVinEnquiryStatus(job);
+    const statusLabel = job.partsStatus && PARTS_STATUS_INFO[job.partsStatus] ? PARTS_STATUS_INFO[job.partsStatus].label : "";
     rows.push([
       job.id, job.reg || "", job.lastMechanic || "",
       Array.isArray(job.history) ? job.history.length : 0,
       job.pwaFlag ? "Yes" : "No", when,
       vin.daysSince === null ? "never logged" : vin.daysSince,
-      vin.due ? "Yes" : "No"
+      vin.due ? "Yes" : "No",
+      statusLabel, job.partsETA || "",
+      job.partsOrderedDate ? new Date(job.partsOrderedDate).toISOString() : "",
+      job.partsReceivedDate ? new Date(job.partsReceivedDate).toISOString() : "",
+      job.partsNote || ""
     ]);
   });
   downloadCSV(rows, "open-jobs-" + new Date().toISOString().slice(0,10) + ".csv");
+}
+
+/* ============================================================
+   TASKS — shared task list, visible to every admin. Status is a
+   real workflow field (todo / in_progress / done), not just a
+   checkbox — legacy docs saved as status "open" are treated as
+   "todo" so nothing old breaks.
+   ============================================================ */
+let tasksCache = [];
+let tasksLoaded = false;
+let newTaskPriority = "medium";
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+const TASK_STATUSES = ["todo", "in_progress", "done"];
+const TASK_STATUS_LABELS = { todo: "To Do", in_progress: "In Progress", done: "Done" };
+
+function normalizeTaskStatus(status){
+  if (status === "done") return "done";
+  if (status === "in_progress") return "in_progress";
+  return "todo"; // covers legacy "open", "todo", and anything unset
+}
+
+function selectNewTaskPriority(p){
+  newTaskPriority = p;
+  document.querySelectorAll(".priority-select-row .priority-btn").forEach(b => b.classList.toggle("active", b.dataset.priority === p));
+}
+
+async function loadTasks(){
+  const boardEl = document.getElementById("tasksBoard");
+  boardEl.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const snapshot = await db.collection("tasks").orderBy("createdAt", "desc").get();
+    tasksCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    tasksLoaded = true;
+    renderTasks();
+  } catch(err){
+    console.error(err);
+    boardEl.innerHTML = '<p class="empty">Couldn\'t load — check your Firebase config.</p>';
+  }
+}
+
+function renderTasks(){
+  const boardEl = document.getElementById("tasksBoard");
+  if (!boardEl) return;
+  if (!tasksCache.length){
+    boardEl.innerHTML = '<p class="empty">No tasks yet — add one above.</p>';
+    return;
+  }
+  boardEl.innerHTML = "";
+  TASK_STATUSES.forEach(status => {
+    const group = tasksCache.filter(t => normalizeTaskStatus(t.status) === status).sort((a, b) =>
+      (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1) || tsMillis(b.createdAt) - tsMillis(a.createdAt));
+
+    const groupEl = document.createElement("div");
+    groupEl.className = "task-group" + (status === "done" ? " collapsed" : "");
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "task-group-header group-" + status;
+    header.innerHTML = "<span>" + TASK_STATUS_LABELS[status] + " (" + group.length + ")</span><span class=\"chevron\">\u25be</span>";
+    header.onclick = () => groupEl.classList.toggle("collapsed");
+    groupEl.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "task-group-body";
+    if (!group.length){
+      body.innerHTML = '<p class="empty" style="padding:12px 14px;margin:0;">Nothing here.</p>';
+    } else {
+      group.forEach(t => body.appendChild(buildTaskRow(t, false)));
+    }
+    groupEl.appendChild(body);
+    boardEl.appendChild(groupEl);
+  });
+}
+
+function buildTaskRow(task, compact){
+  const status = normalizeTaskStatus(task.status);
+  const priority = task.priority || "medium";
+
+  const row = document.createElement("div");
+  row.className = "task-row" + (compact ? " compact" : "");
+
+  const statusSelect = document.createElement("select");
+  statusSelect.className = "pill-select status-" + status;
+  TASK_STATUSES.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = TASK_STATUS_LABELS[s];
+    if (s === status) opt.selected = true;
+    statusSelect.appendChild(opt);
+  });
+  statusSelect.onchange = () => changeTaskStatus(task.id, statusSelect.value);
+  row.appendChild(statusSelect);
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "task-row-title";
+  const titleEl = document.createElement("div");
+  titleEl.className = "title" + (status === "done" ? " done-text" : "");
+  titleEl.textContent = task.title;
+  titleWrap.appendChild(titleEl);
+  if (task.description && !compact){
+    const descEl = document.createElement("div");
+    descEl.className = "desc";
+    descEl.textContent = task.description;
+    titleWrap.appendChild(descEl);
+  }
+  row.appendChild(titleWrap);
+
+  const prioritySelect = document.createElement("select");
+  prioritySelect.className = "pill-select priority-" + priority;
+  ["low", "medium", "high"].forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = PRIORITY_LABELS[p];
+    if (p === priority) opt.selected = true;
+    prioritySelect.appendChild(opt);
+  });
+  prioritySelect.onchange = () => changeTaskPriority(task.id, prioritySelect.value);
+  row.appendChild(prioritySelect);
+
+  if (!compact){
+    const meta = document.createElement("div");
+    meta.className = "task-row-meta";
+    const when = task.createdAt && task.createdAt.toDate ? task.createdAt.toDate().toLocaleDateString() : "";
+    let metaHtml = escapeHtml(task.createdBy || "Unknown") + (when ? " \u00b7 " + escapeHtml(when) : "");
+    if (status === "done" && task.completedBy) metaHtml += "<br>Done by " + escapeHtml(task.completedBy);
+    meta.innerHTML = metaHtml;
+    row.appendChild(meta);
+  }
+
+  const delBtn = document.createElement("button");
+  delBtn.type = "button";
+  delBtn.className = "task-row-delete";
+  delBtn.title = "Delete";
+  delBtn.textContent = "\u00d7";
+  delBtn.onclick = () => deleteTask(task.id, task.title);
+  row.appendChild(delBtn);
+
+  return row;
+}
+
+async function createTask(){
+  const titleEl = document.getElementById("newTaskTitle");
+  const descEl = document.getElementById("newTaskDesc");
+  const statusEl = document.getElementById("newTaskStatus");
+  const title = titleEl.value.trim();
+  const description = descEl.value.trim();
+
+  if (!title){
+    statusEl.textContent = "Give the task a title first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  try {
+    const docRef = await db.collection("tasks").add({
+      title: title, description: description, priority: newTaskPriority, status: "todo",
+      createdBy: currentUserName(), createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedBy: null, completedAt: null
+    });
+    tasksCache.unshift({
+      id: docRef.id, title: title, description: description, priority: newTaskPriority, status: "todo",
+      createdBy: currentUserName(), createdAt: { toDate: () => new Date() }, completedBy: null, completedAt: null
+    });
+    titleEl.value = "";
+    descEl.value = "";
+    renderTasks();
+    statusEl.textContent = "Added.";
+    statusEl.className = "status ok";
+    logAudit("Added task \"" + title + "\" (" + PRIORITY_LABELS[newTaskPriority] + " priority)");
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+async function changeTaskStatus(taskId, newStatus){
+  const task = tasksCache.find(t => t.id === taskId);
+  if (!task) return;
+  const updates = { status: newStatus };
+  if (newStatus === "done"){
+    updates.completedBy = currentUserName();
+    updates.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+  } else {
+    updates.completedBy = null;
+    updates.completedAt = null;
+  }
+  try {
+    await db.collection("tasks").doc(taskId).set(updates, { merge: true });
+    task.status = newStatus;
+    task.completedBy = newStatus === "done" ? currentUserName() : null;
+    task.completedAt = newStatus === "done" ? { toDate: () => new Date() } : null;
+    renderTasks();
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit("Moved task \"" + task.title + "\" to " + TASK_STATUS_LABELS[newStatus]);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+async function changeTaskPriority(taskId, newPriority){
+  const task = tasksCache.find(t => t.id === taskId);
+  if (!task) return;
+  try {
+    await db.collection("tasks").doc(taskId).set({ priority: newPriority }, { merge: true });
+    task.priority = newPriority;
+    renderTasks();
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit("Changed priority of task \"" + task.title + "\" to " + PRIORITY_LABELS[newPriority]);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+async function deleteTask(taskId, title){
+  if (!confirm('Delete task "' + title + '"?')) return;
+  try {
+    await db.collection("tasks").doc(taskId).delete();
+    tasksCache = tasksCache.filter(t => t.id !== taskId);
+    renderTasks();
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    logAudit("Deleted task \"" + title + "\"");
+  } catch(err){
+    console.error(err);
+    alert("Couldn't delete — try again.");
+  }
+}
+
+async function renderTasksWidget(container){
+  container.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    if (!tasksLoaded){
+      const snapshot = await db.collection("tasks").orderBy("createdAt", "desc").get();
+      tasksCache = snapshot.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      tasksLoaded = true;
+    }
+    const active = tasksCache.filter(t => normalizeTaskStatus(t.status) !== "done")
+      .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1));
+
+    if (!active.length){
+      container.innerHTML = '<p class="empty">No open tasks \u2014 all caught up.</p>';
+      return;
+    }
+    container.innerHTML = "";
+    const list = document.createElement("div");
+    list.className = "task-widget-list";
+    active.slice(0, 8).forEach(t => list.appendChild(buildTaskRow(t, true)));
+    container.appendChild(list);
+
+    const viewAllBtn = document.createElement("button");
+    viewAllBtn.className = "btn btn-secondary btn-inline";
+    viewAllBtn.style.marginTop = "10px";
+    viewAllBtn.textContent = "View all tasks";
+    viewAllBtn.onclick = () => showPage("tasks");
+    container.appendChild(viewAllBtn);
+  } catch(err){
+    console.error(err);
+    container.innerHTML = '<p class="empty">Couldn\'t load.</p>';
+  }
 }
 
 /* ============================================================
@@ -1925,6 +2441,7 @@ async function refreshPwaFlagRow(wip){
   flagStatus.textContent = flagged
     ? "\ud83d\udd34 Flagged as needing " + PWA_TERM + (selectedItems.length ? " (" + selectedItems.length + " item" + (selectedItems.length > 1 ? "s" : "") + ")" : "")
     : "Not flagged";
+  document.getElementById("pwaFlagSimpleCheckbox").checked = flagged;
 
   if (!pwaChecklistItemsCache.length){
     checklistEl.innerHTML = '<p class="empty">No checklist items set up yet — add some on the Checklist items page.</p>';
@@ -1947,14 +2464,32 @@ async function refreshPwaFlagRow(wip){
   });
 }
 
+async function togglePwaFlagSimple(){
+  if (!currentWipForFlag) return;
+  const cb = document.getElementById("pwaFlagSimpleCheckbox");
+  if (cb.checked){
+    try {
+      await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true }, { merge: true });
+      refreshPwaFlagRow(currentWipForFlag);
+      logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM);
+    } catch(err){
+      console.error(err);
+      alert("Couldn't save — check your Firebase config.");
+      cb.checked = false;
+    }
+  } else {
+    clearPwaFlagForWip();
+  }
+}
+
 async function savePwaFlagForWip(){
   if (!currentWipForFlag) return;
   const checked = Array.from(document.querySelectorAll("#pwaWipChecklist input[type=checkbox]:checked")).map(cb => cb.value);
   try {
     await db.collection("jobs").doc(currentWipForFlag).set({ pwaFlag: true, pwaRequiredItems: checked }, { merge: true });
     refreshPwaFlagRow(currentWipForFlag);
-    logAudit("Flagged WIP " + currentWipForFlag + " as needing " + PWA_TERM +
-      (checked.length ? " \u2014 items: " + checked.join(", ") : " (no specific items ticked)"));
+    logAudit("Updated required items for WIP " + currentWipForFlag +
+      (checked.length ? " \u2014 items: " + checked.join(", ") : " (cleared, no items)"));
   } catch(err){
     console.error(err);
     alert("Couldn't save — check your Firebase config.");
@@ -2327,6 +2862,202 @@ async function logVinEnquiry(wip){
   }
 }
 
+const PARTS_STATUS_INFO = {
+  needed: { label: "Needed", badgeText: "Needed", color: "#FF9C9C", bg: "#2B0705" },
+  S: { label: "Ordered", badgeText: "S", color: "#F5D77A", bg: "#3A2E00" },
+  R: { label: "Reserved", badgeText: "R", color: "#5FCB82", bg: "#123A1E" },
+  M: { label: "Memo", badgeText: "M", color: "#8FCBEE", bg: "#0D2A3D" }
+};
+
+function buildPartsInfoLine(job){
+  const info = job.partsStatus ? PARTS_STATUS_INFO[job.partsStatus] : null;
+  const hasAnything = info || job.partsNote || job.partsETA;
+  if (!hasAnything) return "";
+
+  let html = '<div class="joc-meta joc-parts-line">';
+  if (info){
+    html += '<span class="parts-status-badge" style="background:' + info.bg + ';color:' + info.color + ';">' +
+      escapeHtml(info.badgeText) + '</span> ' + escapeHtml(info.label);
+  }
+  if (job.partsETA) html += (info ? " &middot; " : "") + "ETA: " + escapeHtml(job.partsETA);
+  if (job.partsNote) html += (info || job.partsETA ? "<br>" : "") + escapeHtml(job.partsNote);
+  html += '</div>';
+  return html;
+}
+
+async function updatePartsFields(wip, fields){
+  const updates = Object.assign({
+    partsUpdatedBy: currentUserName(),
+    partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, fields);
+  try {
+    await db.collection("jobs").doc(wip).set(updates, { merge: true });
+    const job = openJobsCache.find(j => j.id === wip);
+    if (job) Object.assign(job, fields, { partsUpdatedBy: currentUserName(), partsUpdatedAt: { toDate: () => new Date() } });
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    const label = fields.partsStatus && PARTS_STATUS_INFO[fields.partsStatus] ? PARTS_STATUS_INFO[fields.partsStatus].label : fields.partsStatus;
+    logAudit("Set parts status to \"" + label + "\" on WIP " + wip);
+  } catch(err){
+    console.error(err);
+    alert("Couldn't update — try again.");
+  }
+}
+
+function markPartsNeeded(wip){ updatePartsFields(wip, { partsStatus: "needed" }); }
+
+function markPartsOrdered(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  const fields = { partsStatus: "S" };
+  if (!job || !job.partsOrderedDate) fields.partsOrderedDate = new Date().toISOString();
+  updatePartsFields(wip, fields);
+}
+
+function markPartsReserved(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  const fields = { partsStatus: "R" };
+  if (!job || !job.partsReceivedDate) fields.partsReceivedDate = new Date().toISOString();
+  updatePartsFields(wip, fields);
+}
+
+let currentPartsWip = null;
+
+function openPartsOverlay(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  currentPartsWip = wip;
+  document.getElementById("partsOverlayWip").textContent = "WIP " + wip + (job && job.reg ? " \u00b7 " + job.reg : "");
+  document.getElementById("partsStatusSelect").value = (job && job.partsStatus) || "";
+  document.getElementById("partsETAField").value = (job && job.partsETA) || "";
+  document.getElementById("partsNoteField").value = (job && job.partsNote) || "";
+
+  const datesInfo = document.getElementById("partsDatesInfo");
+  const bits = [];
+  if (job && job.partsOrderedDate) bits.push("Ordered " + new Date(job.partsOrderedDate).toLocaleDateString());
+  if (job && job.partsReceivedDate) bits.push("Reserved " + new Date(job.partsReceivedDate).toLocaleDateString());
+  datesInfo.textContent = bits.join(" \u00b7 ");
+  datesInfo.className = "status";
+
+  document.getElementById("partsStatusMsg").textContent = "";
+  document.getElementById("partsOverlay").classList.add("show");
+}
+
+function closePartsOverlay(){
+  document.getElementById("partsOverlay").classList.remove("show");
+  currentPartsWip = null;
+}
+
+async function savePartsStatus(){
+  if (!currentPartsWip) return;
+  const status = document.getElementById("partsStatusSelect").value; // "" | "needed" | "S" | "R" | "M"
+  const eta = document.getElementById("partsETAField").value.trim();
+  const note = document.getElementById("partsNoteField").value.trim();
+  const statusEl = document.getElementById("partsStatusMsg");
+
+  const job = openJobsCache.find(j => j.id === currentPartsWip);
+  const updates = {
+    partsStatus: status || null,
+    partsETA: eta,
+    partsNote: note,
+    partsUpdatedBy: currentUserName(),
+    partsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  // Manually setting S or R here still stamps a date, same as the quick-action buttons would.
+  if (status === "S" && (!job || !job.partsOrderedDate)) updates.partsOrderedDate = new Date().toISOString();
+  if (status === "R" && (!job || !job.partsReceivedDate)) updates.partsReceivedDate = new Date().toISOString();
+
+  try {
+    await db.collection("jobs").doc(currentPartsWip).set(updates, { merge: true });
+    if (job) Object.assign(job, updates, { partsUpdatedAt: { toDate: () => new Date() } });
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    if (lastDashboardCtx) renderDashboardWidgets(lastDashboardCtx);
+    const label = status && PARTS_STATUS_INFO[status] ? PARTS_STATUS_INFO[status].label : (status || "None");
+    logAudit("Updated parts details on WIP " + currentPartsWip + " (" + label + ")");
+    closePartsOverlay();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — try again.";
+    statusEl.className = "status err";
+  }
+}
+
+let currentNotifyWip = null;
+
+function openNotifyPartsOverlay(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  if (!job) return;
+  currentNotifyWip = wip;
+
+  document.getElementById("notifyPartsWipInfo").textContent =
+    "WIP " + wip + (job.reg ? " \u00b7 " + job.reg : "") +
+    (job.partsNotifiedAt ? " \u2014 already notified once" : "");
+
+  document.getElementById("notifyPartsField").value = job.partsNote || "";
+  document.getElementById("notifyPartsNote").value = "";
+  document.getElementById("notifyPartsStatus").textContent = emailNotifyConfigured() ? "" : "Email notifications aren't set up yet \u2014 configure them in Settings first.";
+  document.getElementById("notifyPartsStatus").className = emailNotifyConfigured() ? "status" : "status err";
+  document.getElementById("notifyPartsOverlay").classList.add("show");
+}
+
+function closeNotifyPartsOverlay(){
+  document.getElementById("notifyPartsOverlay").classList.remove("show");
+  currentNotifyWip = null;
+}
+
+async function sendPartsNotification(){
+  if (!currentNotifyWip) return;
+  const job = openJobsCache.find(j => j.id === currentNotifyWip);
+  if (!job) return;
+  const statusEl = document.getElementById("notifyPartsStatus");
+
+  if (!emailNotifyConfigured()){
+    statusEl.textContent = "Email notifications aren't set up yet \u2014 configure them in Settings first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  const partsNeeded = document.getElementById("notifyPartsField").value.trim();
+  const note = document.getElementById("notifyPartsNote").value.trim();
+
+  if (!partsNeeded){
+    statusEl.textContent = "Say what part's needed first.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  statusEl.textContent = "Sending…";
+  statusEl.className = "status";
+
+  try {
+    await sendEmailViaEmailJS({
+      to_email: appSettingsCache.partsRecipient,
+      wip: currentNotifyWip,
+      reg: job.reg || "",
+      items: partsNeeded,
+      note: note || "(none)",
+      sender: currentUserName()
+    });
+
+    await db.collection("jobs").doc(currentNotifyWip).set({
+      partsNotifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      partsNotifiedBy: currentUserName(),
+      partsNote: partsNeeded
+    }, { merge: true });
+    job.partsNotifiedAt = { toDate: () => new Date() };
+    job.partsNotifiedBy = currentUserName();
+    job.partsNote = partsNeeded;
+
+    statusEl.textContent = "Sent.";
+    statusEl.className = "status ok";
+    logAudit("Notified parts team about WIP " + currentNotifyWip + (note ? " \u2014 " + note : ""));
+    renderOpenJobsList(document.getElementById("jobSearchField").value);
+    setTimeout(closeNotifyPartsOverlay, 900);
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send \u2014 check your EmailJS setup in Settings.";
+    statusEl.className = "status err";
+  }
+}
+
 function setJobFilter(filter){
   currentJobFilter = filter;
   document.querySelectorAll("#jobsFilterRow .filter-chip").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
@@ -2385,6 +3116,8 @@ function renderOpenJobsList(filterText){
       const t = tsMillis(j.updatedAt);
       return t && (Date.now() - t) > 7 * 24 * 60 * 60 * 1000;
     });
+  } else if (currentJobFilter === "parts"){
+    filtered = filtered.filter(j => j.partsStatus === "needed" || j.partsStatus === "S");
   }
 
   const sortSelect = document.getElementById("jobSortSelect");
@@ -2437,7 +3170,8 @@ function buildOpenJobCard(job){
     historyCount + " sent" +
     (job.pwaFlag ? " &middot; \ud83d\udd34 " + PWA_TERM + " flagged" : "") +
     '</div><div class="joc-meta">Last opened: ' + escapeHtml(when) + '</div>' +
-    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>';
+    '<div class="joc-meta' + (vin.due ? ' joc-vin-due' : '') + '">' + escapeHtml(vinText) + '</div>' +
+    buildPartsInfoLine(job);
   topRow.appendChild(info);
   card.appendChild(topRow);
 
@@ -2450,13 +3184,53 @@ function buildOpenJobCard(job){
   vinBtn.onclick = () => logVinEnquiry(job.id);
   actionRow.appendChild(vinBtn);
 
+  const partsGroupLabel = document.createElement("span");
+  partsGroupLabel.className = "joc-group-label";
+  partsGroupLabel.textContent = "Parts:";
+  actionRow.appendChild(partsGroupLabel);
+
+  const needBtn = document.createElement("button");
+  needBtn.className = "btn btn-secondary";
+  needBtn.textContent = "Need part";
+  needBtn.onclick = () => markPartsNeeded(job.id);
+  actionRow.appendChild(needBtn);
+
+  const orderedBtn = document.createElement("button");
+  orderedBtn.className = "btn btn-secondary";
+  orderedBtn.textContent = "Mark ordered";
+  orderedBtn.onclick = () => markPartsOrdered(job.id);
+  actionRow.appendChild(orderedBtn);
+
+  const reservedBtn = document.createElement("button");
+  reservedBtn.className = "btn btn-secondary";
+  reservedBtn.textContent = "Mark reserved";
+  reservedBtn.onclick = () => markPartsReserved(job.id);
+  actionRow.appendChild(reservedBtn);
+
+  const partsDetailsBtn = document.createElement("button");
+  partsDetailsBtn.className = "btn btn-secondary";
+  partsDetailsBtn.textContent = "Parts details";
+  partsDetailsBtn.onclick = () => openPartsOverlay(job.id);
+  actionRow.appendChild(partsDetailsBtn);
+
+  const notifyBtn = document.createElement("button");
+  notifyBtn.className = "btn btn-secondary";
+  notifyBtn.textContent = job.partsNotifiedAt ? "Re-notify parts" : "Notify parts";
+  notifyBtn.onclick = () => openNotifyPartsOverlay(job.id);
+  actionRow.appendChild(notifyBtn);
+
+  card.appendChild(actionRow);
+
+  // Close job sits on its own row, separated by a divider, so it can never
+  // be mistaken for one of the routine status-update buttons above.
+  const closeRow = document.createElement("div");
+  closeRow.className = "joc-close-row";
   const closeBtn = document.createElement("button");
   closeBtn.className = "btn btn-delete";
   closeBtn.textContent = "Close job";
   closeBtn.onclick = () => closeJobs([job.id]);
-  actionRow.appendChild(closeBtn);
-
-  card.appendChild(actionRow);
+  closeRow.appendChild(closeBtn);
+  card.appendChild(closeRow);
 
   return card;
 }
@@ -2591,7 +3365,8 @@ async function removeMechanicAdmin(index){
 /* ============================================================
    SETTINGS
    ============================================================ */
-let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10 };
+let appSettingsCache = { dealerName: "", dealerAddress: "", currencySymbol: "\u20ac", emailRecipients: [], pinTimeoutMinutes: 60, vinEnquiryDays: 10,
+  emailjsServiceId: "", emailjsTemplateId: "", emailjsPublicKey: "", partsRecipient: "" };
 let appSettingsLoaded = false;
 
 async function loadAppSettingsAdmin(){
@@ -2605,6 +3380,10 @@ async function loadAppSettingsAdmin(){
       appSettingsCache.emailRecipients = Array.isArray(data.emailRecipients) ? data.emailRecipients : [];
       appSettingsCache.pinTimeoutMinutes = typeof data.pinTimeoutMinutes === "number" ? data.pinTimeoutMinutes : 60;
       appSettingsCache.vinEnquiryDays = typeof data.vinEnquiryDays === "number" ? data.vinEnquiryDays : 10;
+      appSettingsCache.emailjsServiceId = data.emailjsServiceId || "";
+      appSettingsCache.emailjsTemplateId = data.emailjsTemplateId || "";
+      appSettingsCache.emailjsPublicKey = data.emailjsPublicKey || "";
+      appSettingsCache.partsRecipient = data.partsRecipient || "";
       manufacturer = data.manufacturer || "kia";
       pinTimeoutMinutes = appSettingsCache.pinTimeoutMinutes;
       vinEnquiryDays = appSettingsCache.vinEnquiryDays;
@@ -2623,6 +3402,10 @@ async function loadAppSettingsAdmin(){
   document.getElementById("currencyField").value = appSettingsCache.currencySymbol;
   document.getElementById("pinTimeoutField").value = appSettingsCache.pinTimeoutMinutes;
   document.getElementById("vinEnquiryDaysField").value = appSettingsCache.vinEnquiryDays;
+  document.getElementById("emailjsServiceIdField").value = appSettingsCache.emailjsServiceId;
+  document.getElementById("emailjsTemplateIdField").value = appSettingsCache.emailjsTemplateId;
+  document.getElementById("emailjsPublicKeyField").value = appSettingsCache.emailjsPublicKey;
+  document.getElementById("partsRecipientField").value = appSettingsCache.partsRecipient;
   populateColorFields();
   document.getElementById("mfrRadioKia").checked = manufacturer !== "generic";
   document.getElementById("mfrRadioGeneric").checked = manufacturer === "generic";
@@ -2675,9 +3458,78 @@ async function saveVinEnquiryDays(){
   }
 }
 
+async function saveEmailNotifySettings(){
+  const statusEl = document.getElementById("emailNotifyStatus");
+  appSettingsCache.emailjsServiceId = document.getElementById("emailjsServiceIdField").value.trim();
+  appSettingsCache.emailjsTemplateId = document.getElementById("emailjsTemplateIdField").value.trim();
+  appSettingsCache.emailjsPublicKey = document.getElementById("emailjsPublicKeyField").value.trim();
+  appSettingsCache.partsRecipient = document.getElementById("partsRecipientField").value.trim();
+  try {
+    await saveAppSettingsToFirestore();
+    statusEl.textContent = "Saved.";
+    statusEl.className = "status ok";
+    logAudit("Updated parts email notification settings");
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save — check your Firebase config.";
+    statusEl.className = "status err";
+  }
+}
+
+function emailNotifyConfigured(){
+  return !!(appSettingsCache.emailjsServiceId && appSettingsCache.emailjsTemplateId &&
+    appSettingsCache.emailjsPublicKey && appSettingsCache.partsRecipient);
+}
+
+async function sendEmailViaEmailJS(templateParams){
+  if (!emailNotifyConfigured()){
+    throw new Error("Email notifications aren't fully configured yet.");
+  }
+  if (typeof emailjs === "undefined"){
+    throw new Error("EmailJS didn't load — check your internet connection and try again.");
+  }
+  return emailjs.send(appSettingsCache.emailjsServiceId, appSettingsCache.emailjsTemplateId, templateParams, appSettingsCache.emailjsPublicKey);
+}
+
+async function sendTestEmail(){
+  const statusEl = document.getElementById("emailNotifyStatus");
+  // Grab whatever's currently in the fields, not just what was last saved — lets you test before hitting Save.
+  const serviceId = document.getElementById("emailjsServiceIdField").value.trim();
+  const templateId = document.getElementById("emailjsTemplateIdField").value.trim();
+  const publicKey = document.getElementById("emailjsPublicKeyField").value.trim();
+  const recipient = document.getElementById("partsRecipientField").value.trim();
+
+  if (!serviceId || !templateId || !publicKey || !recipient){
+    statusEl.textContent = "Fill in all four fields first.";
+    statusEl.className = "status err";
+    return;
+  }
+  if (typeof emailjs === "undefined"){
+    statusEl.textContent = "EmailJS didn't load — check your internet connection and try again.";
+    statusEl.className = "status err";
+    return;
+  }
+
+  statusEl.textContent = "Sending test email…";
+  statusEl.className = "status";
+  try {
+    await emailjs.send(serviceId, templateId, {
+      to_email: recipient, wip: "TEST", reg: "TEST123", items: "This is a test \u2014 no real job", note: "Sent from Settings to confirm the setup works.", sender: currentUserName()
+    }, publicKey);
+    statusEl.textContent = "Test email sent \u2014 check " + recipient + ".";
+    statusEl.className = "status ok";
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't send \u2014 double-check your Service ID, Template ID, and Public Key.";
+    statusEl.className = "status err";
+  }
+}
+
 async function saveAppSettingsToFirestore(){
   await db.collection("config").doc("appSettings").set(appSettingsCache, { merge: true });
 }
+
+
 
 async function saveDealerDetails(){
   const statusEl = document.getElementById("dealerStatus");
@@ -2813,6 +3665,10 @@ async function loadManufacturerSetting(){
       if (data.customColors && typeof data.customColors === "object"){
         customColors = Object.assign({ accent: "", sidebarBg: "", success: "", danger: "" }, data.customColors);
       }
+      appSettingsCache.emailjsServiceId = data.emailjsServiceId || "";
+      appSettingsCache.emailjsTemplateId = data.emailjsTemplateId || "";
+      appSettingsCache.emailjsPublicKey = data.emailjsPublicKey || "";
+      appSettingsCache.partsRecipient = data.partsRecipient || "";
     }
   } catch(err){
     console.error("Couldn't load manufacturer setting", err);
