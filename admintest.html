@@ -197,6 +197,21 @@
   .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
     padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
   .modal-box h2{margin:0 0 4px;font-size:18px;}
+  .modal-box.wide{max-width:640px;}
+  /* ADP job lines (parts / labour) */
+  .adp-lines{margin:10px 0 6px;}
+  .adp-lines-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin:14px 0 4px;}
+  .adp-line{padding:9px 0;border-bottom:1px solid var(--border);}
+  .adp-line:last-child{border-bottom:none;}
+  .adp-line b{letter-spacing:.3px;}
+  .adp-line .adp-desc{margin-top:2px;}
+  .adp-line .adp-meta{margin-top:2px;color:var(--text-dim);font-size:12.5px;}
+  .adp-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:10px;margin-right:8px;
+    vertical-align:1px;background:var(--surface-2);color:var(--text-dim);}
+  .adp-tag.part-x{background:#1F5130;color:#C4F0CF;}
+  .adp-tag.part-m{background:#5A1714;color:#FFC2BD;}
+  .adp-tag.part-other{background:#173A5C;color:#BFDDF7;}
+  .adp-empty{color:var(--text-dim);font-size:13px;padding:6px 0;}
   .customize-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
   .customize-row:last-child{border-bottom:none;}
   .customize-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
@@ -739,9 +754,12 @@
 </div>
 
 <div class="modal-overlay" id="partsOverlay">
-  <div class="modal-box">
+  <div class="modal-box wide">
     <h2>Parts details</h2>
     <p class="panel-sub" id="partsOverlayWip"></p>
+
+    <div class="adp-lines-title">Parts on this job (from ADP)</div>
+    <div class="adp-lines" id="partsOverlayAdpLines"></div>
 
     <label for="partsStatusSelect">Status</label>
     <select id="partsStatusSelect">
@@ -765,6 +783,17 @@
       <button class="btn btn-secondary" style="margin:0;" onclick="closePartsOverlay()">Cancel</button>
     </div>
     <div class="status" id="partsStatusMsg"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="labourOverlay" onclick="if(event.target===this)closeLabourOverlay()">
+  <div class="modal-box wide">
+    <h2>Labour lines</h2>
+    <p class="panel-sub" id="labourOverlayWip"></p>
+    <div class="adp-lines" id="labourOverlayLines"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-secondary" style="margin:0;" onclick="closeLabourOverlay()">Close</button>
+    </div>
   </div>
 </div>
 
@@ -2926,6 +2955,64 @@ function markPartsReserved(wip){
 
 let currentPartsWip = null;
 
+/* ---------- ADP job lines (pulled in by "Add from ADP") ---------- */
+function adpLinesOfType(job, type){
+  return job && Array.isArray(job.lines) ? job.lines.filter(l => l.type === type) : [];
+}
+
+function adpPartTagClass(status){
+  const st = String(status || "").trim().toUpperCase();
+  if (st === "X") return "part-x";
+  if (st === "M") return "part-m";
+  return "part-other";
+}
+
+function fmtAdpDate(v){
+  if (!v) return "";
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v + "T00:00:00") : null;
+  return d && !isNaN(d) ? d.toLocaleDateString() : String(v);
+}
+
+function formatAdpLines(lines, job){
+  if (!lines.length){
+    return '<div class="adp-empty">' + (job && Array.isArray(job.lines)
+      ? "None on this job."
+      : "Not pulled from ADP yet \u2014 open the job in ADP and press \u201cAdd from ADP\u201d.") + '</div>';
+  }
+  const pulled = job && job.linesUpdatedAt ? '<div class="adp-empty">Pulled from ADP ' + escapeHtml(new Date(job.linesUpdatedAt).toLocaleString()) + '</div>' : "";
+  return lines.map(l => {
+    if (l.type === "part"){
+      const meta = ["Qty " + (l.qty || "?")];
+      if (l.status) meta.push("Status " + l.status);
+      if (l.price) meta.push("\u20ac" + l.price + (l.discountPct && Number(l.discountPct) ? " less " + l.discountPct + "%" : ""));
+      if (l.bin) meta.push("Bin " + l.bin);
+      if (l.dateRequired) meta.push("Required " + fmtAdpDate(l.dateRequired));
+      if (l.warrantyCode) meta.push("Pay code " + l.warrantyCode);
+      if (l.supplierName) meta.push(l.supplierName);
+      return '<div class="adp-line"><span class="adp-tag ' + adpPartTagClass(l.status) + '">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
+        '<div class="adp-desc">' + escapeHtml(l.description || "") + '</div>' +
+        '<div class="adp-meta">' + escapeHtml(meta.join(" \u00b7 ")) + '</div></div>';
+    }
+    const meta = [];
+    if (l.hours) meta.push(l.hours + " h");
+    if (l.rate) meta.push("\u20ac" + l.rate + "/h" + (l.discountPct && Number(l.discountPct) ? " less " + l.discountPct + "%" : ""));
+    return '<div class="adp-line"><span class="adp-tag">LABOUR</span><b>' + escapeHtml(l.opCode || "") + '</b>' +
+      '<div class="adp-desc">' + escapeHtml(l.description || "") + '</div>' +
+      (meta.length ? '<div class="adp-meta">' + escapeHtml(meta.join(" \u00b7 ")) + '</div>' : '') + '</div>';
+  }).join("") + pulled;
+}
+
+function openLabourOverlay(wip){
+  const job = openJobsCache.find(j => j.id === wip);
+  document.getElementById("labourOverlayWip").textContent = "WIP " + wip + (job && job.reg ? " \u00b7 " + job.reg : "");
+  document.getElementById("labourOverlayLines").innerHTML = formatAdpLines(adpLinesOfType(job, "labour"), job);
+  document.getElementById("labourOverlay").classList.add("show");
+}
+
+function closeLabourOverlay(){
+  document.getElementById("labourOverlay").classList.remove("show");
+}
+
 function openPartsOverlay(wip){
   const job = openJobsCache.find(j => j.id === wip);
   currentPartsWip = wip;
@@ -2940,6 +3027,8 @@ function openPartsOverlay(wip){
   if (job && job.partsReceivedDate) bits.push("Reserved " + new Date(job.partsReceivedDate).toLocaleDateString());
   datesInfo.textContent = bits.join(" \u00b7 ");
   datesInfo.className = "status";
+
+  document.getElementById("partsOverlayAdpLines").innerHTML = formatAdpLines(adpLinesOfType(job, "part"), job);
 
   document.getElementById("partsStatusMsg").textContent = "";
   document.getElementById("partsOverlay").classList.add("show");
@@ -3289,9 +3378,17 @@ function buildOpenJobCard(job){
 
   const partsDetailsBtn = document.createElement("button");
   partsDetailsBtn.className = "btn btn-secondary";
-  partsDetailsBtn.textContent = "Parts details";
+  const adpParts = adpLinesOfType(job, "part");
+  const adpLabour = adpLinesOfType(job, "labour");
+  partsDetailsBtn.textContent = "Parts details" + (adpParts.length ? " (" + adpParts.length + ")" : "");
   partsDetailsBtn.onclick = () => openPartsOverlay(job.id);
   actionRow.appendChild(partsDetailsBtn);
+
+  const labourBtn = document.createElement("button");
+  labourBtn.className = "btn btn-secondary";
+  labourBtn.textContent = "Labour lines" + (adpLabour.length ? " (" + adpLabour.length + ")" : "");
+  labourBtn.onclick = () => openLabourOverlay(job.id);
+  actionRow.appendChild(labourBtn);
 
   const notifyBtn = document.createElement("button");
   notifyBtn.className = "btn btn-secondary";
