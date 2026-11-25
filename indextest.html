@@ -105,7 +105,10 @@
   #noteDetailBody .line-row b{font-size:15px;letter-spacing:.3px;}
   #noteDetailBody .line-row .line-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:10px;
     margin-right:8px;vertical-align:2px;background:var(--surface-2,#222);color:var(--text-dim);}
-  #noteDetailBody .line-row .line-tag.part{background:#1F5130;color:#C4F0CF;}
+  /* Part tag colour by ADP status: X = green, M = red, anything else = blue */
+  #noteDetailBody .line-row .line-tag.part-x{background:#1F5130;color:#C4F0CF;}
+  #noteDetailBody .line-row .line-tag.part-m{background:#5A1714;color:#FFC2BD;}
+  #noteDetailBody .line-row .line-tag.part-other{background:#173A5C;color:#BFDDF7;}
   #noteDetailBody .line-row .line-desc{margin-top:3px;}
   #noteDetailBody .line-row .line-meta{margin-top:3px;color:var(--text-dim);font-size:13px;}
   #pwaFlagBadge{border-color:var(--danger);color:#FF9C9C;background:#2B0705;font-weight:800;}
@@ -924,6 +927,13 @@ function closeNoteOverlay(){
   document.getElementById("noteDetailOverlay").classList.remove("show");
 }
 
+function partTagClass(status){
+  const st = String(status || "").trim().toUpperCase();
+  if (st === "X") return "part-x";
+  if (st === "M") return "part-m";
+  return "part-other";
+}
+
 function formatJobLines(lines){
   if (!lines.length) return "<p>No lines on this job yet.</p>";
   return lines.map(l => {
@@ -931,7 +941,7 @@ function formatJobLines(lines){
       const meta = ["Qty " + (l.qty || "?")];
       if (l.status) meta.push("Status " + l.status);
       if (l.bin) meta.push("Bin " + l.bin);
-      return '<div class="line-row"><span class="line-tag part">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
+      return '<div class="line-row"><span class="line-tag ' + partTagClass(l.status) + '">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
         '<div class="line-desc">' + escapeHtml(l.description || "") + '</div>' +
         '<div class="line-meta">' + escapeHtml(meta.join(" \u00b7 ")) + '</div></div>';
     }
