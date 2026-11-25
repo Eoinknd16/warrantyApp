@@ -212,6 +212,10 @@
   .adp-tag.part-m{background:#5A1714;color:#FFC2BD;}
   .adp-tag.part-other{background:#173A5C;color:#BFDDF7;}
   .adp-empty{color:var(--text-dim);font-size:13px;padding:6px 0;}
+  .adp-pick{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+  .adp-pick:last-child{border-bottom:none;}
+  .adp-pick input{margin-top:3px;width:18px;height:18px;flex:none;}
+  .adp-pick .adp-sent{color:var(--accent);font-size:12px;font-weight:700;margin-left:6px;}
   .customize-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
   .customize-row:last-child{border-bottom:none;}
   .customize-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
@@ -738,11 +742,18 @@
 </div>
 
 <div class="modal-overlay" id="notifyPartsOverlay">
-  <div class="modal-box">
+  <div class="modal-box wide">
     <h2>Notify parts</h2>
     <p class="panel-sub" id="notifyPartsWipInfo"></p>
-    <label for="notifyPartsField">Part(s) needed</label>
-    <textarea id="notifyPartsField" placeholder="e.g. Front bumper, headlight assembly"></textarea>
+    <div class="adp-lines-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Memo (M) parts on this job</span>
+      <label class="checkbox-label" id="notifySelectAllWrap" style="text-transform:none;letter-spacing:0;font-weight:600;">
+        <input type="checkbox" id="notifySelectAll" onchange="toggleAllNotifyParts(this.checked)"> Select all
+      </label>
+    </div>
+    <div class="adp-lines" id="notifyPartsPicker"></div>
+    <label for="notifyPartsField">Anything else (parts not on the job yet)</label>
+    <textarea id="notifyPartsField" placeholder="Optional &mdash; e.g. Front bumper clips x4"></textarea>
     <label for="notifyPartsNote">Extra note (optional)</label>
     <textarea id="notifyPartsNote" placeholder="Anything else parts should know"></textarea>
     <div style="display:flex;gap:8px;margin-top:14px;">
@@ -3084,11 +3095,48 @@ function openNotifyPartsOverlay(wip){
     "WIP " + wip + (job.reg ? " \u00b7 " + job.reg : "") +
     (job.partsNotifiedAt ? " \u2014 already notified once" : "");
 
-  document.getElementById("notifyPartsField").value = job.partsNote || "";
+  renderNotifyPartsPicker(job);
+  document.getElementById("notifyPartsField").value = "";
   document.getElementById("notifyPartsNote").value = "";
   document.getElementById("notifyPartsStatus").textContent = emailNotifyConfigured() ? "" : "Email notifications aren't set up yet \u2014 configure them in Settings first.";
   document.getElementById("notifyPartsStatus").className = emailNotifyConfigured() ? "status" : "status err";
   document.getElementById("notifyPartsOverlay").classList.add("show");
+}
+
+/* Memo (M) parts from the job's ADP lines, as a tick list. */
+function memoPartsOf(job){
+  return adpLinesOfType(job, "part").filter(l => String(l.status || "").trim().toUpperCase() === "M");
+}
+
+function renderNotifyPartsPicker(job){
+  const box = document.getElementById("notifyPartsPicker");
+  const memo = memoPartsOf(job);
+  document.getElementById("notifySelectAll").checked = false;
+  document.getElementById("notifySelectAllWrap").style.display = memo.length > 1 ? "" : "none";
+  if (!memo.length){
+    box.innerHTML = '<div class="adp-empty">' + (Array.isArray(job.lines)
+      ? "No memo (M) parts on this job in ADP."
+      : "This job's lines haven't been pulled from ADP yet \u2014 open it in ADP and press \u201cAdd from ADP\u201d.") + '</div>';
+    return;
+  }
+  const sent = job.partsRequested || {};
+  box.innerHTML = memo.map((l, i) => {
+    const prev = sent[l.partNumber];
+    const prevTxt = prev ? '<span class="adp-sent">sent ' + escapeHtml(new Date(prev).toLocaleDateString()) + '</span>' : '';
+    return '<label class="adp-pick"><input type="checkbox" class="notify-part-cb" data-i="' + i + '"' + (memo.length === 1 && !prev ? ' checked' : '') + '>' +
+      '<div><span class="adp-tag part-m">M</span><b>' + escapeHtml(l.partNumber || "") + '</b>' + prevTxt +
+      '<div class="adp-desc">' + escapeHtml(l.description || "") + '</div>' +
+      '<div class="adp-meta">Qty ' + escapeHtml(l.qty || "?") + '</div></div></label>';
+  }).join("");
+}
+
+function toggleAllNotifyParts(on){
+  document.querySelectorAll("#notifyPartsPicker .notify-part-cb").forEach(cb => { cb.checked = on; });
+}
+
+function selectedNotifyParts(job){
+  const memo = memoPartsOf(job);
+  return Array.from(document.querySelectorAll("#notifyPartsPicker .notify-part-cb:checked")).map(cb => memo[Number(cb.dataset.i)]).filter(Boolean);
 }
 
 function closeNotifyPartsOverlay(){
@@ -3108,14 +3156,20 @@ async function sendPartsNotification(){
     return;
   }
 
-  const partsNeeded = document.getElementById("notifyPartsField").value.trim();
+  const picked = selectedNotifyParts(job);
+  const extra = document.getElementById("notifyPartsField").value.trim();
   const note = document.getElementById("notifyPartsNote").value.trim();
 
-  if (!partsNeeded){
-    statusEl.textContent = "Say what part's needed first.";
+  if (!picked.length && !extra){
+    statusEl.textContent = "Tick at least one part, or type what's needed.";
     statusEl.className = "status err";
     return;
   }
+  // One line per part so parts know exactly what to order.
+  const itemLines = picked.map(l => (l.partNumber || "") + " \u2014 " + (l.description || "") + " \u00d7 " + (l.qty || "1"));
+  if (extra) itemLines.push(extra);
+  // Numbered so it still reads clearly if the email template runs the lines together.
+  const partsNeeded = itemLines.map((t, i) => (i + 1) + ". " + t).join("\n");
 
   statusEl.textContent = "Sending…";
   statusEl.className = "status";
@@ -3130,18 +3184,23 @@ async function sendPartsNotification(){
       sender: currentUserName()
     });
 
+    const nowIso = new Date().toISOString();
+    const requested = Object.assign({}, job.partsRequested || {});
+    picked.forEach(l => { if (l.partNumber) requested[l.partNumber] = nowIso; });
     await db.collection("jobs").doc(currentNotifyWip).set({
       partsNotifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
       partsNotifiedBy: currentUserName(),
-      partsNote: partsNeeded
+      partsNote: partsNeeded,
+      partsRequested: requested
     }, { merge: true });
+    job.partsRequested = requested;
     job.partsNotifiedAt = { toDate: () => new Date() };
     job.partsNotifiedBy = currentUserName();
     job.partsNote = partsNeeded;
 
     statusEl.textContent = "Sent.";
     statusEl.className = "status ok";
-    logAudit("Notified parts team about WIP " + currentNotifyWip + (note ? " \u2014 " + note : ""));
+    logAudit("Notified parts team about WIP " + currentNotifyWip + " (" + itemLines.length + " item" + (itemLines.length === 1 ? "" : "s") + ")" + (note ? " \u2014 " + note : ""));
     renderOpenJobsList(document.getElementById("jobSearchField").value);
     setTimeout(closeNotifyPartsOverlay, 900);
   } catch(err){
