@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Warranty Job Photos</title>
+<style>
+  :root{
+    --bg:#17181A;
+    --surface:#212226;
+    --surface-2:#2B2D31;
+    --border:#3A3C41;
+    --text:#F4F2EC;
+    --text-dim:#A9A69D;
+    --accent:#F5B300;
+    --accent-text:#1A1300;
+    --success:#2FA84F;
+    --success-text:#06210D;
+    --danger:#E5484D;
+    --danger-text:#2B0705;
+    --radius:14px;
+    --tap:76px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;}
+  #app{max-width:720px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;}
+
+  #topBar{position:sticky;top:0;z-index:10;background:var(--bg);}
+  header{padding:16px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;}
+  header h1{font-size:18px;font-weight:700;margin:0;flex:1;letter-spacing:.2px;}
+  #backBtn{width:52px;height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:22px;display:none;align-items:center;justify-content:center;}
+  #backBtn.show{display:flex;}
+  #pwaHeaderBtn{width:52px;height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #pwaHeaderBtn:active{background:var(--surface-2);}
+  #breadcrumb{font-size:13px;color:var(--text-dim);padding:0 20px 10px;border-bottom:1px solid var(--border);
+    display:none;gap:14px;}
+  #breadcrumb.show{display:flex;}
+  #breadcrumb b{color:var(--text);}
+
+  main{flex:1;padding:20px;display:flex;flex-direction:column;gap:14px;}
+  .screen{display:none;flex-direction:column;gap:14px;flex:1;}
+  .screen.active{display:flex;}
+
+  .step-label{font-size:14px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.6px;}
+  .big-title{font-size:24px;font-weight:700;margin:0 0 4px;}
+  .sub{font-size:15px;color:var(--text-dim);margin:0;}
+
+  button{font-family:inherit;cursor:pointer;}
+
+  .btn{min-height:var(--tap);border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--surface);color:var(--text);font-size:19px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 18px;
+    transition:transform .06s ease, background .1s ease;text-decoration:none;box-sizing:border-box;}
+  .btn:active{transform:scale(.97);background:var(--surface-2);}
+  .btn-primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-size:21px;}
+  .btn-primary:active{background:#DBA200;}
+  .btn-primary[disabled]{background:var(--surface-2);color:var(--text-dim);border-color:var(--border);opacity:.6;pointer-events:none;}
+  .btn-success{background:var(--success);color:var(--success-text);border-color:var(--success);}
+  .btn-danger{background:var(--surface);color:var(--danger);border-color:var(--danger);}
+  .btn-list{display:flex;flex-direction:column;gap:12px;}
+  .mechanic-admin-row{display:flex;gap:10px;margin-top:12px;}
+  .mechanic-admin-row .btn{flex:1;min-height:56px;font-size:16px;}
+  #mechanicSettingsBtn{flex:0 0 56px;font-size:20px;padding:0;}
+
+  .keypad-display{font-size:56px;font-weight:700;letter-spacing:8px;text-align:center;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 10px;font-variant-numeric:tabular-nums;min-height:110px;display:flex;align-items:center;justify-content:center;}
+  .keypad-display .ph{color:var(--text-dim);font-size:19px;font-weight:600;letter-spacing:normal;}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .keypad button{min-height:64px;font-size:26px;font-weight:700;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .keypad button:active{background:var(--surface-2);transform:scale(.96);}
+
+  .reg-kb{display:flex;flex-direction:column;gap:10px;}
+  .reg-kb-toprow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .reg-mode-btn,.reg-ctrl-btn{min-height:52px;font-size:15px;font-weight:700;}
+  .reg-kb-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .reg-key{min-height:52px;border-radius:10px;font-size:18px;font-weight:700;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);
+    display:flex;align-items:center;justify-content:center;}
+  .reg-key:active{background:var(--surface-2);transform:scale(.96);}
+
+  input[type=text]{width:100%;min-height:var(--tap);font-size:26px;font-weight:700;text-align:center;
+    letter-spacing:2px;text-transform:uppercase;background:var(--surface);color:var(--text);
+    border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;}
+  input[type=text]:focus{outline:2px solid var(--accent);}
+
+  .folder-preview{font-size:14px;color:var(--text-dim);text-align:center;}
+  .folder-preview code{color:var(--accent);font-size:15px;}
+
+  .note-badges{display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap;}
+  .note-badge{border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;
+    display:none;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);}
+  .note-badge.show{display:inline-flex;}
+  .note-badge:active{transform:scale(.96);}
+  #adminNoteBadge{border-color:var(--accent);color:#F5D77A;background:#3A2E00;}
+  #jobHistoryBadge{border-color:#3E7FA6;color:#B9DCEF;background:#152A38;}
+  #jobLinesBadge{border-color:#4E8F5A;color:#BFE6C6;background:#13291A;}
+  #noteDetailBody .line-row{padding:10px 0;border-bottom:1px solid var(--border);}
+  #noteDetailBody .line-row b{font-size:15px;letter-spacing:.3px;}
+  #noteDetailBody .line-row .line-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:10px;
+    margin-right:8px;vertical-align:2px;background:var(--surface-2,#222);color:var(--text-dim);}
+  #noteDetailBody .line-row .line-desc{margin-top:3px;}
+  #noteDetailBody .line-row .line-meta{margin-top:3px;color:var(--text-dim);font-size:13px;}
+  #pwaFlagBadge{border-color:var(--danger);color:#FF9C9C;background:#2B0705;font-weight:800;}
+
+  #noteDetailOverlay{position:fixed;inset:0;background:rgba(10,10,11,.92);z-index:105;
+    display:none;flex-direction:column;padding:20px;overflow-y:auto;}
+  #noteDetailOverlay.show{display:flex;}
+  #noteDetailTitle{font-size:20px;font-weight:700;margin:0 0 16px;}
+  #noteDetailBody{font-size:16px;line-height:1.5;color:var(--text);flex:1;}
+  #noteDetailBody .hist-row{display:flex;justify-content:space-between;gap:12px;
+    padding:12px 0;border-bottom:1px solid var(--border);font-size:15px;}
+  #noteDetailBody .hist-row span{color:var(--text-dim);font-size:13px;white-space:nowrap;}
+  #noteDetailClose{margin-top:20px;}
+  .pwa-check-row{display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 4px;
+    border-bottom:1px solid var(--border);font-size:16px;font-weight:600;cursor:pointer;}
+  .pwa-check-row:last-child{border-bottom:none;}
+  .pwa-check-row input{width:24px;height:24px;flex-shrink:0;}
+
+  #pwaOverlay{position:fixed;inset:0;background:var(--bg);z-index:120;
+    display:none;flex-direction:column;padding:20px;overflow-y:auto;gap:14px;}
+  #pwaOverlay.show{display:flex;}
+  #pwaBackBtn{align-self:flex-start;min-height:52px;font-size:16px;padding:0 18px;flex-shrink:0;}
+  .pwa-step{display:flex;flex-direction:column;gap:14px;flex:1;}
+
+  .pwa-min-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .pwa-min-row button{min-height:56px;font-size:18px;font-weight:700;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--surface);color:var(--text);}
+  .pwa-min-row button.selected{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
+  .pwa-min-row button:active{transform:scale(.96);}
+
+  .verdict{border-radius:16px;padding:24px 20px;text-align:center;}
+  .verdict.needed{background:#3A0F0F;border:1px solid var(--danger);}
+  .verdict.caution{background:#3A2E00;border:1px solid var(--accent);}
+  .verdict.not-needed{background:#0C2A16;border:1px solid var(--success);}
+  .verdict .vtitle{font-size:24px;font-weight:800;margin-bottom:6px;}
+  .verdict.needed .vtitle{color:#FF9C9C;}
+  .verdict.caution .vtitle{color:#F5D77A;}
+  .verdict.not-needed .vtitle{color:#7EE0A0;}
+  .verdict .vreason{font-size:15px;color:var(--text-dim);}
+
+  .media-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 18px;}
+  .media-list h3{font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin:14px 0 4px;}
+  .media-list ul{margin:0 0 14px;padding-left:20px;}
+  .media-list li{font-size:16px;padding:4px 0;}
+  .media-list .breakdown-row{display:flex;justify-content:space-between;padding:10px 0;
+    border-bottom:1px solid var(--border);font-size:15px;}
+  .media-list .breakdown-row:last-child{border-bottom:none;font-weight:800;color:var(--accent);}
+
+  #pwaSendCheckOverlay{position:fixed;inset:0;background:rgba(10,10,11,.96);z-index:130;
+    display:none;flex-direction:column;padding:24px 20px;overflow-y:auto;text-align:center;}
+  #pwaSendCheckOverlay.show{display:flex;}
+  .pwa-send-badge{font-size:48px;margin-bottom:8px;}
+  .pwa-send-list{list-style:none;margin:16px 0;padding:0;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius);text-align:left;}
+  .pwa-send-list li{padding:14px 18px;border-bottom:1px solid var(--border);font-size:17px;font-weight:600;}
+  .pwa-send-list li:last-child{border-bottom:none;}
+  .pwa-send-list li::before{content:"\2713  ";color:var(--success);font-weight:800;}
+  #pwaSendCheckOverlay .btn{margin-bottom:10px;}
+
+  #addMechanicOverlay, #mechanicSettingsOverlay{position:fixed;inset:0;background:rgba(10,10,11,.96);
+    z-index:130;display:none;flex-direction:column;padding:24px 20px;overflow-y:auto;}
+  #addMechanicOverlay.show, #mechanicSettingsOverlay.show{display:flex;}
+  #newMechanicInput{margin-top:6px;}
+  .mechanic-row{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin-top:10px;font-size:16px;font-weight:600;}
+  .mechanic-row button{flex-shrink:0;background:none;border:1px solid var(--danger);
+    color:var(--danger);border-radius:8px;padding:8px 14px;font-size:14px;font-weight:700;}
+  .mechanic-row button:active{background:rgba(229,72,77,.15);}
+
+  .capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .capture-btn{min-height:96px;flex-direction:column;font-size:16px;}
+  #importBtn{min-height:60px;font-size:15px;}
+  .capture-btn .icon{font-size:30px;line-height:1;}
+
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;}
+  .thumb{position:relative;border-radius:10px;overflow:hidden;background:var(--surface);
+    border:1px solid var(--border);aspect-ratio:1/1;}
+  .thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .kind{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;
+    font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700;}
+  .thumb .rm{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:8px;
+    background:rgba(0,0,0,.65);color:#fff;border:none;font-size:16px;display:flex;align-items:center;justify-content:center;}
+
+  .empty-hint{font-size:14px;color:var(--text-dim);text-align:center;padding:14px;border:1px dashed var(--border);border-radius:var(--radius);}
+
+  .center-msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;}
+  .center-msg .badge{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;}
+  .badge-success{background:var(--success);color:var(--success-text);}
+
+  .spacer{flex:1;}
+  footer.actions{padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
+
+  .thumb.video::after{content:"\25B6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:20px;color:#fff;background:rgba(0,0,0,.5);width:34px;height:34px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;pointer-events:none;}
+
+  #labelOverlay{position:fixed;inset:0;background:rgba(10,10,11,.92);z-index:100;
+    display:none;flex-direction:column;padding:20px;overflow-y:auto;}
+  #labelOverlay.show{display:flex;}
+  .label-preview{width:100%;max-height:220px;border-radius:var(--radius);overflow:hidden;
+    background:var(--surface);border:1px solid var(--border);margin-bottom:16px;flex-shrink:0;}
+  .label-preview img,.label-preview video{width:100%;max-height:220px;object-fit:contain;display:block;}
+  .label-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .label-btn{min-height:var(--tap);font-size:18px;}
+  .label-other-box{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .discard-link{background:none;border:none;color:var(--danger);font-size:15px;font-weight:600;
+    padding:14px;text-align:center;margin-top:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="topBar">
+  <header>
+    <button id="backBtn" onclick="goBack()">&#8592;</button>
+    <h1 id="headerTitle">Warranty job photos</h1>
+    <button id="pwaHeaderBtn" onclick="openPwaOverlay()" aria-label="Check PWA requirement">&#128203;</button>
+  </header>
+  <div id="breadcrumb"></div>
+  <div class="note-badges">
+    <button class="note-badge" id="pwaFlagBadge" onclick="showNoteOverlay('pwaFlag')">
+      <span>&#128308;</span><span id="pwaFlagBadgeLabel">PWA required</span>
+    </button>
+    <button class="note-badge" id="adminNoteBadge" onclick="showNoteOverlay('admin')">
+      <span>&#128276;</span><span>Note</span>
+    </button>
+    <button class="note-badge" id="jobLinesBadge" onclick="showNoteOverlay('lines')">
+      <span>&#128295;</span><span id="jobLinesBadgeText">Job lines</span>
+    </button>
+    <button class="note-badge" id="jobHistoryBadge" onclick="showNoteOverlay('history')">
+      <span>&#128203;</span><span id="jobHistoryBadgeText">Sent</span>
+    </button>
+  </div>
+</div>
+
+  <main>
+
+    <!-- STEP 1: mechanic -->
+    <section class="screen" id="screen-1">
+      <div class="step-label">Step 1 of 4</div>
+      <h2 class="big-title">Who's this job for?</h2>
+      <p class="sub">Tap your name to start</p>
+      <div class="btn-list" id="mechanicList"></div>
+      <div class="mechanic-admin-row">
+        <button class="btn" onclick="openAddMechanicOverlay()">&#43;&nbsp; Add mechanic</button>
+        <button class="btn" id="mechanicSettingsBtn" onclick="openMechanicSettingsOverlay()" aria-label="Manage mechanics">&#9881;</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: WIP -->
+    <section class="screen" id="screen-2">
+      <div class="step-label">Step 2 of 4</div>
+      <h2 class="big-title">Enter the WIP number</h2>
+      <p class="sub">5 digits</p>
+      <div class="keypad-display" id="wipDisplay"><span class="ph">-----</span></div>
+      <div class="keypad" id="wipKeypad"></div>
+    </section>
+
+    <!-- STEP 3: reg -->
+    <section class="screen" id="screen-3">
+      <div class="step-label">Step 3 of 4</div>
+      <h2 class="big-title">Enter the reg</h2>
+      <div class="keypad-display" id="regDisplay"><span class="ph">Tap keys below</span></div>
+      <div class="reg-kb">
+        <div class="reg-kb-toprow">
+          <button class="btn reg-mode-btn" id="regModeBtn" onclick="toggleRegMode()">ABC</button>
+          <button class="btn reg-ctrl-btn" onclick="regBackspace()">&#9003;</button>
+          <button class="btn reg-ctrl-btn" onclick="regClear()">Clear</button>
+        </div>
+        <div class="reg-kb-grid" id="regKbGrid"></div>
+      </div>
+      <div class="folder-preview" id="folderPreview"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="regContinueBtn" disabled onclick="continueFromReg()">Continue</button>
+    </section>
+
+    <!-- STEP 4: capture -->
+    <section class="screen" id="screen-4">
+      <div class="step-label">Step 4 of 4</div>
+      <h2 class="big-title">Add photos &amp; video</h2>
+      <div class="capture-row">
+        <button class="btn capture-btn" onclick="triggerCapture('photo')">
+          <span class="icon">&#128247;</span> Take photo
+        </button>
+        <button class="btn capture-btn" onclick="triggerCapture('video')">
+          <span class="icon">&#127909;</span> Record video
+        </button>
+      </div>
+      <button class="btn" id="importBtn" onclick="triggerGalleryPick()">
+        <span class="icon" style="font-size:20px;">&#128193;</span>&nbsp; Add from photos/files
+      </button>
+      <div id="captureEmptyHint" class="empty-hint">No files yet — take at least one photo or video to submit</div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="submitBtn" disabled onclick="startSubmit()">Send job</button>
+    </section>
+
+    <!-- STEP 6: done -->
+    <section class="screen" id="screen-6">
+      <div class="center-msg">
+        <div class="badge badge-success">&#9993;</div>
+        <h2 class="big-title" id="doneTitle">Almost done</h2>
+        <p class="sub" id="doneSub"></p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="actions" id="footerActions"></footer>
+
+</div>
+
+<!-- TEST: swapped to "user" to check for a known Android Chrome bug where
+     environment/user get mapped backwards on certain versions. If this opens
+     the REAR camera correctly, leave it as "user" — it's intentional, not a typo. -->
+<input type="file" id="photoInput" accept="image/*" capture="user" style="display:none">
+<input type="file" id="videoInput" accept="video/*" capture="user" style="display:none">
+<input type="file" id="galleryInput" accept="image/*,video/*" multiple style="display:none">
+
+<div id="noteDetailOverlay">
+  <h2 id="noteDetailTitle" class="big-title">Note</h2>
+  <div id="noteDetailBody"></div>
+  <button class="btn btn-primary" id="noteDetailClose" onclick="closeNoteOverlay()">Close</button>
+</div>
+
+<div id="pwaOverlay">
+  <button class="btn" id="pwaBackBtn" onclick="closePwaOverlay()">&#8592;&nbsp; Back to job</button>
+
+  <div class="pwa-step" id="pwaStep1">
+    <h2 class="big-title">What's the job?</h2>
+    <p class="sub">Pick whatever's closest</p>
+    <div class="btn-list" id="pwaJobTypeList"></div>
+  </div>
+
+  <div class="pwa-step" id="pwaStep2" style="display:none;">
+    <h2 class="big-title">Part value</h2>
+    <p class="sub">Just the part(s), not labour \u2014 whole euros</p>
+    <div class="keypad-display" id="pwaPartDisplay"><span class="ph">&euro;0</span></div>
+    <div class="keypad" id="pwaPartKeypad"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="pwaGoToLabourStep()">Next</button>
+  </div>
+
+  <div class="pwa-step" id="pwaStep3" style="display:none;">
+    <h2 class="big-title">Estimated labour time</h2>
+    <p class="sub">How long do you reckon this job takes?</p>
+    <div class="keypad-display" id="pwaHoursDisplay"><span class="ph">0 hrs</span></div>
+    <div class="keypad" id="pwaHoursKeypad"></div>
+    <p class="sub" style="margin-top:6px;">Plus minutes</p>
+    <div class="pwa-min-row" id="pwaMinRow"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="pwaShowResult()">Check</button>
+  </div>
+
+  <div class="pwa-step" id="pwaStep4" style="display:none;">
+    <div class="verdict" id="pwaVerdictBox">
+      <div class="vtitle" id="pwaVerdictTitle"></div>
+      <div class="vreason" id="pwaVerdictReason"></div>
+    </div>
+    <div class="media-list" id="pwaBreakdown"></div>
+    <div class="media-list" id="pwaMediaList"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="pwaResetTool()">Check another job</button>
+  </div>
+</div>
+
+<div id="pwaSendCheckOverlay">
+  <div class="pwa-send-badge">&#128308;</div>
+  <h2 class="big-title" id="pwaSendCheckTitle">This job needs PWA</h2>
+  <p class="sub">Before you send &mdash; have you got everything on this list?</p>
+  <ul id="pwaSendCheckList" class="pwa-send-list"></ul>
+  <div class="spacer"></div>
+  <button class="btn btn-primary" onclick="confirmPwaSendCheck(true)">Yes, got it all &mdash; send</button>
+  <button class="btn" onclick="confirmPwaSendCheck(false)">No, let me check first</button>
+</div>
+
+<div id="addMechanicOverlay">
+  <h2 class="big-title">Add mechanic</h2>
+  <input type="text" id="newMechanicInput" placeholder="Name" maxlength="30">
+  <div class="spacer"></div>
+  <button class="btn btn-primary" onclick="confirmAddMechanic()">Add</button>
+  <button class="btn" onclick="closeAddMechanicOverlay()">Cancel</button>
+</div>
+
+<div id="mechanicSettingsOverlay">
+  <h2 class="big-title">Manage mechanics</h2>
+  <p class="sub">Removing someone just takes them off the list &mdash; it doesn't touch anything they've already sent.</p>
+  <div id="mechanicSettingsList"></div>
+  <div class="spacer"></div>
+  <button class="btn btn-primary" onclick="closeMechanicSettingsOverlay()">Done</button>
+</div>
+
+<div id="labelOverlay">
+  <h2 class="big-title">What's this of?</h2>
+  <div class="label-preview" id="labelPreview"></div>
+  <div class="label-grid" id="labelGrid"></div>
+  <div class="label-other-box" id="labelOtherBox" style="display:none;">
+    <input type="text" id="labelOtherInput" placeholder="Type what it's of" maxlength="30">
+    <button class="btn btn-primary" onclick="confirmOtherLabel()">Use this name</button>
+  </div>
+  <button class="discard-link" onclick="discardPending()">Discard this photo/video</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   FIREBASE — same project/config as admin.html. This is what lets
+   the app check for an admin note the moment a WIP is entered.
+   Safe to be visible in the page source — access control is
+   enforced by Firestore's security rules, not by hiding this.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBcpFoOaSmP1kx_fSbvXGeCdkzCTGSdvso",
+  authDomain: "warrantyapp-fb676.firebaseapp.com",
+  projectId: "warrantyapp-fb676",
+  storageBucket: "warrantyapp-fb676.firebasestorage.app",
+  messagingSenderId: "1031213749394",
+  appId: "1:1031213749394:web:cb5b7a818bb1507703c24b"
+};
+
+let db = null;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+} catch(err){
+  console.error("Firebase init failed", err);
+}
+
+/* ============================================================
+   CONFIG — edit before deploying
+   ============================================================ */
+const CONFIG = {
+  // First-run seed only — once the app has loaded once with Firebase
+  // configured, the real list lives in Firestore and is managed from the
+  // admin panel's Settings page. Editing this array after that point does
+  // nothing; it's only used to fill Firestore the very first time.
+  // The FIRST one must be the inbox your Power Automate flow watches —
+  // that's the one the folder-filing logic depends on. Any others (e.g. a
+  // manager) just get a copy for visibility. The mechanic still has to
+  // enter these in their Mail app — browsers can't pre-fill the "To"/"Cc"
+  // fields — so save these as contacts on each phone so they autocomplete.
+  warrantyEmails: [
+    "servicelimerick@hinchys.ie",
+    "ekennedy@hinchys.ie"
+  ],
+
+  // First-run seed only — once the app has loaded once with Firebase
+  // configured, the real list lives in Firestore and is managed from the
+  // app itself (+ Add mechanic / gear icon on the first screen). Editing
+  // this array after that point does nothing; it's only used to fill
+  // Firestore the very first time, if nothing's there yet.
+  mechanics: [
+    "Adrian",
+    "Eamonn",
+    "Jack",
+    "Kieran",
+    "Renier",
+    "Sergiu"
+  ],
+
+
+  // Quick-pick labels shown after every photo/video capture.
+  // Attachment filenames are "<REG>_<WIP> <label>.<ext>" e.g. "231D12345_12345 VIN.jpg" —
+  // the flow strips the "<REG>_" prefix off before saving, so the file that ends up
+  // in SharePoint is just "<WIP> <label>.jpg". The reg prefix only exists so the
+  // flow can tell which folder to file it into without trusting the email subject.
+  // limit: 1 means only one of these is kept per job — capturing another
+  //        replaces the previous one. limit: 0 means unlimited.
+  // "Other" always appears last, is unlimited, and lets the mechanic type a custom label.
+  labels: [
+    { name: "VIN", limit: 1 },
+    { name: "Mileage", limit: 1 },
+    { name: "Fault", limit: 0 },
+    { name: "LOT", limit: 0 }
+  ]
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {
+  step: 1,
+  mechanic: null,
+  wip: "",
+  reg: "",
+  jobId: null,
+  location: null, // {lat, lon} — fetched once per job, reused across every photo's stamp
+  captures: [] // {id, kind, blob, previewUrl, filename, label}
+};
+
+function vibrate(ms){ if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e){} } }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goToStep(n){
+  state.step = n;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + n).classList.add("active");
+
+  const titles = {
+    1: "Warranty job photos", 2: "Enter WIP number", 3: "Enter reg",
+    4: "Add photos & video", 6: "Almost done"
+  };
+  document.getElementById("headerTitle").textContent = titles[n] || "Warranty job photos";
+  document.getElementById("backBtn").classList.toggle("show", n >= 2 && n <= 4);
+  renderBreadcrumb();
+  renderFooter();
+}
+
+function goBack(){
+  if (state.step === 2) goToStep(1);
+  else if (state.step === 3) goToStep(2);
+  else if (state.step === 4) goToStep(3);
+}
+
+function renderBreadcrumb(){
+  const el = document.getElementById("breadcrumb");
+  const parts = [];
+  if (state.mechanic) parts.push("<b>" + escapeHtml(state.mechanic) + "</b>");
+  if (state.wip) parts.push("WIP <b>" + escapeHtml(state.wip) + "</b>");
+  if (state.reg) parts.push("Reg <b>" + escapeHtml(state.reg) + "</b>");
+  if (parts.length && state.step >= 2 && state.step <= 6){
+    el.innerHTML = parts.join(" &middot; ");
+    el.classList.add("show");
+  } else {
+    el.classList.remove("show");
+  }
+}
+
+function renderFooter(){
+  const footer = document.getElementById("footerActions");
+  footer.innerHTML = "";
+  if (state.step === 6){
+    const sameBtn = mkBtn("Start next job (same mechanic)", "btn btn-primary", () => resetForNewJob(true));
+    const diffBtn = mkBtn("Different mechanic", "btn", () => resetForNewJob(false));
+    footer.appendChild(sameBtn);
+    footer.appendChild(diffBtn);
+  }
+}
+
+function mkBtn(label, cls, onClick){
+  const b = document.createElement("button");
+  b.className = cls;
+  b.textContent = label;
+  b.onclick = onClick;
+  return b;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ============================================================
+   STEP 1 — mechanic
+   ============================================================ */
+let mechanicsList = [];
+
+async function loadMechanics(){
+  if (!db){
+    mechanicsList = CONFIG.mechanics || [];
+    renderMechanics();
+    return;
+  }
+  try {
+    const doc = await db.collection("config").doc("mechanics").get();
+    if (doc.exists && Array.isArray(doc.data().names)){
+      mechanicsList = doc.data().names;
+    } else {
+      // First run — nothing in Firestore yet, seed it from CONFIG so the
+      // list isn't empty, and so future add/remove has something to work from.
+      mechanicsList = CONFIG.mechanics || [];
+      db.collection("config").doc("mechanics").set({ names: mechanicsList })
+        .catch(err => console.error("Couldn't seed mechanics list", err));
+    }
+  } catch(err){
+    console.error("Couldn't load mechanics", err);
+    mechanicsList = CONFIG.mechanics || [];
+  }
+  renderMechanics();
+}
+
+let emailRecipients = [];
+let CURRENCY = "\u20ac";
+
+/* ============================================================
+   TERMINOLOGY — "PWA" is Kia-specific language. Any other
+   manufacturer setting swaps it for generic wording everywhere
+   this shows up, without touching the underlying logic at all.
+   ============================================================ */
+const TERMINOLOGY = {
+  kia: { short: "PWA", full: "Prior Work Approval" },
+  generic: { short: "Approval", full: "Prior Approval" }
+};
+let manufacturer = "kia";
+let PWA_TERM = TERMINOLOGY.kia.short;
+let PWA_TERM_FULL = TERMINOLOGY.kia.full;
+
+function applyTerminology(){
+  const t = TERMINOLOGY[manufacturer] || TERMINOLOGY.kia;
+  PWA_TERM = t.short;
+  PWA_TERM_FULL = t.full;
+
+  const headerBtn = document.getElementById("pwaHeaderBtn");
+  if (headerBtn) headerBtn.setAttribute("aria-label", "Check " + PWA_TERM + " requirement");
+
+  const badgeLabel = document.getElementById("pwaFlagBadgeLabel");
+  if (badgeLabel) badgeLabel.textContent = PWA_TERM + " required";
+
+  const sendCheckTitle = document.getElementById("pwaSendCheckTitle");
+  if (sendCheckTitle) sendCheckTitle.textContent = "This job needs " + PWA_TERM;
+}
+
+async function loadAppSettings(){
+  if (!db){
+    emailRecipients = CONFIG.warrantyEmails || [];
+    applyTerminology();
+    return;
+  }
+  try {
+    const doc = await db.collection("config").doc("appSettings").get();
+    if (doc.exists){
+      const data = doc.data();
+      emailRecipients = Array.isArray(data.emailRecipients) && data.emailRecipients.length
+        ? data.emailRecipients : (CONFIG.warrantyEmails || []);
+      CURRENCY = data.currencySymbol || "\u20ac";
+      manufacturer = data.manufacturer || "kia";
+      if (!Array.isArray(data.emailRecipients) || !data.emailRecipients.length){
+        // First run — nothing set yet, seed from CONFIG so Settings has something to show.
+        db.collection("config").doc("appSettings").set({ emailRecipients: emailRecipients }, { merge: true })
+          .catch(err => console.error("Couldn't seed email recipients", err));
+      }
+    } else {
+      emailRecipients = CONFIG.warrantyEmails || [];
+      db.collection("config").doc("appSettings").set({ emailRecipients: emailRecipients })
+        .catch(err => console.error("Couldn't seed app settings", err));
+    }
+  } catch(err){
+    console.error("Couldn't load app settings", err);
+    emailRecipients = CONFIG.warrantyEmails || [];
+  }
+  applyTerminology();
+}
+
+function renderMechanics(){
+  const list = document.getElementById("mechanicList");
+  list.innerHTML = "";
+  mechanicsList.forEach(name => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = name;
+    b.onclick = () => selectMechanic(name);
+    list.appendChild(b);
+  });
+}
+
+async function saveMechanicsToFirestore(){
+  if (!db) return;
+  await db.collection("config").doc("mechanics").set({ names: mechanicsList });
+}
+
+function openAddMechanicOverlay(){
+  document.getElementById("newMechanicInput").value = "";
+  document.getElementById("addMechanicOverlay").classList.add("show");
+}
+
+function closeAddMechanicOverlay(){
+  document.getElementById("addMechanicOverlay").classList.remove("show");
+}
+
+async function confirmAddMechanic(){
+  const input = document.getElementById("newMechanicInput");
+  const name = input.value.trim();
+  if (!name) return;
+  if (mechanicsList.some(m => m.toLowerCase() === name.toLowerCase())){
+    alert("That name's already on the list.");
+    return;
+  }
+  mechanicsList.push(name);
+  try {
+    await saveMechanicsToFirestore();
+    renderMechanics();
+    closeAddMechanicOverlay();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+function openMechanicSettingsOverlay(){
+  renderMechanicSettingsList();
+  document.getElementById("mechanicSettingsOverlay").classList.add("show");
+}
+
+function closeMechanicSettingsOverlay(){
+  document.getElementById("mechanicSettingsOverlay").classList.remove("show");
+}
+
+function renderMechanicSettingsList(){
+  const listEl = document.getElementById("mechanicSettingsList");
+  listEl.innerHTML = "";
+  if (!mechanicsList.length){
+    listEl.innerHTML = '<p style="color:var(--text-dim);text-align:center;margin-top:20px;">No mechanics on the list yet.</p>';
+    return;
+  }
+  mechanicsList.forEach((name, index) => {
+    const row = document.createElement("div");
+    row.className = "mechanic-row";
+    row.innerHTML = "<span>" + escapeHtml(name) + "</span>";
+    const rmBtn = document.createElement("button");
+    rmBtn.textContent = "Remove";
+    rmBtn.onclick = () => removeMechanic(index);
+    row.appendChild(rmBtn);
+    listEl.appendChild(row);
+  });
+}
+
+async function removeMechanic(index){
+  const name = mechanicsList[index];
+  if (!confirm('Remove "' + name + '" from the list?')) return;
+  mechanicsList.splice(index, 1);
+  try {
+    await saveMechanicsToFirestore();
+    renderMechanics();
+    renderMechanicSettingsList();
+  } catch(err){
+    console.error(err);
+    alert("Couldn't save — try again.");
+  }
+}
+
+function selectMechanic(name){
+  vibrate(30);
+  state.mechanic = name;
+  goToStep(2);
+}
+
+/* ============================================================
+   STEP 2 — WIP keypad
+   ============================================================ */
+function renderWipKeypad(){
+  const pad = document.getElementById("wipKeypad");
+  pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","clear","0","back"];
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    if (k === "clear"){ b.textContent = "Clear"; b.style.fontSize = "16px"; b.onclick = () => { state.wip=""; updateWipDisplay(); }; }
+    else if (k === "back"){ b.innerHTML = "&#9003;"; b.onclick = () => { state.wip = state.wip.slice(0,-1); updateWipDisplay(); }; }
+    else { b.textContent = k; b.onclick = () => wipDigit(k); }
+    pad.appendChild(b);
+  });
+}
+
+function wipDigit(d){
+  if (state.wip.length >= 5) return;
+  vibrate(15);
+  state.wip += d;
+  updateWipDisplay();
+  if (state.wip.length === 5){
+    handleWipComplete(state.wip);
+  }
+}
+
+async function handleWipComplete(wip){
+  checkForAdminNote(wip); // fire-and-forget — shows whenever it resolves, doesn't gate navigation
+
+  // Give the "is this WIP already linked to a reg" lookup a couple of
+  // seconds to answer. If Firestore's slow to respond, don't leave the
+  // mechanic staring at a frozen screen — just fall through to the normal
+  // reg entry screen instead of auto-skipping.
+  const lookup = checkForJob(wip);
+  const timeout = new Promise(resolve => setTimeout(() => resolve(null), 2500));
+  const linkedReg = await Promise.race([lookup, timeout]);
+
+  if (state.wip !== wip) return; // mechanic already cleared/changed the WIP while we were waiting
+
+  if (linkedReg){
+    state.reg = linkedReg;
+    updateRegDisplay();
+    proceedToCapture();
+  } else {
+    goToStep(3);
+  }
+}
+
+let currentAdminNoteMessage = null;
+let currentJobHistory = null;
+let currentPwaFlag = false;
+let currentPwaRequiredItems = [];
+let currentPwaCheckedItems = new Set(); // tick-as-you-go progress, saved to Firestore so it's visible to any mechanic on this job
+
+async function checkForAdminNote(wip){
+  currentAdminNoteMessage = null;
+  document.getElementById("adminNoteBadge").classList.remove("show");
+  if (!db) return; // Firebase not configured — silently skip, nothing else depends on this
+
+  try {
+    const doc = await db.collection("wipNotes").doc(wip).get();
+    if (doc.exists && doc.data().message){
+      currentAdminNoteMessage = doc.data().message;
+      document.getElementById("adminNoteBadge").classList.add("show");
+    }
+  } catch(err){
+    console.error("Couldn't check for an admin note", err);
+  }
+}
+
+let currentJobLines = [];
+
+async function checkForJob(wip){
+  currentJobHistory = null;
+  currentJobLines = [];
+  document.getElementById("jobLinesBadge").classList.remove("show");
+  currentPwaFlag = false;
+  currentPwaRequiredItems = [];
+  currentPwaCheckedItems = new Set();
+  document.getElementById("jobHistoryBadge").classList.remove("show");
+  document.getElementById("pwaFlagBadge").classList.remove("show");
+  if (!db) return null;
+
+  try {
+    const doc = await db.collection("jobs").doc(wip).get();
+    if (!doc.exists) return null;
+    const data = doc.data();
+
+    // If this resolves after the auto-skip race above already timed out
+    // (mechanic sitting on the reg screen typing), still fill in whatever
+    // they haven't already started typing themselves — never overwrite
+    // something they're mid-way through entering.
+    if (data.reg && state.wip === wip && !state.reg){
+      state.reg = data.reg;
+      updateRegDisplay();
+    }
+
+    if (data.pwaFlag){
+      currentPwaFlag = true;
+      currentPwaRequiredItems = Array.isArray(data.pwaRequiredItems) ? data.pwaRequiredItems : [];
+      currentPwaCheckedItems = new Set(Array.isArray(data.pwaCheckedItems) ? data.pwaCheckedItems : []);
+      document.getElementById("pwaFlagBadge").classList.add("show");
+    }
+
+    if (Array.isArray(data.lines) && data.lines.length){
+      currentJobLines = data.lines;
+      document.getElementById("jobLinesBadgeText").textContent = "Job lines (" + data.lines.length + ")";
+      document.getElementById("jobLinesBadge").classList.add("show");
+    }
+
+    if (Array.isArray(data.history) && data.history.length){
+      currentJobHistory = data.history;
+      document.getElementById("jobHistoryBadgeText").textContent = "Sent (" + data.history.length + ")";
+      document.getElementById("jobHistoryBadge").classList.add("show");
+    }
+
+    return data.reg || null;
+  } catch(err){
+    console.error("Couldn't check job history", err);
+    return null;
+  }
+}
+
+function showNoteOverlay(type){
+  const titleEl = document.getElementById("noteDetailTitle");
+  const bodyEl = document.getElementById("noteDetailBody");
+
+  if (type === "admin"){
+    titleEl.textContent = "Note from the office";
+    bodyEl.innerHTML = '<p>' + escapeHtml(currentAdminNoteMessage || "") + '</p>';
+  } else if (type === "pwaFlag"){
+    titleEl.textContent = PWA_TERM + " required";
+    bodyEl.innerHTML = "";
+    if (currentPwaRequiredItems.length){
+      const intro = document.createElement("p");
+      intro.textContent = "Tick these off as you go \u2014 saved automatically, so anyone else who picks up this job sees what's already done.";
+      bodyEl.appendChild(intro);
+      currentPwaRequiredItems.forEach(item => {
+        const row = document.createElement("label");
+        row.className = "pwa-check-row";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = currentPwaCheckedItems.has(item);
+        cb.onchange = () => {
+          if (cb.checked) currentPwaCheckedItems.add(item);
+          else currentPwaCheckedItems.delete(item);
+          savePwaCheckedItems();
+        };
+        row.appendChild(cb);
+        const span = document.createElement("span");
+        span.textContent = item;
+        row.appendChild(span);
+        bodyEl.appendChild(row);
+      });
+    } else {
+      bodyEl.innerHTML = "<p>This job has been flagged by the office as needing " + PWA_TERM_FULL + " before you go ahead.</p>";
+    }
+  } else if (type === "lines"){
+    titleEl.textContent = "Job lines (from ADP)";
+    bodyEl.innerHTML = formatJobLines(currentJobLines);
+  } else {
+    titleEl.textContent = "Already sent for this job";
+    bodyEl.innerHTML = formatHistoryList(currentJobHistory || []);
+  }
+
+  document.getElementById("noteDetailOverlay").classList.add("show");
+}
+
+function savePwaCheckedItems(){
+  if (!db || !state.wip) return;
+  db.collection("jobs").doc(state.wip).set({
+    pwaCheckedItems: Array.from(currentPwaCheckedItems)
+  }, { merge: true }).catch(err => console.error("Couldn't save checklist progress", err));
+}
+
+function closeNoteOverlay(){
+  document.getElementById("noteDetailOverlay").classList.remove("show");
+}
+
+function formatJobLines(lines){
+  if (!lines.length) return "<p>No lines on this job yet.</p>";
+  return lines.map(l => {
+    if (l.type === "part"){
+      const meta = ["Qty " + (l.qty || "?")];
+      if (l.status) meta.push("Status " + l.status);
+      if (l.bin) meta.push("Bin " + l.bin);
+      return '<div class="line-row"><span class="line-tag">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
+        '<div class="line-desc">' + escapeHtml(l.description || "") + '</div>' +
+        '<div class="line-meta">' + escapeHtml(meta.join(" \u00b7 ")) + '</div></div>';
+    }
+    return '<div class="line-row"><span class="line-tag">LABOUR</span><b>' + escapeHtml(l.opCode || "") + '</b>' +
+      (l.hours ? ' &nbsp;' + escapeHtml(l.hours) + ' h' : '') +
+      '<div class="line-desc">' + escapeHtml(l.description || "") + '</div></div>';
+  }).join("");
+}
+
+function formatHistoryList(history){
+  if (!history.length) return "<p>Nothing sent yet.</p>";
+  const sorted = history.slice().sort((a, b) => (b.sentAt || "").localeCompare(a.sentAt || ""));
+  return sorted.map(h => {
+    const d = h.sentAt ? new Date(h.sentAt) : null;
+    const when = d ? d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+    return '<div class="hist-row"><b>' + escapeHtml(h.label || "Photo") + '</b><span>' + escapeHtml(when) + '</span></div>';
+  }).join("");
+}
+
+/* ============================================================
+   PWA CHECKER — an overlay, not a separate page, so opening and
+   closing it never loses whatever's already in progress on the job.
+   ============================================================ */
+let pwaRulesLoaded = false;
+let pwaRulesData = { claimValueThreshold: 1250, labourRate: 91.72, nearThresholdBuffer: 200, jobTypes: [] };
+let pwaSelectedJobType = null;
+let pwaPartValue = "";
+let pwaHours = "";
+let pwaMinutes = 0;
+
+function openPwaOverlay(){
+  document.getElementById("pwaOverlay").classList.add("show");
+  pwaGoToStep(1);
+  if (!pwaRulesLoaded) loadPwaRulesForOverlay();
+}
+
+function closePwaOverlay(){
+  document.getElementById("pwaOverlay").classList.remove("show");
+}
+
+function pwaGoToStep(n){
+  for (let i = 1; i <= 4; i++){
+    document.getElementById("pwaStep" + i).style.display = (i === n) ? "flex" : "none";
+  }
+}
+
+async function loadPwaRulesForOverlay(){
+  const listEl = document.getElementById("pwaJobTypeList");
+  listEl.innerHTML = '<p style="color:var(--text-dim);text-align:center;">Loading job types&hellip;</p>';
+  if (!db){
+    listEl.innerHTML = '<p style="color:var(--text-dim);text-align:center;">Firebase isn\u2019t configured yet.</p>';
+    return;
+  }
+  try {
+    const doc = await db.collection("config").doc("pwaRules").get();
+    if (doc.exists){
+      const data = doc.data();
+      pwaRulesData.claimValueThreshold = typeof data.claimValueThreshold === "number" ? data.claimValueThreshold : 1250;
+      pwaRulesData.labourRate = typeof data.labourRate === "number" ? data.labourRate : 91.72;
+      pwaRulesData.nearThresholdBuffer = typeof data.nearThresholdBuffer === "number" ? data.nearThresholdBuffer : 200;
+      pwaRulesData.jobTypes = Array.isArray(data.jobTypes) ? data.jobTypes : [];
+    }
+    pwaRulesLoaded = true;
+  } catch(err){
+    console.error("Couldn't load PWA rules", err);
+  }
+  renderPwaJobTypes();
+}
+
+function renderPwaJobTypes(){
+  const list = document.getElementById("pwaJobTypeList");
+  list.innerHTML = "";
+  if (!pwaRulesData.jobTypes.length){
+    list.innerHTML = '<p style="color:var(--text-dim);text-align:center;">No job types set up yet \u2014 ask the office to add some.</p>';
+    return;
+  }
+  pwaRulesData.jobTypes.forEach(jt => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.textContent = jt.name;
+    b.onclick = () => pwaSelectJobType(jt);
+    list.appendChild(b);
+  });
+}
+
+function pwaSelectJobType(jt){
+  vibrate(20);
+  pwaSelectedJobType = jt;
+  pwaPartValue = "";
+  pwaHours = "";
+  pwaMinutes = 0;
+
+  if (jt.alwaysPWA){
+    pwaShowResult();
+  } else {
+    updatePwaPartDisplay();
+    pwaGoToStep(2);
+  }
+}
+
+function renderPwaPartKeypad(){
+  const pad = document.getElementById("pwaPartKeypad");
+  pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","clear","0","back"];
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    if (k === "clear"){ b.textContent = "Clear"; b.style.fontSize = "16px"; b.onclick = () => { pwaPartValue=""; updatePwaPartDisplay(); }; }
+    else if (k === "back"){ b.innerHTML = "&#9003;"; b.onclick = () => { pwaPartValue = pwaPartValue.slice(0,-1); updatePwaPartDisplay(); }; }
+    else { b.textContent = k; b.onclick = () => { if (pwaPartValue.length < 6){ vibrate(15); pwaPartValue += k; updatePwaPartDisplay(); } }; }
+    pad.appendChild(b);
+  });
+}
+
+function updatePwaPartDisplay(){
+  const el = document.getElementById("pwaPartDisplay");
+  el.innerHTML = pwaPartValue ? CURRENCY + Number(pwaPartValue).toLocaleString() : '<span class="ph">' + CURRENCY + '0</span>';
+}
+
+function pwaGoToLabourStep(){
+  vibrate(30);
+  updatePwaHoursDisplay();
+  renderPwaMinuteRow();
+  pwaGoToStep(3);
+}
+
+function renderPwaHoursKeypad(){
+  const pad = document.getElementById("pwaHoursKeypad");
+  pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","clear","0","back"];
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    if (k === "clear"){ b.textContent = "Clear"; b.style.fontSize = "16px"; b.onclick = () => { pwaHours=""; updatePwaHoursDisplay(); }; }
+    else if (k === "back"){ b.innerHTML = "&#9003;"; b.onclick = () => { pwaHours = pwaHours.slice(0,-1); updatePwaHoursDisplay(); }; }
+    else { b.textContent = k; b.onclick = () => { if (pwaHours.length < 2){ vibrate(15); pwaHours += k; updatePwaHoursDisplay(); } }; }
+    pad.appendChild(b);
+  });
+}
+
+function updatePwaHoursDisplay(){
+  const el = document.getElementById("pwaHoursDisplay");
+  el.innerHTML = pwaHours ? pwaHours + " hrs" : '<span class="ph">0 hrs</span>';
+}
+
+function renderPwaMinuteRow(){
+  const row = document.getElementById("pwaMinRow");
+  row.innerHTML = "";
+  [0, 15, 30, 45].forEach(m => {
+    const b = document.createElement("button");
+    b.textContent = m === 0 ? "0 min" : m + " min";
+    b.className = (pwaMinutes === m) ? "selected" : "";
+    b.onclick = () => {
+      vibrate(15);
+      pwaMinutes = m;
+      renderPwaMinuteRow();
+    };
+    row.appendChild(b);
+  });
+}
+
+function pwaShowResult(){
+  vibrate(30);
+  const jt = pwaSelectedJobType;
+  const box = document.getElementById("pwaVerdictBox");
+  const titleEl = document.getElementById("pwaVerdictTitle");
+  const reasonEl = document.getElementById("pwaVerdictReason");
+  const breakdownEl = document.getElementById("pwaBreakdown");
+
+  let total = 0;
+  let verdictClass, verdictTitle, reasonText;
+
+  if (jt.alwaysPWA){
+    verdictClass = "needed";
+    verdictTitle = PWA_TERM + " needed";
+    reasonText = jt.name + " jobs always need " + PWA_TERM + ", regardless of claim value.";
+    breakdownEl.innerHTML = "";
+  } else {
+    const partValue = Number(pwaPartValue || 0);
+    const hours = Number(pwaHours || 0) + (pwaMinutes / 60);
+    const labourCost = hours * pwaRulesData.labourRate;
+    total = partValue + labourCost;
+    const threshold = pwaRulesData.claimValueThreshold;
+    const buffer = pwaRulesData.nearThresholdBuffer;
+
+    if (total > threshold){
+      verdictClass = "needed";
+      verdictTitle = PWA_TERM + " needed";
+      reasonText = "Estimated total is over " + CURRENCY + threshold.toLocaleString() + ".";
+    } else if (total >= threshold - buffer){
+      verdictClass = "caution";
+      verdictTitle = "Check with the office first";
+      reasonText = "Estimated total is close to the " + CURRENCY + threshold.toLocaleString() + " limit \u2014 check in person before deciding either way.";
+    } else {
+      verdictClass = "not-needed";
+      verdictTitle = "No " + PWA_TERM + " needed";
+      reasonText = "Estimated total is comfortably under " + CURRENCY + threshold.toLocaleString() + ".";
+    }
+
+    breakdownEl.innerHTML =
+      '<div class="breakdown-row"><span>Part value</span><span>' + CURRENCY + partValue.toLocaleString() + '</span></div>' +
+      '<div class="breakdown-row"><span>Labour (' + formatHoursMinutes(pwaHours, pwaMinutes) + ' @ ' + CURRENCY + pwaRulesData.labourRate + '/hr)</span><span>' + CURRENCY + labourCost.toFixed(2) + '</span></div>' +
+      '<div class="breakdown-row"><span>Estimated total</span><span>' + CURRENCY + total.toFixed(2) + '</span></div>';
+  }
+
+  box.className = "verdict " + verdictClass;
+  titleEl.textContent = verdictTitle;
+  reasonEl.textContent = reasonText;
+
+  const mediaEl = document.getElementById("pwaMediaList");
+  mediaEl.innerHTML = "<h3>" + escapeHtml(jt.name) + " \u2014 what Kia needs</h3><ul>" +
+    (jt.requiredMedia || []).map(m => "<li>" + escapeHtml(m) + "</li>").join("") +
+    "</ul>";
+
+  pwaGoToStep(4);
+}
+
+function formatHoursMinutes(hours, minutes){
+  const h = Number(hours || 0);
+  if (h && minutes) return h + "h " + minutes + "m";
+  if (h) return h + "h";
+  if (minutes) return minutes + "m";
+  return "0h";
+}
+
+function pwaResetTool(){
+  pwaSelectedJobType = null;
+  pwaPartValue = "";
+  pwaHours = "";
+  pwaMinutes = 0;
+  pwaGoToStep(1);
+}
+
+function updateWipDisplay(){
+  const el = document.getElementById("wipDisplay");
+  if (!state.wip){
+    el.innerHTML = '<span class="ph">-----</span>';
+  } else {
+    const padded = state.wip.padEnd(5, "\u00b7");
+    el.textContent = padded;
+  }
+}
+
+/* ============================================================
+   STEP 3 — reg
+   ============================================================ */
+let regMode = "digits"; // "digits" | "letters"
+
+function initRegInput(){
+  renderRegKeyboard();
+  updateRegDisplay();
+}
+
+function renderRegKeyboard(){
+  document.getElementById("regModeBtn").textContent = regMode === "digits" ? "ABC" : "123";
+  const grid = document.getElementById("regKbGrid");
+  grid.innerHTML = "";
+  const keys = regMode === "digits"
+    ? ["1","2","3","4","5","6","7","8","9","0"]
+    : "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  keys.forEach(k => {
+    const b = document.createElement("button");
+    b.className = "reg-key";
+    b.textContent = k;
+    b.onclick = () => regTypeChar(k);
+    grid.appendChild(b);
+  });
+}
+
+function toggleRegMode(){
+  vibrate(15);
+  regMode = regMode === "digits" ? "letters" : "digits";
+  renderRegKeyboard();
+}
+
+function regTypeChar(ch){
+  if (state.reg.length >= 12) return;
+  vibrate(10);
+  state.reg += ch;
+  updateRegDisplay();
+}
+
+function regBackspace(){
+  vibrate(10);
+  state.reg = state.reg.slice(0, -1);
+  updateRegDisplay();
+}
+
+function regClear(){
+  vibrate(15);
+  state.reg = "";
+  updateRegDisplay();
+}
+
+function updateRegDisplay(){
+  const el = document.getElementById("regDisplay");
+  el.innerHTML = state.reg ? escapeHtml(state.reg) : '<span class="ph">Tap keys below</span>';
+
+  document.getElementById("folderPreview").innerHTML = state.reg
+    ? "Files will be saved to <code>" + escapeHtml(state.reg) + " / " + escapeHtml(state.wip) + "</code>"
+    : "";
+  document.getElementById("regContinueBtn").disabled = state.reg.length < 3;
+}
+
+function continueFromReg(){
+  if (state.reg.length < 3) return;
+  vibrate(30);
+  proceedToCapture();
+}
+
+function proceedToCapture(){
+  linkRegToJob();
+  requestLocation();
+  goToStep(4);
+  renderCaptures();
+}
+
+function requestLocation(){
+  if (!navigator.geolocation) { state.location = null; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => { state.location = { lat: pos.coords.latitude, lon: pos.coords.longitude }; },
+    err => { console.log("Location unavailable", err); state.location = null; },
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+  );
+}
+
+async function linkRegToJob(){
+  if (!db) return;
+  // Fire-and-forget — saved as soon as the reg is confirmed, not just on
+  // submit, so the link exists even if this particular visit never sends.
+  try {
+    const docSnap = await db.collection("jobs").doc(state.wip).get();
+    const alreadyHasVinLog = docSnap.exists && Array.isArray(docSnap.data().vinEnquiryLog) && docSnap.data().vinEnquiryLog.length > 0;
+
+    const updates = {
+      reg: state.reg,
+      lastMechanic: state.mechanic,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    // A VIN enquiry is always printed the day a job is first created — no
+    // need to make the mechanic log it manually, only the office's later
+    // re-prints (every N days, tracked in admin) need an explicit log.
+    if (!alreadyHasVinLog){
+      updates.vinEnquiryLog = firebase.firestore.FieldValue.arrayUnion(new Date().toISOString());
+    }
+
+    await db.collection("jobs").doc(state.wip).set(updates, { merge: true });
+  } catch(err){
+    console.error("Couldn't link reg to WIP", err);
+  }
+}
+
+/* ============================================================
+   STEP 4 — capture
+   ============================================================ */
+function triggerCapture(kind){
+  vibrate(20);
+  document.getElementById(kind === "photo" ? "photoInput" : "videoInput").click();
+}
+
+document.getElementById("photoInput").addEventListener("change", e => handleFile(e, "photo"));
+document.getElementById("videoInput").addEventListener("change", e => handleFile(e, "video"));
+
+function triggerGalleryPick(){
+  vibrate(20);
+  document.getElementById("galleryInput").click();
+}
+
+document.getElementById("galleryInput").addEventListener("change", handleGalleryFiles);
+
+async function handleGalleryFiles(e){
+  const files = Array.from(e.target.files || []);
+  e.target.value = ""; // allow re-picking the same file(s) again later
+
+  for (const file of files){
+    const kind = file.type.indexOf("video/") === 0 ? "video" : "photo";
+    // Imported files aren't fresh captures — skip the timestamp overlay
+    // (it would be misleading to stamp today's date on an old screenshot)
+    // and go straight to the label picker, one at a time, in order.
+    try {
+      openLabelPrompt(kind, file);
+    } catch(err){
+      console.error("Label prompt failed for an imported file, saving without a label", err);
+      addCaptureWithoutPrompt(kind, file);
+    }
+  }
+}
+
+async function handleFile(e, kind){
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file next time
+  if (!file) return;
+
+  let blob = file;
+  if (kind === "photo"){
+    try { blob = await stampPhoto(file); } catch(err){ console.error("Stamp failed, using original", err); blob = file; }
+  }
+
+  try {
+    openLabelPrompt(kind, blob);
+  } catch(err){
+    // Whatever just went wrong, the mechanic still took a real photo/video —
+    // never lose it. Save it under a generic label rather than showing nothing.
+    console.error("Label prompt failed, saving capture without a label", err);
+    addCaptureWithoutPrompt(kind, blob);
+  }
+}
+
+function extForBlob(kind, blob){
+  let subtype = ((blob.type || "").split("/")[1] || "").split(";")[0]; // strip codec params
+  if (kind === "photo") return subtype === "jpeg" ? "jpg" : (subtype || "jpg");
+  if (subtype === "quicktime") return "mov";
+  return subtype || "mp4";
+}
+
+function addCaptureWithoutPrompt(kind, blob){
+  const label = sanitizeLabel(kind === "photo" ? "Photo" : "Video");
+  const ext = extForBlob(kind, blob);
+  const filename = buildFilename(label, ext);
+  const seq = state.captures.length + 1;
+  state.captures.push({
+    id: "c" + Date.now() + "_" + seq,
+    kind: kind,
+    blob: blob,
+    previewUrl: URL.createObjectURL(blob),
+    filename: filename,
+    label: label
+  });
+  renderCaptures();
+}
+
+/* ---- label picker (runs after every capture) ----
+   Captures queue up rather than overwrite one another — if the mechanic
+   fires off a second photo before labeling the first (e.g. tapped twice
+   because the camera app was slow to open), both still get a turn instead
+   of one silently disappearing. */
+let captureQueue = []; // {kind, blob, previewUrl}
+
+function openLabelPrompt(kind, blob){
+  captureQueue.push({ kind: kind, blob: blob, previewUrl: URL.createObjectURL(blob) });
+  if (captureQueue.length === 1){
+    showLabelPromptFor(captureQueue[0]);
+  }
+  // If one is already showing, this one just waits its turn in the queue.
+}
+
+function showLabelPromptFor(item){
+  const preview = document.getElementById("labelPreview");
+  preview.innerHTML = item.kind === "photo"
+    ? '<img src="' + item.previewUrl + '">'
+    : '<video src="' + item.previewUrl + '" muted playsinline autoplay loop></video>';
+
+  document.getElementById("labelOtherBox").style.display = "none";
+  document.getElementById("labelOtherInput").value = "";
+  renderLabelGrid();
+
+  document.getElementById("labelOverlay").classList.add("show");
+}
+
+function advanceQueue(){
+  captureQueue.shift();
+  if (captureQueue.length){
+    showLabelPromptFor(captureQueue[0]);
+  } else {
+    document.getElementById("labelOverlay").classList.remove("show");
+  }
+}
+
+function renderLabelGrid(){
+  const grid = document.getElementById("labelGrid");
+  grid.innerHTML = "";
+  CONFIG.labels.forEach(labelDef => {
+    const existingCount = countCaptures(labelDef.name);
+    const b = document.createElement("button");
+    b.className = "btn label-btn";
+    b.textContent = (labelDef.limit === 1 && existingCount > 0) ? "Retake " + labelDef.name : labelDef.name;
+    b.onclick = () => chooseLabel(labelDef.name);
+    grid.appendChild(b);
+  });
+  const otherBtn = document.createElement("button");
+  otherBtn.className = "btn label-btn";
+  otherBtn.textContent = "Other";
+  otherBtn.onclick = () => {
+    document.getElementById("labelOtherBox").style.display = "flex";
+    document.getElementById("labelOtherInput").focus();
+  };
+  grid.appendChild(otherBtn);
+}
+
+function countCaptures(label){
+  const key = label.trim().toLowerCase();
+  return state.captures.filter(c => c.label && c.label.toLowerCase() === key).length;
+}
+
+function chooseLabel(label){
+  vibrate(20);
+  confirmLabel(label);
+}
+
+function confirmOtherLabel(){
+  const typed = document.getElementById("labelOtherInput").value.trim();
+  if (!typed) return;
+  confirmLabel(typed);
+}
+
+function confirmLabel(rawLabel){
+  const current = captureQueue[0];
+  if (!current) return;
+
+  let label = sanitizeLabel(rawLabel);
+
+  const labelDef = CONFIG.labels.find(l => l.name.toLowerCase() === label.toLowerCase());
+  if (labelDef && labelDef.limit === 1){
+    // Only one of these allowed — capturing another replaces the existing one.
+    state.captures = state.captures.filter(c => {
+      if (c.label && c.label.toLowerCase() === label.toLowerCase()){
+        URL.revokeObjectURL(c.previewUrl);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  const ext = extForBlob(current.kind, current.blob);
+  const filename = buildFilename(label, ext);
+  const seq = state.captures.length + 1;
+
+  state.captures.push({
+    id: "c" + Date.now() + "_" + seq,
+    kind: current.kind,
+    blob: current.blob,
+    previewUrl: current.previewUrl,
+    filename: filename,
+    label: label
+  });
+
+  renderCaptures();
+  advanceQueue();
+}
+
+function discardPending(){
+  const current = captureQueue[0];
+  if (current) URL.revokeObjectURL(current.previewUrl);
+  advanceQueue();
+}
+
+function sanitizeLabel(rawLabel){
+  // Strip characters SharePoint doesn't allow in file names.
+  const cleaned = String(rawLabel).trim().replace(/["#%*:<>?\/\\{|}~]/g, "").replace(/\s+/g, " ");
+  return cleaned || "Other";
+}
+
+function buildFilename(label, ext){
+  // Every file gets a random 4-digit code — including VIN/Mileage — so a
+  // second visit to the same WIP (even a different day) never overwrites
+  // what's already sitting in that SharePoint folder. "Retake VIN" still
+  // replaces the shot within the current, unsent job (see confirmLabel),
+  // this only guards against collisions once files actually reach SharePoint.
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  return state.reg + "_" + state.wip + " " + label + " " + code + "." + ext;
+}
+
+function drawTimestampBar(ctx, width, height, location){
+  const now = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const dateStr = pad(now.getDate()) + "/" + pad(now.getMonth()+1) + "/" + now.getFullYear() +
+                  " " + pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
+  const line1 = state.reg + "  \u2022  WIP " + state.wip + "  \u2022  " + dateStr;
+  const line2 = location ? ("Location: " + location.lat.toFixed(5) + ", " + location.lon.toFixed(5)) : null;
+
+  const singleLineHeight = Math.max(48, Math.round(height * 0.045));
+  const barHeight = line2 ? Math.round(singleLineHeight * 1.9) : singleLineHeight;
+
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, height - barHeight, width, barHeight);
+
+  const fontSize = Math.max(20, Math.round(singleLineHeight * 0.42));
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textBaseline = "middle";
+
+  if (line2){
+    ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line1, 16, height - barHeight + singleLineHeight * 0.55, width - 32);
+    const line2FontSize = Math.max(16, Math.round(fontSize * 0.8));
+    ctx.font = "600 " + line2FontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line2, 16, height - barHeight + singleLineHeight * 1.5, width - 32);
+  } else {
+    ctx.font = "bold " + fontSize + "px -apple-system, Roboto, Arial, sans-serif";
+    ctx.fillText(line1, 16, height - barHeight / 2, width - 32);
+  }
+}
+
+function stampPhoto(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      drawTimestampBar(ctx, img.width, img.height, state.location);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.9);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function removeCapture(id){
+  const c = state.captures.find(c => c.id === id);
+  if (c) URL.revokeObjectURL(c.previewUrl);
+  state.captures = state.captures.filter(c => c.id !== id);
+  renderCaptures();
+}
+
+function renderCaptures(){
+  const wrap = document.getElementById("thumbs");
+  wrap.innerHTML = "";
+  document.getElementById("captureEmptyHint").style.display = state.captures.length ? "none" : "block";
+
+  state.captures.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "thumb" + (c.kind === "video" ? " video" : "");
+
+    if (c.kind === "photo"){
+      div.innerHTML = '<img src="' + c.previewUrl + '">';
+    } else {
+      div.innerHTML = '<video src="' + c.previewUrl + '" muted playsinline></video>';
+    }
+
+    const kindTag = document.createElement("div");
+    kindTag.className = "kind";
+    kindTag.textContent = c.label || (c.kind === "photo" ? "PHOTO" : "VIDEO");
+    div.appendChild(kindTag);
+
+    if (state.step === 4){
+      const rm = document.createElement("button");
+      rm.className = "rm";
+      rm.innerHTML = "&times;";
+      rm.onclick = () => removeCapture(c.id);
+      div.appendChild(rm);
+    }
+
+    wrap.appendChild(div);
+  });
+
+  document.getElementById("submitBtn").disabled = state.captures.length === 0;
+}
+
+/* ============================================================
+   SUBMIT — hand the files to the native share sheet (Mail)
+   ============================================================ */
+function newJobId(){
+  return "job_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+}
+
+function startSubmit(){
+  if (!state.captures.length) return;
+  if (currentPwaFlag){
+    showPwaSendCheck();
+    return;
+  }
+  actuallySubmit();
+}
+
+function showPwaSendCheck(){
+  const listEl = document.getElementById("pwaSendCheckList");
+  if (currentPwaRequiredItems.length){
+    listEl.innerHTML = currentPwaRequiredItems.map(i => "<li>" + escapeHtml(i) + "</li>").join("");
+  } else {
+    listEl.innerHTML = "<li>Everything Kia needs for this job type</li>";
+  }
+  document.getElementById("pwaSendCheckOverlay").classList.add("show");
+}
+
+function confirmPwaSendCheck(confirmed){
+  document.getElementById("pwaSendCheckOverlay").classList.remove("show");
+  if (confirmed) actuallySubmit();
+}
+
+async function actuallySubmit(){
+  if (!state.captures.length) return;
+
+  if (!navigator.share){
+    alert("Sharing isn't supported in this browser. Open this page in Safari on iPhone or Chrome on Android.");
+    return;
+  }
+
+  state.jobId = newJobId();
+
+  const files = state.captures.map(c => new File(
+    [c.blob],
+    c.filename,
+    { type: c.blob.type || (c.kind === "photo" ? "image/jpeg" : "video/mp4") }
+  ));
+
+  if (navigator.canShare && !navigator.canShare({ files: files })){
+    alert("Your phone can't share this many files or this much data at once. Try sending fewer files, or trim any long videos, then send the rest separately.");
+    return;
+  }
+
+  const recipientsConfigured = emailRecipients.length && emailRecipients[0].indexOf("EDIT ME") !== 0;
+  const recipientText = recipientsConfigured ? emailRecipients.join("; ") : "the warranty addresses";
+
+  const subject = "[WarrantyApp] " + state.reg + " " + state.wip;
+  const body = "Mechanic: " + state.mechanic + "\nReg: " + state.reg + "\nWIP: " + state.wip +
+    "\n\nSend this to " + recipientText + " (add them all to To/Cc) to file these photos.";
+
+  try {
+    await navigator.share({ files: files, title: subject, text: body });
+    recordJobHistory();
+    document.getElementById("doneTitle").textContent = "Almost done";
+    document.getElementById("doneSub").textContent =
+      "Check the message that just opened — make sure it's addressed to " + recipientText +
+      " and tap Send to finish submitting " + state.reg + " / " + state.wip + ".";
+    goToStep(6);
+  } catch(err){
+    // User cancelled the share sheet, or the OS couldn't hand off the files — stay on
+    // step 4 so they can just try Send again rather than losing their captures.
+    console.log("Share cancelled or failed", err);
+  }
+}
+
+function recordJobHistory(){
+  if (!db) return;
+  // Reflects what the app handed to the share sheet, not confirmed proof it
+  // reached SharePoint — same gap as everywhere else in this design. Good
+  // enough for "did I already get the VIN shot" at a glance.
+  const entries = state.captures.map(c => ({
+    label: c.label,
+    kind: c.kind,
+    sentAt: new Date().toISOString()
+  }));
+
+  db.collection("jobs").doc(state.wip).set({
+    reg: state.reg,
+    lastMechanic: state.mechanic,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    history: firebase.firestore.FieldValue.arrayUnion(...entries)
+  }, { merge: true }).catch(err => console.error("Couldn't record job history", err));
+}
+
+/* ============================================================
+   RESET / NEW JOB
+   ============================================================ */
+function resetForNewJob(keepMechanic){
+  state.captures.forEach(c => URL.revokeObjectURL(c.previewUrl));
+  captureQueue.forEach(c => URL.revokeObjectURL(c.previewUrl));
+  captureQueue = [];
+  document.getElementById("labelOverlay").classList.remove("show");
+  document.getElementById("adminNoteBadge").classList.remove("show");
+  document.getElementById("jobLinesBadge").classList.remove("show");
+  document.getElementById("jobHistoryBadge").classList.remove("show");
+  document.getElementById("pwaFlagBadge").classList.remove("show");
+  currentAdminNoteMessage = null;
+  currentJobHistory = null;
+  currentPwaFlag = false;
+  currentPwaRequiredItems = [];
+  currentPwaCheckedItems = new Set();
+  closeNoteOverlay();
+  state = {
+    step: 1,
+    mechanic: keepMechanic ? state.mechanic : null,
+    wip: "",
+    reg: "",
+    jobId: null,
+    location: null,
+    captures: []
+  };
+  updateWipDisplay();
+  regMode = "digits";
+  renderRegKeyboard();
+  updateRegDisplay();
+  goToStep(keepMechanic ? 2 : 1);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  loadMechanics();
+  loadAppSettings();
+  renderWipKeypad();
+  updateWipDisplay();
+  initRegInput();
+  renderCaptures();
+  renderPwaPartKeypad();
+  renderPwaHoursKeypad();
+  goToStep(1);
+}
+
+init();
+</script>
+</body>
+</html>

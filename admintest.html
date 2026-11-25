@@ -3091,12 +3091,12 @@ function sortOpenJobs(jobs, mode){
    127.0.0.1 only) for the job open in ADP, then creates/updates jobs/{WIP}
    so the mechanic app auto-fills the reg.
    ============================================================ */
-const ADP_HELPER_URL = "http://127.0.0.1:47123/job";
+const ADP_HELPER_URL = "http://127.0.0.1:47123/job?lines=1";
 
 async function addJobFromAdp(){
   const statusEl = document.getElementById("adpAddStatus");
   statusEl.className = "status";
-  statusEl.textContent = "Reading the open job from ADP…";
+  statusEl.textContent = "Reading the job and its lines from ADP… (you'll see ADP's line windows flash open and shut — don't touch ADP until this finishes)";
 
   let data;
   try {
@@ -3140,9 +3140,18 @@ async function addJobFromAdp(){
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (miles !== null) updates.mileage = miles;
+    const gotLines = Array.isArray(data.lines);
+    if (gotLines){
+      updates.lines = data.lines;
+      updates.linesUpdatedAt = new Date().toISOString();
+    }
     await ref.set(updates, { merge: true });
 
-    statusEl.textContent = (snap.exists ? "Updated" : "Added") + " WIP " + wip + " (" + reg + (miles !== null ? ", mileage " + miles : "") + "). Mechanics just enter the WIP and the reg fills in.";
+    statusEl.textContent = (snap.exists ? "Updated" : "Added") + " WIP " + wip + " (" + reg + (miles !== null ? ", mileage " + miles : "") + ")" +
+      (gotLines ? " with " + data.lines.length + " line" + (data.lines.length === 1 ? "" : "s") : "") +
+      ". Mechanics just enter the WIP and the reg fills in." +
+      (data.linesError ? " Lines not read: " + data.linesError : "") +
+      (data.linesNote ? " " + data.linesNote : "");
     statusEl.className = "status ok";
     logAudit((snap.exists ? "Updated" : "Added") + " WIP " + wip + " (" + reg + ") from ADP");
     loadOpenJobs();
