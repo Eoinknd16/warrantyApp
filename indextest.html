@@ -105,6 +105,7 @@
   #noteDetailBody .line-row b{font-size:15px;letter-spacing:.3px;}
   #noteDetailBody .line-row .line-tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:10px;
     margin-right:8px;vertical-align:2px;background:var(--surface-2,#222);color:var(--text-dim);}
+  #noteDetailBody .line-row .line-tag.part{background:#1F5130;color:#C4F0CF;}
   #noteDetailBody .line-row .line-desc{margin-top:3px;}
   #noteDetailBody .line-row .line-meta{margin-top:3px;color:var(--text-dim);font-size:13px;}
   #pwaFlagBadge{border-color:var(--danger);color:#FF9C9C;background:#2B0705;font-weight:800;}
@@ -930,7 +931,7 @@ function formatJobLines(lines){
       const meta = ["Qty " + (l.qty || "?")];
       if (l.status) meta.push("Status " + l.status);
       if (l.bin) meta.push("Bin " + l.bin);
-      return '<div class="line-row"><span class="line-tag">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
+      return '<div class="line-row"><span class="line-tag part">PART</span><b>' + escapeHtml(l.partNumber || "") + '</b>' +
         '<div class="line-desc">' + escapeHtml(l.description || "") + '</div>' +
         '<div class="line-meta">' + escapeHtml(meta.join(" \u00b7 ")) + '</div></div>';
     }
