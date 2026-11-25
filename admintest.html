@@ -515,7 +515,11 @@
           <button class="btn btn-secondary btn-inline no-print" onclick="exportOpenJobsCSV()" style="margin-top:0;">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export CSV</button>
+          <button class="btn btn-inline no-print" onclick="addJobFromAdp()" style="margin-top:0;" title="Run the 'ADP to Warranty App' shortcut on your PC first">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+            Add from ADP</button>
         </div>
+        <p class="status" id="adpAddStatus"></p>
         <div class="jobs-filter-row" id="jobsFilterRow">
           <button class="filter-chip active" data-filter="all" onclick="setJobFilter('all')">All</button>
           <button class="filter-chip" data-filter="pwa" onclick="setJobFilter('pwa')">Needs <span id="filterPwaTerm">PWA</span></button>
@@ -3080,6 +3084,63 @@ function sortOpenJobs(jobs, mode){
   });
   else arr.sort((a, b) => tsMillis(b.updatedAt) - tsMillis(a.updatedAt)); // "recent" default
   return arr;
+}
+
+/* ============================================================
+   ADD FROM ADP — reads the line the PC-side "ADP to Warranty App"
+   shortcut puts on the clipboard:  ADP-JOB WIP=12345 REG=231L2239 MILES=12069
+   and creates/updates jobs/{WIP} so the mechanic app auto-fills the reg.
+   ============================================================ */
+async function addJobFromAdp(){
+  const statusEl = document.getElementById("adpAddStatus");
+  statusEl.className = "status";
+  statusEl.textContent = "Reading clipboard…";
+
+  let text = "";
+  try {
+    text = await navigator.clipboard.readText();
+  } catch(err){
+    text = prompt("Couldn't read the clipboard automatically. Paste the ADP job here (Ctrl+V):") || "";
+  }
+
+  const m = text.match(/ADP-JOB\s+WIP=(\d{5})\s+REG=([A-Z0-9]+)(?:\s+MILES=(\d+))?/i);
+  if (!m){
+    statusEl.textContent = "No ADP job on the clipboard — run the 'ADP to Warranty App' shortcut with the job open in ADP, then try again.";
+    statusEl.className = "status err";
+    return;
+  }
+  const wip = m[1];
+  const reg = m[2].toUpperCase();
+  const miles = m[3] ? Number(m[3]) : null;
+
+  try {
+    const ref = db.collection("jobs").doc(wip);
+    const snap = await ref.get();
+    const existingReg = snap.exists ? (snap.data().reg || "") : "";
+    if (existingReg && existingReg !== reg){
+      if (!confirm("WIP " + wip + " is already linked to " + existingReg + ". Replace it with " + reg + " from ADP?")){
+        statusEl.textContent = "Cancelled — WIP " + wip + " left as " + existingReg + ".";
+        return;
+      }
+    }
+    const updates = {
+      reg: reg,
+      source: "adp",
+      adpImportedAt: new Date().toISOString(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (miles !== null) updates.mileage = miles;
+    await ref.set(updates, { merge: true });
+
+    statusEl.textContent = (snap.exists ? "Updated" : "Added") + " WIP " + wip + " (" + reg + (miles !== null ? ", mileage " + miles : "") + "). Mechanics just enter the WIP and the reg fills in.";
+    statusEl.className = "status ok";
+    logAudit((snap.exists ? "Updated" : "Added") + " WIP " + wip + " (" + reg + ") from ADP");
+    loadOpenJobs();
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = "Couldn't save to Firebase — check your connection.";
+    statusEl.className = "status err";
+  }
 }
 
 async function loadOpenJobs(){
