@@ -515,7 +515,7 @@
           <button class="btn btn-secondary btn-inline no-print" onclick="exportOpenJobsCSV()" style="margin-top:0;">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export CSV</button>
-          <button class="btn btn-inline no-print" onclick="addJobFromAdp()" style="margin-top:0;" title="Run the 'ADP to Warranty App' shortcut on your PC first">
+          <button class="btn btn-inline no-print" onclick="addJobFromAdp()" style="margin-top:0;" title="Adds the job currently open in ADP on this PC">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
             Add from ADP</button>
         </div>
@@ -3087,25 +3087,35 @@ function sortOpenJobs(jobs, mode){
 }
 
 /* ============================================================
-   ADD FROM ADP — reads the line the PC-side "ADP to Warranty App"
-   shortcut puts on the clipboard:  ADP-JOB WIP=12345 REG=231L2239 MILES=12069
-   and creates/updates jobs/{WIP} so the mechanic app auto-fills the reg.
+   ADD FROM ADP — asks the ADP helper running on this PC (adp_helper.ps1,
+   127.0.0.1 only) for the job open in ADP, then creates/updates jobs/{WIP}
+   so the mechanic app auto-fills the reg.
    ============================================================ */
+const ADP_HELPER_URL = "http://127.0.0.1:47123/job";
+
 async function addJobFromAdp(){
   const statusEl = document.getElementById("adpAddStatus");
   statusEl.className = "status";
-  statusEl.textContent = "Reading clipboard…";
+  statusEl.textContent = "Reading the open job from ADP…";
 
-  let text = "";
+  let data;
   try {
-    text = await navigator.clipboard.readText();
+    const res = await fetch(ADP_HELPER_URL, { cache: "no-store" });
+    data = await res.json();
   } catch(err){
-    text = prompt("Couldn't read the clipboard automatically. Paste the ADP job here (Ctrl+V):") || "";
+    console.error(err);
+    statusEl.textContent = "Can't reach the ADP helper on this PC. It needs to be installed once (adp_helper.ps1 -Install), and your browser must be allowed to access apps on this device.";
+    statusEl.className = "status err";
+    return;
   }
-
-  const m = text.match(/ADP-JOB\s+WIP=(\d{5})\s+REG=([A-Z0-9]+)(?:\s+MILES=(\d+))?/i);
-  if (!m){
-    statusEl.textContent = "No ADP job on the clipboard — run the 'ADP to Warranty App' shortcut with the job open in ADP, then try again.";
+  if (data.error){
+    statusEl.textContent = data.error;
+    statusEl.className = "status err";
+    return;
+  }
+  const m = [null, String(data.wip || ""), String(data.reg || ""), data.mileage != null ? String(data.mileage) : null];
+  if (!/^\d{5}$/.test(m[1]) || !/^[A-Z0-9]+$/i.test(m[2])){
+    statusEl.textContent = "ADP didn't return a valid WIP and reg — open the job on Service Point Of Sale and try again.";
     statusEl.className = "status err";
     return;
   }
